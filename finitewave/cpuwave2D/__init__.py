@@ -9,6 +9,7 @@ from .model import (
     AlievPanfilov2D,
     LuoRudy912D,
     TP062D,
+    Courtemanche2D
 )
 from .stencil import AsymmetricStencil2D, IsotropicStencil2D, SymmetricStencil2D
 from .stimulation import (
