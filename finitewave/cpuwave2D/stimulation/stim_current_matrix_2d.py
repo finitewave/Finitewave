@@ -1,3 +1,4 @@
+import numpy as np
 from finitewave.core.stimulation.stim_current import StimCurrent
 
 
@@ -17,8 +18,9 @@ class StimCurrentMatrix2D(StimCurrent):
     matrix : numpy.ndarray
         A 2D binary matrix indicating the region of interest for stimulation. 
         Elements greater than 0 represent regions to be stimulated.
+    
     """
-    def __init__(self, time, curr_value, duration, matrix):
+    def __init__(self, time, curr_value, duration, matrix, u_max=None):
         """
         Initializes the StimCurrentMatrix2D instance.
 
@@ -33,9 +35,12 @@ class StimCurrentMatrix2D(StimCurrent):
         matrix : numpy.ndarray
             A 2D binary matrix indicating the region of interest for
             stimulation.
+        u_max : float, optional
+            The maximum value of the membrane potential. Default is None.
         """
         super().__init__(time, curr_value, duration)
         self.matrix = matrix
+        self.u_max = u_max
 
     def stimulate(self, model):
         """
@@ -51,4 +56,8 @@ class StimCurrentMatrix2D(StimCurrent):
             The 2D cardiac tissue model.
         """
         mask = (self.matrix > 0) & (model.cardiac_tissue.mesh == 1)
-        model.u[mask] += self._dt * self.curr_value
+        model.u[mask] += model.dt * self.curr_value
+
+        if self.u_max is not None:
+            model.u[mask] = np.where(model.u[mask] > self.u_max, self.u_max,
+                                     model.u[mask])

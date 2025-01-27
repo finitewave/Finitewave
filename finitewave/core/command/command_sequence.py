@@ -54,6 +54,5 @@ class CommandSequence:
         executed yet.
         """
         for command in self.sequence:
-            if self.model.t >= command.t and not command.passed:
+            if command.update_status(self.model):
                 command.execute(self.model)
-                command.passed = True

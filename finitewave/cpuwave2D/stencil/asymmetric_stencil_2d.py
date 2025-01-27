@@ -80,6 +80,7 @@ class AsymmetricStencil2D(Stencil):
         weights = compute_weights(weights, mesh, d_xx, d_xy, d_yx, d_yy)
         weights = weights * model.D_model * model.dt / model.dr**2
         weights[:, :, 4] += 1
+
         return weights
 
     def select_diffusion_kernel(self):

@@ -1,7 +1,10 @@
-from finitewave.core.stimulation.stim_current import StimCurrent
+import numpy as np
+from finitewave.cpuwave2D.stimulation.stim_current_matrix_2d import (
+    StimCurrentMatrix2D
+)
 
 
-class StimCurrentMatrix3D(StimCurrent):
+class StimCurrentMatrix3D(StimCurrentMatrix2D):
     """
     A class that applies a stimulation current to a 3D cardiac tissue model
     based on a binary matrix.
@@ -17,9 +20,11 @@ class StimCurrentMatrix3D(StimCurrent):
     matrix : numpy.ndarray
         A 3D binary matrix indicating the region of interest for stimulation. 
         Elements greater than 0 represent regions to be stimulated.
+    u_max : float, optional
+        The maximum value of the membrane potential. Default is None.
     """
 
-    def __init__(self, time, curr_value, duration, matrix):
+    def __init__(self, time, curr_value, duration, matrix, u_max=None):
         """
         Initializes the StimCurrentMatrix3D instance.
 
@@ -34,20 +39,7 @@ class StimCurrentMatrix3D(StimCurrent):
         matrix : numpy.ndarray
             A 3D binary matrix indicating the region of interest for
             stimulation.
+        u_max : float, optional
+            The maximum value of the membrane potential. Default is None.
         """
-        super().__init__(time, curr_value, duration)
-        self.matrix = matrix
-
-    def stimulate(self, model):
-        """
-        Applies the stimulation current to the cardiac tissue model based on
-        the specified binary matrix.
-
-        Parameters
-        ----------
-        model : object
-            The cardiac tissue model to which the stimulation current is
-            applied.
-        """
-        mask = (self.matrix > 0) & (model.cardiac_tissue.mesh == 1)
-        model.u[mask] += model.dt * self.curr_value
+        super().__init__(time, curr_value, duration, matrix, u_max)

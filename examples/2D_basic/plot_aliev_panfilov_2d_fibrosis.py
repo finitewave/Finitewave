@@ -14,8 +14,8 @@ import finitewave as fw
 # create a tissue of size 400x400 with cardiomycytes:
 n = 400
 tissue = fw.CardiacTissue2D([n, n])
-fibrosis_pattern = fw.Diffuse2DPattern(0.2)
-fibrosis_pattern.apply(tissue)
+# add diffuse fibrosis to the tissue:
+tissue.add_pattern(fw.Diffuse2DPattern(0.2))
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()

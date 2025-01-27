@@ -11,7 +11,7 @@ authors = [
   { name="Arstanbek Okenov", email="arstanbek.okenov@ugent.be" }
 ]
 description = "Simple package for a wide range of tasks in modeling cardiac electrophysiology using finite-difference methods."
-readme = "README.md"
+readme = "README.rst"
 license = "MIT"
 
 dependencies = [

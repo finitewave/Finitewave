@@ -47,15 +47,15 @@ class LuoRudy912D(CardiacModel):
         super().initialize()
         shape = self.cardiac_tissue.mesh.shape
 
-        self.u = -84.5 * np.ones(shape, dtype=np.npfloat)
+        self.u = -84.5 * np.ones(shape, dtype=self.npfloat)
         self.u_new = self.u.copy()
-        self.m = 0.0017 * np.ones(shape, dtype=np.npfloat)
-        self.h = 0.9832 * np.ones(shape, dtype=np.npfloat)
-        self.j_ = 0.995484 * np.ones(shape, dtype=np.npfloat)
-        self.d = 0.000003 * np.ones(shape, dtype=np.npfloat)
-        self.f = np.ones(shape, dtype=np.npfloat)
-        self.x = 0.0057 * np.ones(shape, dtype=np.npfloat)
-        self.Cai_c = 0.0002 * np.ones(shape, dtype=np.npfloat)
+        self.m = 0.0017 * np.ones(shape, dtype=self.npfloat)
+        self.h = 0.9832 * np.ones(shape, dtype=self.npfloat)
+        self.j_ = 0.995484 * np.ones(shape, dtype=self.npfloat)
+        self.d = 0.000003 * np.ones(shape, dtype=self.npfloat)
+        self.f = np.ones(shape, dtype=self.npfloat)
+        self.x = 0.0057 * np.ones(shape, dtype=self.npfloat)
+        self.Cai_c = 0.0002 * np.ones(shape, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

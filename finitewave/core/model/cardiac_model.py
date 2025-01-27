@@ -23,9 +23,10 @@ class CardiacModel(ABC):
         The sequence of trackers used to monitor the simulation.
     command_sequence : CommandSequence
         The sequence of commands to execute during the simulation.
-    state_keeper : StateKeeper
-        The object responsible for saving and loading the state of the
-        simulation.
+    state_loader : StateLoader
+        The object responsible for loading the state of the simulation.
+    state_saver : StateSaver
+        The object responsible for saving the state of the simulation.
     stencil : Stencil
         The stencil used for numerical computations.
     u : ndarray
@@ -57,7 +58,8 @@ class CardiacModel(ABC):
         self.stim_sequence = None
         self.tracker_sequence = None
         self.command_sequence = None
-        self.state_keeper = None
+        self.state_loader = None
+        self.state_saver = None
         self.stencil = None
 
         self.diffuse_kernel = None
@@ -111,8 +113,11 @@ class CardiacModel(ABC):
         if self.command_sequence:
             self.command_sequence.initialize(self)
 
-        if self.state_keeper:
-            self.state_keeper.initialize(self)
+        if self.state_loader:
+            self.state_loader.initialize(self)
+
+        if self.state_saver:
+            self.state_saver.initialize(self)
 
     def run(self, initialize=True, num_of_theads=None):
         """
@@ -136,14 +141,14 @@ class CardiacModel(ABC):
         if self.t_max < self.t:
             raise ValueError("t_max must be greater than current t.")
 
+        if self.state_loader:
+            self.state_loader.load()
+
         iters = int(np.ceil((self.t_max - self.t) / self.dt))
         bar_desc = f"Running {self.__class__.__name__}"
 
         for _ in tqdm(range(iters), total=iters, desc=bar_desc,
                       disable=not self.prog_bar):
-
-            if self.state_keeper and self.state_keeper.record_load:
-                self.state_keeper.load()
 
             if self.stim_sequence:
                 self.stim_sequence.stimulate_next()
@@ -165,8 +170,8 @@ class CardiacModel(ABC):
             if self.check_termination():
                 break
 
-        if self.state_keeper and self.state_keeper.record_save:
-            self.state_keeper.save()
+        if self.state_saver:
+            self.state_saver.save()
 
     def check_termination(self):
         """
@@ -180,7 +185,7 @@ class CardiacModel(ABC):
             True if the simulation should terminate, False otherwise.
         """
         max_iters = int(np.ceil(self.t_max / self.dt))
-        return (self.t >= self.t_max) or (self.step >= max_iters)
+        return (self.t > self.t_max) or (self.step > max_iters)
 
     def run_diffusion_kernel(self):
         """

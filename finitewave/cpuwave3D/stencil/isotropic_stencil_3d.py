@@ -71,7 +71,6 @@ class IsotropicStencil3D(IsotropicStencil2D):
         weights = compute_weights(weights, mesh, d_xx, d_yy, d_zz)
         weights = weights * model.D_model * model.dt / model.dr**2
         weights[:, :, :, 3] += 1
-
         return weights
 
 

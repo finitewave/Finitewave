@@ -13,7 +13,7 @@ class Command(ABC):
         Flag indicating whether the command has been executed.
     """
 
-    def __init__(self, time):
+    def __init__(self, time=None):
         """
         Initializes a Command instance with the specified execution time.
 
@@ -38,3 +38,15 @@ class Command(ABC):
             The cardiac model instance on which the command will be executed.
         """
         pass
+
+    def update_status(self, model):
+        """
+        Marks the command as executed.
+
+        Parameters
+        ----------
+        model : CardiacModel
+            The cardiac model instance on which the command was executed
+        """
+        self.passed = self.t >= model.t
+        return self.passed

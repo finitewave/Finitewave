@@ -102,7 +102,6 @@ class AsymmetricStencil3D(AsymmetricStencil2D):
 
         weights = weights * model.D_model * model.dt / model.dr**2
         weights[:, :, :, 4] += 1
-
         return weights
 
 

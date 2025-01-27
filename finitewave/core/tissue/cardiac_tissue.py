@@ -14,9 +14,14 @@ class CardiacTissue(ABC):
     ----------
     meta : dict
         A dictionary containing metadata about the tissue.
+    special_boundaries : np.ndarray
+        An array containing labels for special boundaries in the tissue mesh.
+        This array is used to define Dirichlet boundary conditions as points
+        with non-zero values are ignored in the solver.
     """
     def __init__(self):
         self.meta = {}
+        self.special_boundaries = None
 
     @property
     def mesh(self):
@@ -50,6 +55,11 @@ class CardiacTissue(ABC):
         """
         Computes flat indices of the myocytes in the tissue mesh.
         """
+        if self.special_boundaries is not None:
+            self.myo_indexes = np.flatnonzero((self.mesh == 1) &
+                                              (self.special_boundaries == 0))
+            return
+
         self.myo_indexes = np.flatnonzero(self.mesh == 1)
 
     @abstractmethod

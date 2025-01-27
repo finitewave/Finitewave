@@ -1,4 +1,3 @@
-import numpy as np
 from numba import njit, prange
 
 from finitewave.cpuwave2D.model.aliev_panfilov_2d import AlievPanfilov2D
