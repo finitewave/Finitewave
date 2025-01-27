@@ -73,6 +73,7 @@ from finitewave.cpuwave3D import (
     StimCurrentMatrix3D,
     StimVoltageMatrix3D,
     StimVoltageListMatrix3D,
+    StimCurrentArea3D,
     CardiacTissue3D,
     ActionPotential3DTracker,
     ActivationTime3DTracker,

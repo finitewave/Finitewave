@@ -14,7 +14,8 @@ from finitewave.cpuwave3D.stimulation import (
     StimVoltageCoord3D,
     StimCurrentMatrix3D,
     StimVoltageMatrix3D,
-    StimVoltageListMatrix3D
+    StimVoltageListMatrix3D,
+    StimCurrentArea3D,
 )
 from finitewave.cpuwave3D.tissue import CardiacTissue3D
 from .tracker import *
