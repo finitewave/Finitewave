@@ -9,7 +9,7 @@ import finitewave as fw
 
 # number of nodes on the side
 n = 200
-nk = 5
+nk = 50
 
 tissue = fw.CardiacTissue3D([n, n, nk])
 # create a mesh of cardiomyocytes (elems = 1):
@@ -33,19 +33,17 @@ tracker_sequence = fw.TrackerSequence()
 ecg_tracker = fw.ECG3DTracker()
 ecg_tracker.start_time = 40
 ecg_tracker.step = 10
-ecg_tracker.measure_coords = np.array([[n//2, n//2, nk+3],
-                                       [n//4, n//2, nk+3],
-                                       [3*n//4, 3*n//4, nk+3]])
-# create an ECG tracker with memory save:
-ecg_tracker_memsave = fw.ECG3DTracker(memory_save=True)
-ecg_tracker_memsave.start_time = 40
-ecg_tracker_memsave.step = 10
-ecg_tracker_memsave.measure_coords = np.array([[n//2, n//2, nk+3],
-                                               [n//4, n//2, nk+3],
-                                               [3*n//4, 3*n//4, nk+3]])
+ecg_tracker.measure_coords = np.array([[n//2, n//2, nk+3] * 1]).reshape(1, 3)
+# # create an ECG tracker with memory save:
+# ecg_tracker_memsave = fw.ECG3DTracker(memory_save=True)
+# ecg_tracker_memsave.start_time = 40
+# ecg_tracker_memsave.step = 10
+# ecg_tracker_memsave.measure_coords = np.array([[n//2, n//2, nk+3],
+#                                                [n//4, n//2, nk+3],
+#                                                [3*n//4, 3*n//4, nk+3]])
 
 tracker_sequence.add_tracker(ecg_tracker)
-tracker_sequence.add_tracker(ecg_tracker_memsave)
+# tracker_sequence.add_tracker(ecg_tracker_memsave)
 
 # add the tissue and the stim parameters to the model object:
 aliev_panfilov.cardiac_tissue = tissue
@@ -55,14 +53,15 @@ aliev_panfilov.tracker_sequence = tracker_sequence
 aliev_panfilov.run()
 
 
-colors = ['tab:blue', 'tab:orange', 'tab:green']
-plt.figure()
-for i, y in enumerate(ecg_tracker.output.T):
-    x = np.arange(len(y)) * aliev_panfilov.dt * ecg_tracker.step
-    plt.plot(x, y, color=colors[i], label='precomputed distances')
+# colors = ['tab:blue', 'tab:orange', 'tab:green']
+# plt.figure()
+# for i, y in enumerate(ecg_tracker.output.T):
+#     x = np.arange(len(y)) * aliev_panfilov.dt * ecg_tracker.step
+#     plt.plot(x, y, color=colors[i], label='precomputed distances')
 
-for i, y in enumerate(ecg_tracker_memsave.output.T):
-    plt.plot(x, y, 'o', color=colors[i], label='memory save')
+# for i, y in enumerate(ecg_tracker_memsave.output.T):
+#     plt.plot(x, y, 'o', color=colors[i], label='memory save')
 
-plt.legend(title='ECG computed with')
-plt.show()
+# plt.legend(title='ECG computed with')
+# plt.savefig("ecg_3d_tracker.png")
+# plt.close()

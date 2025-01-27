@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+from numba import njit, prange
 from scipy import spatial
 
 from finitewave.core.tracker.tracker import Tracker
@@ -14,118 +15,38 @@ class ECG3DTracker(Tracker):
     computing the potential differences across the cardiac tissue mesh and
     considering the inverse of the distance from each measurement point.
 
-    Parameters
-    ----------
-    memory_save (bool): A flag to enable memory saving mode. If True, the
-        tracker will compute distances on the fly instead of precomputing them.
-    batch_size (int): The number of tissue points to process in each batch when
-        memory saving mode is enabled.
-
     Attributes
     ----------
     measure_coords : np.ndarray
         An array of points (x, y, z) where ECG signals are measured.
     ecg : list
         The computed ECG signals.
-    memory_save : bool
-        A flag to enable memory saving mode. If True, the tracker will compute
-        distances on the fly instead of precomputing them. This mode is useful
-        for large tissue meshes with high number of measurement points.
-    dist_dtype : np.dtype
-        The data type of the precomputed distances. To save memory, the
-        distances are stored as float16 by default.
-    batch_size : int
-        The number of tissue points to process in each batch when memory saving
-        mode is enabled.
+    file_name : str
+        The name of the file to save the computed ECG signals.
+    u_tr : np.ndarray
+        The updated potential values after diffusion.
     """
 
-    def __init__(self, memory_save=False, batch_size=10, distance_power=1):
-        """
-        Initializes the ECG3DTracker with default parameters.
-        
-        Parameters
-        ----------
-        memory_save : bool, optional
-            A flag to enable memory saving mode. If True, the tracker will
-            compute distances on the fly instead of precomputing them. This
-            mode is useful for large tissue meshes with high number of
-            measurement points. The default is False.
-        batch_size : int, optional
-            The number of tissue points to process in each batch when memory
-            saving mode is enabled. The default is 10.
-        distance_power : int, optional
-            The power to which the distance is raised in the calculation of the
-            ECG signal. The default is 1.
-        """
+    def __init__(self, measure_coords=None):
         super().__init__()
-        self.measure_coords = np.array([[0, 0, 1]])
+        self.measure_coords = measure_coords
         self.ecg = []
-        self.memory_save = memory_save
-        self.dist_dtype = np.float16
-        self.batch_size = batch_size
         self.file_name = "ecg.npy"
-        self.distance_power = distance_power
+        self.u_tr = None
 
     def initialize(self, model):
+        """
+        Initialize the ECG tracker with the model object.
+
+        Parameters
+        ----------
+        model : CardiacModel3D
+            The model object containing the simulation parameters.
+        """
         self.model = model
         self.measure_coords = np.atleast_2d(self.measure_coords)
         self.ecg = []
-        self.tissue_mask = model.cardiac_tissue.mesh == 1
-
-        if self.memory_save:
-            self.tissue_coords = np.argwhere(self.tissue_mask)
-            inds = np.arange(len(self.measure_coords))
-            split_inds = inds[::self.batch_size][1:]
-            self.splitted_coords = np.split(self.measure_coords, split_inds)
-            return
-
-        self.compute_distance()
-
-    def compute_distance(self):
-        self.distances = np.ones((len(self.measure_coords),
-                                 np.count_nonzero(self.tissue_mask)),
-                                 dtype=self.dist_dtype)
-
-        tissue_coords = np.argwhere(self.tissue_mask)
-        for i, point in enumerate(self.measure_coords):
-            self.distances[i, :] = np.linalg.norm((point - tissue_coords),
-                                                  axis=1
-                                                  ).astype(self.dist_dtype)
-
-        self.distances = self.distances ** self.distance_power
-
-        if np.any(self.distances == 0):
-            Warning("Measurement points are inside the tissue.")
-
-    def uni_voltage(self, current):
-        if self.memory_save:
-            return self._uni_voltage_memory_save(current)
-
-        return np.sum(current[self.tissue_mask] / self.distances, axis=1)
-
-    def _uni_voltage_memory_save(self, current):
-        """
-        Compute the sum of the transmembrane current divided by the distance
-        between the measurement points and the tissue points.
-
-        Parameters
-        ----------
-        current : np.ndarray
-            The transmembrane current array.
-
-        Returns
-        -------
-        np.ndarray
-            The computed potential difference at the measurement points.
-        """
-        ecg = []
-
-        for coords in self.splitted_coords:
-            distance = spatial.distance.cdist(coords, self.tissue_coords)
-            distance = distance ** self.distance_power
-            ecg.append(np.sum(current[self.tissue_mask] / distance, axis=1))
-
-        return np.squeeze(np.column_stack(ecg))
+        self.u_tr = np.zeros_like(model.u)
 
     def calc_ecg(self):
         """
@@ -136,9 +57,16 @@ class ECG3DTracker(Tracker):
         np.ndarray
             The computed ECG signal.
         """
-        current = self.model.transmembrane_current
-        current[self.model.cardiac_tissue.mesh != 1] = 0
-        return self.uni_voltage(current) / self.model.dr
+        self.model.diffusion_kernel(self.u_tr,
+                                    self.model.u,
+                                    self.model.weights,
+                                    self.model.cardiac_tissue.myo_indexes)
+        ecg = compute_ecg(self.u_tr,
+                          self.model.u,
+                          self.measure_coords,
+                          self.model.dr,
+                          self.model.cardiac_tissue.myo_indexes)
+        return ecg
 
     def _track(self):
         ecg = self.calc_ecg()
@@ -166,3 +94,47 @@ class ECG3DTracker(Tracker):
             Path(self.path).mkdir(parents=True)
 
         np.save(Path(self.path, self.file_name), self.output)
+
+
+@njit(parallel=True)
+def compute_ecg(u_tr, u, coords, dr, indexes):
+    """
+    Performs isotropic diffusion on a 3D grid.
+
+    Parameters
+    ----------
+    u_tr : numpy.ndarray
+        A 3D array to store the updated potential values after diffusion.
+    u : numpy.ndarray
+        A 3D array representing the current potential values before diffusion.
+    coord : tuple
+        The coordinates of the measurement point.
+    dr : float
+        The spatial resolution of the grid.
+    indexes : numpy.ndarray
+        A 1D array of indices of the healthy tissue points.
+    """
+    n_j = u.shape[1]
+    n_k = u.shape[2]
+
+    n_c = len(coords)
+    ecg = np.zeros(n_c)
+
+    for c in range(n_c):
+        x, y, z = coords[c]
+        ecg_ = 0
+
+        for ind in prange(len(indexes)):
+            ii = indexes[ind]
+            i = ii // (n_j * n_k)
+            j = (ii % (n_j * n_k)) // n_k
+            k = (ii % (n_j * n_k)) % n_k
+
+            d = (x - i)**2 + (y - j)**2 + (z - k)**2
+
+            if d > 0:
+                ecg_ += (u_tr[i, j, k] - u[i, j, k]) / (d * dr)
+
+        ecg[c] = ecg_
+
+    return ecg
