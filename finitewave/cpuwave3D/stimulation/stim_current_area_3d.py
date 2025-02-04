@@ -18,7 +18,7 @@ class StimCurrentArea3D(StimCurrent):
     coords : numpy.ndarray
         The coordinates of the area to be stimulated.
     """
-    def __init__(self, time, curr_value, duration, coords, u_max=None):
+    def __init__(self, time, curr_value, duration, coords=None, u_max=None):
         """
         Initializes the StimCurrentMatrix2D instance.
 
@@ -38,6 +38,29 @@ class StimCurrentArea3D(StimCurrent):
         super().__init__(time, curr_value, duration)
         self.coords = coords
         self.u_max = u_max
+
+    def add_stim_point(self, coord, mesh, size=None):
+        """
+        Adds an stimulation point to the area to be stimulated.
+
+        Parameters
+        ----------
+        coord : numpy.ndarray
+            The coordinates of the stimulation point.
+        mesh : numpy.ndarray
+            The mesh of the cardiac tissue model.
+        size : float, optional
+            The size of the area to be stimulated. Default is None.
+        """
+        self._coord = coord
+
+        if size is None:
+            self.coords = np.atleast_2d(coord)
+            return
+
+        tissue_points = np.argwhere(mesh == 1)
+        dist = np.linalg.norm(tissue_points - coord, axis=1)
+        self.coords = tissue_points[dist < size]
 
     def initialize(self, model):
         mask = (model.cardiac_tissue.mesh[tuple(self.coords.T)] == 1)

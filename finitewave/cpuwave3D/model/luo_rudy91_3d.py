@@ -101,7 +101,7 @@ def ionic_kernel_3d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
         j = (ii % (n_j*n_k))//n_k
         k = (ii % (n_j*n_k)) % n_k
 
-        I_Na = 23*np.pow(m[i, j, k], 3)*h[i, j, k] * \
+        I_Na = 23*np.power(m[i, j, k], 3)*h[i, j, k] * \
             j_[i, j, k]*(u[i, j, k]-E_Na)
 
         alpha_h = 0

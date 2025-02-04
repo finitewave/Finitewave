@@ -68,6 +68,15 @@ class VisMeshBuilder3D:
         self.grid.set_active_scalars(name)
         return self.grid
 
+    def flatten_scalars(self, scalars):
+        """
+        """
+        if scalars.shape != self._mesh.shape:
+            raise ValueError("Scalars must have the same shape asthe mesh.")
+
+        scalars_flat = scalars.T[self._mesh.T > 0].flatten(order='F')
+        return scalars_flat
+
     def add_vector(self, vectors, name='Vectors'):
         """
         Add a vector field to the mesh. The vector field is flattened
