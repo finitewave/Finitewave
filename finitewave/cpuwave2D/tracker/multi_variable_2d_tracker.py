@@ -51,7 +51,7 @@ class MultiVariable2DTracker(Tracker):
         self.model = model
         # Initialize storage for each variable to be tracked
         for var_ in self.var_list:
-            if var_ not in self.model.__dict__:
+            if var_ not in self.model.state_vars:
                 raise ValueError(f"Variable '{var_}' not found in model.")
             self.vars[var_] = []
 

@@ -17,17 +17,6 @@ tissue.mesh[np.random.random([n, n]) < 0.3] = 2
 # ensure that the boundaries are set correctly:
 tissue.add_boundaries()
 
-<<<<<<< HEAD:examples/trackers/2D/animation_2d_tracker.py
-=======
-# create model object:
-aliev_panfilov = fw.AlievPanfilov2D()
-
-# set up numerical parameters:
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 50
-
->>>>>>> sphinx:_examples/trackers/2D/animation_2d_tracker.py
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, 5))
