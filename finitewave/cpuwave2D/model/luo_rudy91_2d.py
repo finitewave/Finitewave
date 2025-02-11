@@ -26,7 +26,7 @@ class LuoRudy912D(CardiacModel):
         Initializes the LuoRudy912D instance, setting up the state variables and parameters.
         """
         CardiacModel.__init__(self)
-        self.D_model = 1.
+        self.D_model = 0.1
         self.m = np.ndarray
         self.h = np.ndarray
         self.j_ = np.ndarray
@@ -132,7 +132,6 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
     PR_NaK = 0.01833
     E_Na = (R*T/F)*np.log(Nao_c/Nai_c)
 
-    n_i = u.shape[0]
     n_j = u.shape[1]
 
     for ind in prange(len(indexes)):
