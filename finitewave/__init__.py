@@ -22,6 +22,7 @@ from finitewave.core import (
     CardiacModel,
     StateLoader,
     StateSaver,
+    StateSaverCollection,
     Stencil,
     StimCurrent,
     StimSequence,

@@ -167,11 +167,13 @@ class CardiacModel(ABC):
             if self.command_sequence:
                 self.command_sequence.execute_next()
 
-            if self.check_termination():
-                break
+            if self.state_saver:
+                self.state_saver.save()
 
-        if self.state_saver:
-            self.state_saver.save()
+            if self.check_termination():
+                if self.state_saver:
+                    self.state_saver.save()
+                break
 
     def check_termination(self):
         """

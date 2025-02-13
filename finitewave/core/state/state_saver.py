@@ -15,9 +15,11 @@ class StateSaver:
         Whether the state has been saved.
     model : CardiacModel
         The model instance for which the state will be saved or saved.
+    time : float
+        The time at which to save the state of the simulation.
     """
 
-    def __init__(self, path="."):
+    def __init__(self, path=".", time=-1):
         """
         Initializes the state keeper with the given path.
 
@@ -25,10 +27,15 @@ class StateSaver:
         ----------
         path : str, optional
             The directory path where the simulation state will be saved.
+            The default is ".".
+        time : float, optional
+            The time at which to save the state of the simulation.
+            The default is -1 (save at the end of the simulation).
         """
         self.path = path
         self.passed = False
         self.model = None
+        self.time = time
 
     def initialize(self, model):
         """
@@ -54,6 +61,12 @@ class StateSaver:
         if self.passed:
             return
 
+        if self.time < 0 and self.model.t < self.model.t_max:
+            return
+
+        if self.time >= 0 and self.model.t < self.time:
+            return
+
         if not Path(self.path).exists():
             Path(self.path).mkdir(parents=True, exist_ok=True)
 
@@ -76,3 +89,34 @@ class StateSaver:
             The variable to be saved.
         """
         np.save(var_path, var)
+
+
+class StateSaverCollection(StateSaver):
+    """ This class saves multiple states of a simulation model.
+
+    Attributes
+    ----------
+    savers : list
+        List of StateSaver objects.
+    """
+    def __init__(self):
+        super().__init__()
+        self.savers = []
+
+    def initialize(self, model):
+        """ Initializes the state saver collection with the given model.
+
+        Parameters
+        ----------
+        model : CardiacModel
+            The model instance for which the state will be saved or saved.
+        """
+        for saver in self.savers:
+            saver.initialize(model)
+
+    def save(self):
+        """ Applies the save method to each StateSaver object in the
+        collection.
+        """
+        for saver in self.savers:
+            saver.save()
