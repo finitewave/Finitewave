@@ -87,6 +87,142 @@ class LuoRudy912D(CardiacModel):
 
         return AsymmetricStencil2D()
 
+@njit
+def calc_ina(u, dt, m, h, j, E_Na):
+    """
+    Calculates the fast sodium current.
+    """
+    alpha_h, beta_h, beta_J, alpha_J = 0, 0, 0, 0
+    if u >= -40.:
+        beta_h = 1. / (0.13 * (1 + np.exp((u + 10.66) / -11.1)))
+        beta_J = 0.3 * np.exp(-2.535 * 1e-07 *
+                                u) / (1 + np.exp(-0.1 * (u + 32)))
+    else:
+        alpha_h = 0.135 * np.exp((80 + u) / -6.8)
+        beta_h = 3.56 * \
+            np.exp(0.079 * u) + 3.1 * 1e5 * np.exp(0.35 * u)
+        beta_J = 0.1212 * \
+            np.exp(-0.01052 * u) / \
+            (1 + np.exp(-0.1378 * (u + 40.14)))
+        alpha_J = (-1.2714 * 1e5 * np.exp(0.2444 * u) - 3.474 * 1e-5 * np.exp(-0.04391 * u)) * \
+                    (u + 37.78) / (1 + np.exp(0.311 * (u + 79.23)))
+
+    alpha_m = 0.32 * (u + 47.13) / \
+        (1 - np.exp(-0.1 * (u + 47.13)))
+    beta_m = 0.08 * np.exp(-u / 11)
+
+    tau_m = 1. / (alpha_m + beta_m)
+    inf_m = alpha_m / (alpha_m + beta_m)
+    m += dt * (inf_m - m) / tau_m
+
+    tau_h = 1. / (alpha_h + beta_h)
+    inf_h = alpha_h / (alpha_h + beta_h)
+    h += dt * (inf_h - h) / tau_h
+
+    tau_J = 1. / (alpha_J + beta_J)
+    inf_J = alpha_J / (alpha_J + beta_J)
+    j += dt * (inf_J - j) / tau_J
+
+    return 23 * pow(m, 3) * h * j * (u - E_Na)
+
+@njit
+def calc_isk(u, dt, d, f, Cai_c):
+    """
+    Calculates the slow inward current.
+    """
+    E_Si = 7.7 - 13.0287 * np.log(Cai_c)
+    I_Si = 0.045 * d * f * (u - E_Si)
+    alpha_d = 0.095 * \
+        np.exp(-0.01 * (u - 5)) / \
+        (1 + np.exp(-0.072 * (u - 5)))
+    beta_d = 0.07 * \
+        np.exp(-0.017 * (u + 44)) / \
+        (1 + np.exp(0.05 * (u + 44)))
+    alpha_f = 0.012 * \
+        np.exp(-0.008 * (u + 28)) / \
+        (1 + np.exp(0.15 * (u + 28)))
+    beta_f = 0.0065 * \
+        np.exp(-0.02 * (u + 30)) / \
+        (1 + np.exp(-0.2 * (u + 30)))
+
+    tau_d = 1. / (alpha_d + beta_d)
+    inf_d = alpha_d / (alpha_d + beta_d)
+    d += dt * (inf_d - d) / tau_d
+
+    tau_f = 1. / (alpha_f + beta_f)
+    inf_f = alpha_f / (alpha_f + beta_f)
+    f += dt * (inf_f - f) / tau_f
+
+    return -0.0001 * I_Si + 0.07 * (0.0001 - Cai_c)
+
+@njit
+def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F):
+    """
+    Calculates the time-dependent potassium current.
+    """
+    E_K = (R * T / F) * \
+        np.log((ko + PR_NaK * nao) / (ki + PR_NaK * nai))
+
+    G_K = 0.705 * np.sqrt(ko / 5.4)
+
+    Xi = 0
+    if u > -100:
+        Xi = 2.837 * (np.exp(0.04 * (u + 77)) - 1) / \
+            ((u + 77) * np.exp(0.04 * (u + 35)))
+    else:
+        Xi = 1
+
+    I_K = G_K * x * Xi * (u - E_K)
+
+    alpha_x = 0.0005 * \
+        np.exp(0.083 * (u + 50)) / \
+        (1 + np.exp(0.057 * (u + 50)))
+    beta_x = 0.0013 * \
+        np.exp(-0.06 * (u + 20)) / \
+        (1 + np.exp(-0.04 * (u + 20)))
+
+    tau_x = 1. / (alpha_x + beta_x)
+    inf_x = alpha_x / (alpha_x + beta_x)
+    x += dt * (inf_x - x) / tau_x
+
+    return I_K
+
+@njit
+def calc_ik1(u, ko, ki, R, T, F):
+    """
+    Calculates the time-independent potassium current.
+    """
+    E_K1 = (R * T / F) * np.log(ko / ki)
+
+    alpha_K1 = 1.02 / (1 + np.exp(0.2385 * (u - E_K1 - 59.215))
+    beta_K1 = (0.49124 * np.exp(0.08032 * (u - E_K1 + 5.476)) + np.exp(0.06175 * (u - E_K1 - 594.31))) / \
+                (1 + np.exp(-0.5143 * (u - E_K1 + 4.753))
+
+    K_1x = alpha_K1 / (alpha_K1 + beta_K1)
+
+    G_K1 = 0.6047 * np.sqrt(ko / 5.4)
+    I_K1 = G_K1 * K_1x * (u - E_K1)
+
+    return I_K1
+
+@njit
+def calc_ikp(u, ko, E_K1):
+    """
+    Calculates the plateau potassium current.
+    """
+    E_Kp = E_K1
+    K_p = 1. / (1 + np.exp((7.488 - u) / 5.98))
+    I_Kp = 0.0183 * K_p * (u - E_Kp)
+
+    return I_Kp
+
+@njit
+def calc_ib(u):
+    """
+    Calculates the background current.
+    """
+    return 0.03921 * (u + 59.87)
+
 
 @njit(parallel=True)
 def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
@@ -119,18 +255,18 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
     dt : float
         Time step for the simulation.
     """
-    Ko_c = 5.4
-    Ki_c = 145
-    Nai_c = 18
-    Nao_c = 140
-    Cao_c = 1.8
+    ko = 5.4
+    ki = 145
+    nai = 18
+    nao = 140
+    cao = 1.8
 
     R = 8.314
     T = 310  # Temperature in Kelvin (37°C)
     F = 96.5
 
     PR_NaK = 0.01833
-    E_Na = (R*T/F)*np.log(Nao_c/Nai_c)
+    E_Na = (R*T/F)*np.log(nao/nai)
 
     n_i = u.shape[0]
     n_j = u.shape[1]
@@ -140,111 +276,25 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
         i = int(ii / n_j)
         j = ii % n_j
 
-        I_Na = 23 * pow(m[i, j], 3) * h[i, j] * j_[i, j] * (u[i, j] - E_Na)
-
-        alpha_h, beta_h, beta_J, alpha_J = 0, 0, 0, 0
-        if u[i, j] >= -40.:
-            beta_h = 1. / (0.13 * (1 + np.exp((u[i, j] + 10.66) / -11.1)))
-            beta_J = 0.3 * np.exp(-2.535 * 1e-07 *
-                                  u[i, j]) / (1 + np.exp(-0.1 * (u[i, j] + 32)))
-        else:
-            alpha_h = 0.135 * np.exp((80 + u[i, j]) / -6.8)
-            beta_h = 3.56 * \
-                np.exp(0.079 * u[i, j]) + 3.1 * 1e5 * np.exp(0.35 * u[i, j])
-            beta_J = 0.1212 * \
-                np.exp(-0.01052 * u[i, j]) / \
-                (1 + np.exp(-0.1378 * (u[i, j] + 40.14)))
-            alpha_J = (-1.2714 * 1e5 * np.exp(0.2444 * u[i, j]) - 3.474 * 1e-5 * np.exp(-0.04391 * u[i, j])) * \
-                      (u[i, j] + 37.78) / (1 + np.exp(0.311 * (u[i, j] + 79.23)))
-
-        alpha_m = 0.32 * (u[i, j] + 47.13) / \
-            (1 - np.exp(-0.1 * (u[i, j] + 47.13)))
-        beta_m = 0.08 * np.exp(-u[i, j] / 11)
-
-        tau_m = 1. / (alpha_m + beta_m)
-        inf_m = alpha_m / (alpha_m + beta_m)
-        m[i, j] += dt * (inf_m - m[i, j]) / tau_m
-
-        tau_h = 1. / (alpha_h + beta_h)
-        inf_h = alpha_h / (alpha_h + beta_h)
-        h[i, j] += dt * (inf_h - h[i, j]) / tau_h
-
-        tau_J = 1. / (alpha_J + beta_J)
-        inf_J = alpha_J / (alpha_J + beta_J)
-        j_[i, j] += dt * (inf_J - j_[i, j]) / tau_J
+        # Fast sodium current:
+        ina = calc_ina(u[i, j], dt, m[i, j], h[i, j], j_[i, j], E_Na)
 
         # Slow inward current:
-        E_Si = 7.7 - 13.0287 * np.log(Cai_c[i, j])
-        I_Si = 0.045 * d[i, j] * f[i, j] * (u[i, j] - E_Si)
-        alpha_d = 0.095 * \
-            np.exp(-0.01 * (u[i, j] - 5)) / \
-            (1 + np.exp(-0.072 * (u[i, j] - 5)))
-        beta_d = 0.07 * \
-            np.exp(-0.017 * (u[i, j] + 44)) / \
-            (1 + np.exp(0.05 * (u[i, j] + 44)))
-        alpha_f = 0.012 * \
-            np.exp(-0.008 * (u[i, j] + 28)) / \
-            (1 + np.exp(0.15 * (u[i, j] + 28)))
-        beta_f = 0.0065 * \
-            np.exp(-0.02 * (u[i, j] + 30)) / \
-            (1 + np.exp(-0.2 * (u[i, j] + 30)))
-        Cai_c[i, j] += dt * (-0.0001 * I_Si + 0.07 * (0.0001 - Cai_c[i, j]))
+        isi = calc_isk(u[i, j], dt, d[i, j], f[i, j], Cai_c[i, j])
 
-        tau_d = 1. / (alpha_d + beta_d)
-        inf_d = alpha_d / (alpha_d + beta_d)
-        d[i, j] += dt * (inf_d - d[i, j]) / tau_d
-
-        tau_f = 1. / (alpha_f + beta_f)
-        inf_f = alpha_f / (alpha_f + beta_f)
-        f[i, j] += dt * (inf_f - f[i, j]) / tau_f
-
-        # Time-dependent potassium current
-        E_K = (R * T / F) * \
-            np.log((Ko_c + PR_NaK * Nao_c) / (Ki_c + PR_NaK * Nai_c))
-
-        G_K = 0.705 * np.sqrt(Ko_c / 5.4)
-
-        Xi = 0
-        if u[i, j] > -100:
-            Xi = 2.837 * (np.exp(0.04 * (u[i, j] + 77)) - 1) / \
-                ((u[i, j] + 77) * np.exp(0.04 * (u[i, j] + 35)))
-        else:
-            Xi = 1
-
-        I_K = G_K * x[i, j] * Xi * (u[i, j] - E_K)
-
-        alpha_x = 0.0005 * \
-            np.exp(0.083 * (u[i, j] + 50)) / \
-            (1 + np.exp(0.057 * (u[i, j] + 50)))
-        beta_x = 0.0013 * \
-            np.exp(-0.06 * (u[i, j] + 20)) / \
-            (1 + np.exp(-0.04 * (u[i, j] + 20)))
-
-        tau_x = 1. / (alpha_x + beta_x)
-        inf_x = alpha_x / (alpha_x + beta_x)
-        x[i, j] += dt * (inf_x - x[i, j]) / tau_x
+        # Time-dependent potassium current:
+        ik = calc_ik(u[i, j], dt, x[i, j], ko, ki, nao, nai, PR_NaK, R, T, F)
 
         # Time-independent potassium current:
-        E_K1 = (R * T / F) * np.log(Ko_c / Ki_c)
-
-        alpha_K1 = 1.02 / (1 + np.exp(0.2385 * (u[i, j] - E_K1 - 59.215)))
-        beta_K1 = (0.49124 * np.exp(0.08032 * (u[i, j] - E_K1 + 5.476)) + np.exp(0.06175 * (u[i, j] - E_K1 - 594.31))) / \
-                  (1 + np.exp(-0.5143 * (u[i, j] - E_K1 + 4.753)))
-
-        K_1x = alpha_K1 / (alpha_K1 + beta_K1)
-
-        G_K1 = 0.6047 * np.sqrt(Ko_c / 5.4)
-        I_K1 = G_K1 * K_1x * (u[i, j] - E_K1)
+        ik1 = calc_ik1(u[i, j], ko, ki, R, T, F)
 
         # Plateau potassium current:
-        E_Kp = E_K1
-        K_p = 1. / (1 + np.exp((7.488 - u[i, j]) / 5.98))
-        I_Kp = 0.0183 * K_p * (u[i, j] - E_Kp)
+        ikp = calc_ikp(u[i, j], ko, E_K1)
 
         # Background current:
-        I_b = 0.03921 * (u[i, j] + 59.87)
+        ib = calc_ib(u[i, j])
 
         # Total time-independent potassium current:
-        I_K1_T = I_K1 + I_Kp + I_b
+        ik1t = ik1 + ikp + ib
 
-        u_new[i, j] -= dt * (I_Na + I_Si + I_K1_T + I_K)
+        u_new[i, j] -= dt * (ina + isi + ik1t + ik)
