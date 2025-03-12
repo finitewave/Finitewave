@@ -61,7 +61,7 @@ class SymmetricStencil2D(AsymmetricStencil2D):
         D = self.compute_half_step_diffusion(mesh, conductivity, fibers,
                                              self.D_al, self.D_ac)
         compute_weights(weights, mesh, D[0], D[1], D[2], D[3])
-        weights *= model.D * model.dt / model.dr**2
+        weights *= model.D_model * model.dt / model.dr**2
         weights[:, :, 4] += 1
 
         return weights

@@ -10,8 +10,13 @@ from .model import (
     LuoRudy912D,
     TP062D,
 )
-from .stencil import AsymmetricStencil2D, IsotropicStencil2D, SymmetricStencil2D
+from .stencil import (
+    AsymmetricStencil2D,
+    IsotropicStencil2D,
+    SymmetricStencil2D
+)
 from .stimulation import (
+    StimCurrentArea2D,
     StimCurrentCoord2D,
     StimVoltageCoord2D,
     StimCurrentMatrix2D,
