@@ -17,10 +17,10 @@ related fields.
           :width: 200px
           :alt: Image 1
      - .. image:: images/spiral_wave_slab.gif
-          :width: 200px
+          :width: 267px
           :alt: Image 2
      - .. image:: images/spiral_wave_lv.gif
-          :width: 200px
+          :width: 220px
           :alt: Image 3
 
 
