@@ -23,6 +23,11 @@ related fields.
           :width: 220px
           :alt: Image 3
 
+
+.. contents:: Table of Contents
+   :local:
+   :depth: 3
+
 Installation
 ============
 
@@ -80,10 +85,6 @@ This quick start guide will walk you through the basic steps of setting up a
 simple cardiac simulation using Finitewave. We will create a 2D mesh of
 cardiac tissue, define the tissue properties, set up a model, apply
 stimulation, and run the simulation.
-
-.. contents:: Table of Contents
-   :local:
-   :depth: 2
 
 Cardiac Tissue
 ----------------
