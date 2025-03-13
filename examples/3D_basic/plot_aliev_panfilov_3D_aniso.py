@@ -26,9 +26,6 @@ import finitewave as fw
 # set up the tissue with fibers orientation:
 n = 100
 tissue = fw.CardiacTissue3D((n, n, n))
-# create a mesh of cardiomyocytes (elems = 1):
-tissue.mesh = np.ones([n, n, n])
-tissue.add_boundaries()
 # add fibers orientation vectors
 theta, alpha = 0. * np.pi, 0.25 * np.pi
 tissue.fibers = np.zeros((n, n, n, 3))

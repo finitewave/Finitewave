@@ -9,10 +9,24 @@ propagation of electrical waves in cardiac tissue, making it ideal for
 researchers and engineers in computational biology, bioengineering, and
 related fields.
 
+.. list-table::
+   :widths: auto
+   :align: center
 
-.. image:: https://img.shields.io/badge/docs-latest-blue.svg
-   :target: https://finitewave.readthedocs.io/en/latest/
-   :alt: Documentation Status
+   * - .. image:: images/spiral_wave_fib.gif
+          :width: 200px
+          :alt: Image 1
+     - .. image:: images/spiral_wave_slab.gif
+          :width: 200px
+          :alt: Image 2
+     - .. image:: images/spiral_wave_lv.gif
+          :width: 200px
+          :alt: Image 3
+
+
+.. contents:: Table of Contents
+   :local:
+   :depth: 2
 
 Installation
 ============
@@ -34,6 +48,36 @@ which allows changes to be immediately reflected without reinstallation:
 
     $ pip install -e .
 
+
+Requirements
+------------
+
+Finitewave requires the following dependencies:
+
++-----------------+---------+--------------------------------------------------+
+| Dependency      | Version | Link                                             |
++=================+=========+==================================================+
+| ffmpeg-python   | 0.2.0   | https://pypi.org/project/ffmpeg-python/          |
++-----------------+---------+--------------------------------------------------+
+| matplotlib      | 3.9.2   | https://pypi.org/project/matplotlib/             |
++-----------------+---------+--------------------------------------------------+
+| natsort         | 8.4.0   | https://pypi.org/project/natsort/                |
++-----------------+---------+--------------------------------------------------+
+| numba           | 0.60.0  | https://pypi.org/project/numba/                  |
++-----------------+---------+--------------------------------------------------+
+| numpy           | 1.26.4  | https://pypi.org/project/numpy/                  |
++-----------------+---------+--------------------------------------------------+
+| pandas          | 2.2.3   | https://pypi.org/project/pandas/                 |
++-----------------+---------+--------------------------------------------------+
+| pyvista         | 0.44.1  | https://pypi.org/project/pyvista/                |
++-----------------+---------+--------------------------------------------------+
+| scikit-image    | 0.24.0  | https://pypi.org/project/scikit-image/           |
++-----------------+---------+--------------------------------------------------+
+| scipy           | 1.14.1  | https://pypi.org/project/scipy/                  |
++-----------------+---------+--------------------------------------------------+
+| tqdm            | 4.66.5  | https://pypi.org/project/tqdm/                   |
++-----------------+---------+--------------------------------------------------+
+
 Quick start
 ===================
 
@@ -41,10 +85,6 @@ This quick start guide will walk you through the basic steps of setting up a
 simple cardiac simulation using Finitewave. We will create a 2D mesh of
 cardiac tissue, define the tissue properties, set up a model, apply
 stimulation, and run the simulation.
-
-.. contents:: Table of Contents
-   :local:
-   :depth: 2
 
 Cardiac Tissue
 ----------------
