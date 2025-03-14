@@ -306,12 +306,6 @@ def calc_ik1(u, Ek, Gk1):
     ----------
     u : np.ndarray
         Membrane potential array.
-    dt : float
-        Time step for the simulation.
-    ki : np.ndarray
-        Potassium ion concentration in the intracellular space.
-    ko : float
-        Potassium ion concentration in the extracellular space.
     Ek : float
         Potassium reversal potential.
     Gk1 : float
@@ -334,8 +328,6 @@ def calc_inaca(u, nao, nai, cao, cai, KmNai, KmCa, knaca, ksat, n_, F, R, T):
     ----------
     u : np.ndarray
         Membrane potential array.
-    dt : float
-        Time step for the simulation.
     nai : np.ndarray
         Sodium ion concentration in the intracellular space.
     cao : float
@@ -354,12 +346,10 @@ def calc_inaca(u, nao, nai, cao, cai, KmNai, KmCa, knaca, ksat, n_, F, R, T):
         Exponent factor.
     """
 
-    rec_iNaCa = knaca*(1./(KmNai*KmNai*KmNai+nai*nai*nai))*(1./(KmCa+cao)) *\
-        (1./(1+ksat*np.exp((n_-1)*u*F/(R*T)))) *\
-        (np.exp(n_*u*F/(R*T))*nai*nai*nai*cao -
-            np.exp((n_-1)*u*F/(R*T))*nao*nao*nao*cai*2.5)
-
-    return rec_iNaCa
+    return knaca*(1./(KmNai*KmNai*KmNai+nao*nao*nao))*(1./(KmCa+cao)) *\
+            (1./(1+ksat*np.exp((n_-1)*u*F/(R*T)))) *\
+            (np.exp(n_*u*F/(R*T))*nai*nai*nai*cao -
+                np.exp((n_-1)*u*F/(R*T))*nao*nao*nao*cai*2.5)
 
 @njit
 def calc_inak(u, nai, ko, KmK, KmNa, knak, F, R, T):
