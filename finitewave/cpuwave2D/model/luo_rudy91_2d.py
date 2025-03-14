@@ -26,15 +26,28 @@ class LuoRudy912D(CardiacModel):
         Initializes the LuoRudy912D instance, setting up the state variables and parameters.
         """
         CardiacModel.__init__(self)
-        self.D_model = 1.
+        self.D_model = 0.1
         self.m = np.ndarray
         self.h = np.ndarray
         self.j_ = np.ndarray
         self.d = np.ndarray
         self.f = np.ndarray
         self.x = np.ndarray
-        self.Cai_c = np.ndarray
-        self.state_vars = ["u", "m", "h", "j_", "d", "f", "x", "Cai_c"]
+        self.cai = np.ndarray
+        self.state_vars = ["u", "m", "h", "j_", "d", "f", "x", "cai"]
+
+        # model parameters
+        self.ko = 5.4
+        self.ki = 145
+        self.nai = 18
+        self.nao = 140
+        self.cao = 1.8
+
+        self.R = 8.314
+        self.T = 310  # Temperature in Kelvin (37°C)
+        self.F = 96.5
+
+        self.PR_NaK = 0.01833
 
     def initialize(self):
         """
@@ -42,7 +55,7 @@ class LuoRudy912D(CardiacModel):
 
         This method sets the initial values for the membrane potential ``u``,
         gating variables ``m``, ``h``, ``j_``, ``d``, ``f``, ``x``,
-        and intracellular calcium concentration ``Cai_c``.
+        and intracellular calcium concentration ``cai``.
         """
         super().initialize()
         shape = self.cardiac_tissue.mesh.shape
@@ -55,7 +68,7 @@ class LuoRudy912D(CardiacModel):
         self.d = 0.000003 * np.ones(shape, dtype=np.npfloat)
         self.f = np.ones(shape, dtype=np.npfloat)
         self.x = 0.0057 * np.ones(shape, dtype=np.npfloat)
-        self.Cai_c = 0.0002 * np.ones(shape, dtype=np.npfloat)
+        self.cai = 0.0002 * np.ones(shape, dtype=np.npfloat)
 
     def run_ionic_kernel(self):
         """
@@ -63,7 +76,8 @@ class LuoRudy912D(CardiacModel):
         potential.
         """
         ionic_kernel_2d(self.u_new, self.u, self.m, self.h, self.j_, self.d,
-                        self.f, self.x, self.Cai_c,
+                        self.f, self.x, self.cai, self.ko, self.ki, self.nai, 
+                        self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK,
                         self.cardiac_tissue.myo_indexes, self.dt)
 
     def select_stencil(self, cardiac_tissue):
@@ -126,11 +140,11 @@ def calc_ina(u, dt, m, h, j, E_Na):
     return 23 * pow(m, 3) * h * j * (u - E_Na)
 
 @njit
-def calc_isk(u, dt, d, f, Cai_c):
+def calc_isk(u, dt, d, f, cai):
     """
     Calculates the slow inward current.
     """
-    E_Si = 7.7 - 13.0287 * np.log(Cai_c)
+    E_Si = 7.7 - 13.0287 * np.log(cai)
     I_Si = 0.045 * d * f * (u - E_Si)
     alpha_d = 0.095 * \
         np.exp(-0.01 * (u - 5)) / \
@@ -153,7 +167,7 @@ def calc_isk(u, dt, d, f, Cai_c):
     inf_f = alpha_f / (alpha_f + beta_f)
     f += dt * (inf_f - f) / tau_f
 
-    return -0.0001 * I_Si + 0.07 * (0.0001 - Cai_c)
+    return -0.0001 * I_Si + 0.07 * (0.0001 - cai)
 
 @njit
 def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F):
@@ -188,15 +202,13 @@ def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F):
     return I_K
 
 @njit
-def calc_ik1(u, ko, ki, R, T, F):
+def calc_ik1(u, ko, E_K1):
     """
     Calculates the time-independent potassium current.
     """
-    E_K1 = (R * T / F) * np.log(ko / ki)
-
-    alpha_K1 = 1.02 / (1 + np.exp(0.2385 * (u - E_K1 - 59.215))
+    alpha_K1 = 1.02 / (1 + np.exp(0.2385 * (u - E_K1 - 59.215)))
     beta_K1 = (0.49124 * np.exp(0.08032 * (u - E_K1 + 5.476)) + np.exp(0.06175 * (u - E_K1 - 594.31))) / \
-                (1 + np.exp(-0.5143 * (u - E_K1 + 4.753))
+                (1 + np.exp(-0.5143 * (u - E_K1 + 4.753)))
 
     K_1x = alpha_K1 / (alpha_K1 + beta_K1)
 
@@ -225,7 +237,7 @@ def calc_ib(u):
 
 
 @njit(parallel=True)
-def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
+def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, ko, ki, nai, nao, cao, R, T, F, PR_NaK, indexes, dt):
     """
     Computes the ionic currents and updates the state variables in the 2D
     Luo-Rudy 1991 cardiac model.
@@ -248,27 +260,16 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
         Array for the gating variable `f`.
     x : np.ndarray
         Array for the gating variable `x`.
-    Cai_c : np.ndarray
+    cai : np.ndarray
         Array for the intracellular calcium concentration.
     indexes : np.ndarray
         Array of indexes where the kernel should be computed (``mesh == 1``).
     dt : float
         Time step for the simulation.
     """
-    ko = 5.4
-    ki = 145
-    nai = 18
-    nao = 140
-    cao = 1.8
 
-    R = 8.314
-    T = 310  # Temperature in Kelvin (37°C)
-    F = 96.5
-
-    PR_NaK = 0.01833
     E_Na = (R*T/F)*np.log(nao/nai)
 
-    n_i = u.shape[0]
     n_j = u.shape[1]
 
     for ind in prange(len(indexes)):
@@ -280,13 +281,15 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, Cai_c, indexes, dt):
         ina = calc_ina(u[i, j], dt, m[i, j], h[i, j], j_[i, j], E_Na)
 
         # Slow inward current:
-        isi = calc_isk(u[i, j], dt, d[i, j], f[i, j], Cai_c[i, j])
+        isi = calc_isk(u[i, j], dt, d[i, j], f[i, j], cai[i, j])
 
         # Time-dependent potassium current:
         ik = calc_ik(u[i, j], dt, x[i, j], ko, ki, nao, nai, PR_NaK, R, T, F)
 
+        E_K1 = (R * T / F) * np.log(ko / ki)
+
         # Time-independent potassium current:
-        ik1 = calc_ik1(u[i, j], ko, ki, R, T, F)
+        ik1 = calc_ik1(u[i, j], ko, E_K1)
 
         # Plateau potassium current:
         ikp = calc_ikp(u[i, j], ko, E_K1)

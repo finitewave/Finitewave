@@ -139,7 +139,6 @@ def ionic_kernel_2d(u_new, u, v, a, k, eap, mu_1, mu_2, indexes, dt):
         Time step for the simulation.
     """
 
-    n_i = u.shape[0]
     n_j = u.shape[1]
 
     for ind in prange(len(indexes)):
