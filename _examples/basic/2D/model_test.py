@@ -23,9 +23,9 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 1, 5, 1, n-1))
 
 # create model object:
-model = fw.LuoRudy912D()
+model = fw.TP062D()
 # set up numerical parameters:
-model.dt = 0.01
+model.dt = 0.02
 model.dr = 0.25
 model.t_max = 400
 # add the tissue and the stim parameters to the model object:

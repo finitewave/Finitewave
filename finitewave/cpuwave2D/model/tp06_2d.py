@@ -401,7 +401,7 @@ def calc_ipca(cai, KpCa, GpCa):
     return GpCa*cai/(KpCa+cai)
 
 @njit
-def calc_ipk(u, Ek, rec_ipK, GpK):
+def calc_ipk(u, Ek, GpK):
     """
     Calculates the potassium pump current.
 
@@ -858,11 +858,9 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         Eks = RTONF*(np.log((Ko+pKNa*Nao)/(Ki[i, j]+pKNa*Nai[i, j])))
         Eca = 0.5*RTONF*(np.log((Cao/Cai[i, j])))
 
-        
-
         # Compute currents
         ina, M_[i, j], H_[i, j], J_[i, j] = calc_ina(u[i, j], dt, M_[i, j], H_[i, j], J_[i, j], GNa, Ena)
-        ical, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], CaSS[i, j] = calc_ical(u[i, j], dt, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], Cao, CaSS[i, j], GCaL, F, R, T)
+        ical, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j] = calc_ical(u[i, j], dt, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], Cao, CaSS[i, j], GCaL, F, R, T)
         ito, R_[i, j], S_[i, j] = calc_ito(u[i, j], dt, R_[i, j], S_[i, j], Ek, Gto)
         ikr, Xr1[i, j], Xr2[i, j] = calc_ikr(u[i, j], dt, Xr1[i, j], Xr2[i, j], Ek, Gkr, Ko)
         iks, Xs[i, j] = calc_iks(u[i, j], dt, Xs[i, j], Eks, Gks)
@@ -884,4 +882,7 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         Cai[i, j], Cai[i, j] = calc_cai(dt, Cai[i, j], Bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, CAPACITANCE, Vsr, Vc, inverseVcF2)
         Nai[i, j] += calc_nai(dt, ina, ibna, inak, inaca, CAPACITANCE, inverseVcF)
         Ki[i, j] += calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, CAPACITANCE)
+
+        # Update membrane potential
+        u_new[i, j] -= dt * (ikr + iks + ik1 + ito + ina + ibna + ical + ibca + inak + inaca + ipca + ipk)
         
