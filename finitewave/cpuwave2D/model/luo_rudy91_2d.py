@@ -35,8 +35,16 @@ class LuoRudy912D(CardiacModel):
         self.x = np.ndarray
         self.cai = np.ndarray
         self.state_vars = ["u", "m", "h", "j_", "d", "f", "x", "cai"]
+        self.npfloat = 'float64'
 
         # model parameters
+        self.gna = 23
+        self.gsi = 0.09
+        self.gk = 0.282
+        self.gk1 = 0.6047
+        self.gkp = 0.0183
+        self.gb = 0.03921
+
         self.ko = 5.4
         self.ki = 145
         self.nai = 18
@@ -60,24 +68,25 @@ class LuoRudy912D(CardiacModel):
         super().initialize()
         shape = self.cardiac_tissue.mesh.shape
 
-        self.u = -84.5 * np.ones(shape, dtype=np.npfloat)
+        self.u = -84.5 * np.ones(shape, dtype=self.npfloat)
         self.u_new = self.u.copy()
-        self.m = 0.0017 * np.ones(shape, dtype=np.npfloat)
-        self.h = 0.9832 * np.ones(shape, dtype=np.npfloat)
-        self.j_ = 0.995484 * np.ones(shape, dtype=np.npfloat)
-        self.d = 0.000003 * np.ones(shape, dtype=np.npfloat)
-        self.f = np.ones(shape, dtype=np.npfloat)
-        self.x = 0.0057 * np.ones(shape, dtype=np.npfloat)
-        self.cai = 0.0002 * np.ones(shape, dtype=np.npfloat)
+        self.m = 0.0017 * np.ones(shape, dtype=self.npfloat)
+        self.h = 0.9832 * np.ones(shape, dtype=self.npfloat)
+        self.j_ = 0.995484 * np.ones(shape, dtype=self.npfloat)
+        self.d = 0.000003 * np.ones(shape, dtype=self.npfloat)
+        self.f = np.ones(shape, dtype=self.npfloat)
+        self.x = 0.0057 * np.ones(shape, dtype=self.npfloat)
+        self.cai = 0.0002 * np.ones(shape, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """
         Executes the ionic kernel to update the state variables and membrane
         potential.
         """
-        ionic_kernel_2d(self.u_new, self.u, self.m, self.h, self.j_, self.d,
-                        self.f, self.x, self.cai, self.ko, self.ki, self.nai, 
-                        self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK,
+        ionic_kernel_2d(self.u_new, self.u, 
+                        self.m, self.h, self.j_, self.d,self.f, self.x, self.cai, 
+                        self.gna, self.gsi, self.gk, self.gk1, self.gkp, self.gb, 
+                        self.ko, self.ki, self.nai, self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK,
                         self.cardiac_tissue.myo_indexes, self.dt)
 
     def select_stencil(self, cardiac_tissue):
@@ -102,7 +111,7 @@ class LuoRudy912D(CardiacModel):
         return AsymmetricStencil2D()
 
 @njit
-def calc_ina(u, dt, m, h, j, E_Na):
+def calc_ina(u, dt, m, h, j, E_Na, gna):
     """
     Calculates the fast sodium current.
     """
@@ -137,15 +146,15 @@ def calc_ina(u, dt, m, h, j, E_Na):
     inf_J = alpha_J / (alpha_J + beta_J)
     j += dt * (inf_J - j) / tau_J
 
-    return 23 * pow(m, 3) * h * j * (u - E_Na)
+    return gna * m * m * m * h * j * (u - E_Na), m, h, j
 
 @njit
-def calc_isk(u, dt, d, f, cai):
+def calc_isk(u, dt, d, f, cai, gsi):
     """
     Calculates the slow inward current.
     """
     E_Si = 7.7 - 13.0287 * np.log(cai)
-    I_Si = 0.045 * d * f * (u - E_Si)
+    I_Si = gsi * d * f * (u - E_Si)
     alpha_d = 0.095 * \
         np.exp(-0.01 * (u - 5)) / \
         (1 + np.exp(-0.072 * (u - 5)))
@@ -167,17 +176,19 @@ def calc_isk(u, dt, d, f, cai):
     inf_f = alpha_f / (alpha_f + beta_f)
     f += dt * (inf_f - f) / tau_f
 
-    return -0.0001 * I_Si + 0.07 * (0.0001 - cai)
+    cai += dt * (-0.0001 * I_Si + 0.07 * (0.0001 - cai))
+
+    return I_Si, d, f, cai
 
 @njit
-def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F):
+def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
     """
     Calculates the time-dependent potassium current.
     """
     E_K = (R * T / F) * \
         np.log((ko + PR_NaK * nao) / (ki + PR_NaK * nai))
 
-    G_K = 0.705 * np.sqrt(ko / 5.4)
+    G_K = gk * np.sqrt(ko / 5.4)
 
     Xi = 0
     if u > -100:
@@ -199,10 +210,10 @@ def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F):
     inf_x = alpha_x / (alpha_x + beta_x)
     x += dt * (inf_x - x) / tau_x
 
-    return I_K
+    return I_K, x
 
 @njit
-def calc_ik1(u, ko, E_K1):
+def calc_ik1(u, ko, E_K1, gk1):
     """
     Calculates the time-independent potassium current.
     """
@@ -212,32 +223,32 @@ def calc_ik1(u, ko, E_K1):
 
     K_1x = alpha_K1 / (alpha_K1 + beta_K1)
 
-    G_K1 = 0.6047 * np.sqrt(ko / 5.4)
+    G_K1 = gk1 * np.sqrt(ko / 5.4)
     I_K1 = G_K1 * K_1x * (u - E_K1)
 
     return I_K1
 
 @njit
-def calc_ikp(u, ko, E_K1):
+def calc_ikp(u, ko, E_K1, gkp):
     """
     Calculates the plateau potassium current.
     """
     E_Kp = E_K1
     K_p = 1. / (1 + np.exp((7.488 - u) / 5.98))
-    I_Kp = 0.0183 * K_p * (u - E_Kp)
+    I_Kp = gkp * K_p * (u - E_Kp)
 
     return I_Kp
 
 @njit
-def calc_ib(u):
+def calc_ib(u, gb):
     """
     Calculates the background current.
     """
-    return 0.03921 * (u + 59.87)
+    return gb * (u + 59.87)
 
 
 @njit(parallel=True)
-def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, ko, ki, nai, nao, cao, R, T, F, PR_NaK, indexes, dt):
+def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, gna, gsi, gk, gk1, gkp, gb, ko, ki, nai, nao, cao, R, T, F, PR_NaK, indexes, dt):
     """
     Computes the ionic currents and updates the state variables in the 2D
     Luo-Rudy 1991 cardiac model.
@@ -278,26 +289,33 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, ko, ki, nai, nao, cao, R, 
         j = ii % n_j
 
         # Fast sodium current:
-        ina = calc_ina(u[i, j], dt, m[i, j], h[i, j], j_[i, j], E_Na)
+        ina, m[i, j], h[i, j], j_[i, j] = calc_ina(u[i, j], dt, m[i, j], h[i, j], j_[i, j], E_Na, gna)
 
         # Slow inward current:
-        isi = calc_isk(u[i, j], dt, d[i, j], f[i, j], cai[i, j])
+        isi, d[i, j], f[i, j], cai[i, j] = calc_isk(u[i, j], dt, d[i, j], f[i, j], cai[i, j], gsi)
 
         # Time-dependent potassium current:
-        ik = calc_ik(u[i, j], dt, x[i, j], ko, ki, nao, nai, PR_NaK, R, T, F)
+        ik, x[i, j] = calc_ik(u[i, j], dt, x[i, j], ko, ki, nao, nai, PR_NaK, R, T, F, gk)
 
         E_K1 = (R * T / F) * np.log(ko / ki)
 
         # Time-independent potassium current:
-        ik1 = calc_ik1(u[i, j], ko, E_K1)
+        ik1 = calc_ik1(u[i, j], ko, E_K1, gk1)
 
         # Plateau potassium current:
-        ikp = calc_ikp(u[i, j], ko, E_K1)
+        ikp = calc_ikp(u[i, j], ko, E_K1, gkp)
 
         # Background current:
-        ib = calc_ib(u[i, j])
+        ib = calc_ib(u[i, j], gb)
 
         # Total time-independent potassium current:
         ik1t = ik1 + ikp + ib
 
+        # if i == 4 and j == 4:
+        #     print(cai[i, j], m[i, j]) 
+
         u_new[i, j] -= dt * (ina + isi + ik1t + ik)
+
+
+
+

@@ -159,7 +159,7 @@ def calc_ina(u, dt, m, h, j, Gna, Ena):
     h = h_inf-(h_inf-h)*np.exp(-dt/tau_h)
     j = j_inf-(j_inf-j)*np.exp(-dt/tau_j)
 
-    return Gna*m*m*m*h*j*(u-Ena)
+    return Gna*m*m*m*h*j*(u-Ena), m, h, j
 
 @njit
 def calc_ical(u, dt, d, f, f2, fcass, cao, cass, Gcal, F, R, T):
@@ -218,7 +218,7 @@ def calc_ical(u, dt, d, f, f2, fcass, cao, cass, Gcal, F, R, T):
 
     return Gcal*d*f*f2*fcass*4*(u-15)*(F*F/(R*T)) *\
         (0.25*np.exp(2*(u-15)*F/(R*T))*cass-cao) / \
-        (np.exp(2*(u-15)*F/(R*T))-1.)
+        (np.exp(2*(u-15)*F/(R*T))-1.), d, f, f2, fcass
 
 @njit
 def calc_ito(u, dt, r, s, Ek, Gto):
@@ -248,7 +248,7 @@ def calc_ito(u, dt, r, s, Ek, Gto):
     s = s_inf-(s_inf-s)*np.exp(-dt/tau_s)
     r = r_inf-(r_inf-r)*np.exp(-dt/tau_r)
 
-    return Gto*r*s*(u-Ek)
+    return Gto*r*s*(u-Ek), r, s
 
 @njit
 def calc_ikr(u, dt, xr1, xr2, Ek, Gkr, ko):
@@ -283,7 +283,7 @@ def calc_ikr(u, dt, xr1, xr2, Ek, Gkr, ko):
     xr1 = xr1_inf-(xr1_inf-xr1)*np.exp(-dt/tau_xr1)
     xr2 = xr2_inf-(xr2_inf-xr2)*np.exp(-dt/tau_xr2)
 
-    return Gkr*np.sqrt(ko/5.4)*xr1*xr2*(u-Ek)
+    return Gkr*np.sqrt(ko/5.4)*xr1*xr2*(u-Ek), xr1, xr2
 
 @njit
 def calc_iks(u, dt, xs, Eks, Gks):
@@ -295,7 +295,7 @@ def calc_iks(u, dt, xs, Eks, Gks):
 
     xs = xs_inf-(xs_inf-xs)*np.exp(-dt/tau_xs)
 
-    return Gks*xs*xs*(u-Eks)
+    return Gks*xs*xs*(u-Eks), xs
 
 @njit
 def calc_ik1(u, Ek, Gk1):
@@ -488,7 +488,7 @@ def calc_irel(dt, rr, oo, casr, cass, vrel, k1, k2, k3, k4, maxsr, minsr, EC):
     rr += dt*dRR
     oo = k1_*cass*cass * rr/(k3+k1_*cass*cass)
 
-    return vrel*oo*(casr-cass)
+    return vrel*oo*(casr-cass), rr, oo
 
 @njit
 def calc_ileak(casr, cai, vleak):
@@ -648,7 +648,7 @@ def calc_cai(dt, cai, bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, capacit
                    (iup-ileak)*(vsr/vc)+ixfer)
     bc = bufc-CaCBuf-dCai-cai+Kbufc
     cc = Kbufc*(CaCBuf+dCai+cai)
-    return (np.sqrt(bc*bc+4*cc)-bc)/2
+    return (np.sqrt(bc*bc+4*cc)-bc)/2, cai
 
 @njit
 def calc_nai(dt, ina, ibna, inak, inaca, capacitance, inverseVcF):
@@ -861,11 +861,11 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         
 
         # Compute currents
-        ina = calc_ina(u[i, j], dt, M_[i, j], H_[i, j], J_[i, j], GNa, Ena)
-        ical = calc_ical(u[i, j], dt, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], Cao, CaSS[i, j], GCaL, F, R, T)
-        ito = calc_ito(u[i, j], dt, R_[i, j], S_[i, j], Ek, Gto)
-        ikr = calc_ikr(u[i, j], dt, Xr1[i, j], Xr2[i, j], Ek, Gkr, Ko)
-        iks = calc_iks(u[i, j], dt, Xs[i, j], Eks, Gks)
+        ina, M_[i, j], H_[i, j], J_[i, j] = calc_ina(u[i, j], dt, M_[i, j], H_[i, j], J_[i, j], GNa, Ena)
+        ical, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], CaSS[i, j] = calc_ical(u[i, j], dt, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], Cao, CaSS[i, j], GCaL, F, R, T)
+        ito, R_[i, j], S_[i, j] = calc_ito(u[i, j], dt, R_[i, j], S_[i, j], Ek, Gto)
+        ikr, Xr1[i, j], Xr2[i, j] = calc_ikr(u[i, j], dt, Xr1[i, j], Xr2[i, j], Ek, Gkr, Ko)
+        iks, Xs[i, j] = calc_iks(u[i, j], dt, Xs[i, j], Eks, Gks)
         ik1 = calc_ik1(u[i, j], Ek, GK1)
         inaca = calc_inaca(u[i, j], Nao, Nai[i, j], Cao, Cai[i, j], KmNai, KmCa, knaca, ksat, n_, F, R, T) 
         inak = calc_inak(u[i, j], Nai[i, j], Ko, KmK, KmNa, knak, F, R, T)
@@ -873,8 +873,7 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         ipk = calc_ipk(u[i, j], Ek, GpK)
         ibna = calc_ibna(u[i, j], Ena, GbNa)
         ibca = calc_ibca(u[i, j], Eca, GbCa)
-        irel = calc_irel(dt, RR[i, j], OO[i, j], CaSR[i, j], CaSS[i, j], Vrel
-                            , k1_, k2_, k3, k4, maxsr, minsr, EC)
+        irel, RR[i, j], OO[i, j] = calc_irel(dt, RR[i, j], OO[i, j], CaSR[i, j], CaSS[i, j], Vrel, k1_, k2_, k3, k4, maxsr, minsr, EC)
         ileak = calc_ileak(CaSR[i, j], Cai[i, j], Vleak)
         iup = calc_iup(Cai[i, j], Vmaxup, Kup)
         ixfer = calc_ixfer(CaSS[i, j], Cai[i, j], Vxfer)
@@ -882,7 +881,7 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         # Compute concentrations
         CaSR[i, j] = calc_casr(dt, CaSR[i, j], Bufsr, Kbufsr, iup, irel, ileak)
         CaSS[i, j] = calc_cass(dt, CaSS[i, j], Bufss, Kbufss, ixfer, irel, ical, CAPACITANCE, Vc, Vss, Vsr, inversevssF2)
-        Cai[i, j] = calc_cai(dt, Cai[i, j], Bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, CAPACITANCE, Vsr, Vc, inverseVcF2)
+        Cai[i, j], Cai[i, j] = calc_cai(dt, Cai[i, j], Bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, CAPACITANCE, Vsr, Vc, inverseVcF2)
         Nai[i, j] += calc_nai(dt, ina, ibna, inak, inaca, CAPACITANCE, inverseVcF)
         Ki[i, j] += calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, CAPACITANCE)
         

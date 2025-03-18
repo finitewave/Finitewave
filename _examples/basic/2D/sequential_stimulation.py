@@ -54,9 +54,9 @@ aliev_panfilov.tracker_sequence = tracker_sequence
 
 aliev_panfilov.run()
 
-animation_builder = fw.AnimationBuilder()
+animation_builder = fw.Animation2DBuilder()
 animation_builder.dir_name = "anim_data"
-animation_builder.write_2d_mp4("stim_sequence.mp4")
+animation_builder.write(shape_scale=5, clear=True, fps=30)
 
 # remove the snapshots folder:
 shutil.rmtree("anim_data")
