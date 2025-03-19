@@ -25,7 +25,7 @@ class TP062D(CardiacModel):
     def __init__(self):
         super().__init__()
         self.D_model = 0.154
-        self.state_vars = ["u", "Cai", "CaSR", "CaSS", "nai", "Ki",
+        self.state_vars = ["u", "cai", "casr", "cass", "nai", "Ki",
                            "m", "h", "j", "xr1", "xr2", "xs", "r",
                            "s", "d", "f", "f2", "fcass", "rr", "oo"]
         self.npfloat = 'float64'
@@ -109,9 +109,9 @@ class TP062D(CardiacModel):
 
         self.u = -84.5*np.ones(shape, dtype=self.npfloat)
         self.u_new = self.u.copy()
-        self.Cai = 0.00007*np.ones(shape, dtype=self.npfloat)
-        self.CaSR = 1.3*np.ones(shape, dtype=self.npfloat)
-        self.CaSS = 0.00007*np.ones(shape, dtype=self.npfloat)
+        self.cai = 0.00007*np.ones(shape, dtype=self.npfloat)
+        self.casr = 1.3*np.ones(shape, dtype=self.npfloat)
+        self.cass = 0.00007*np.ones(shape, dtype=self.npfloat)
         self.nai = 7.67*np.ones(shape, dtype=self.npfloat)
         self.Ki = 138.3*np.ones(shape, dtype=self.npfloat)
         self.m = np.zeros(shape, dtype=self.npfloat)
@@ -134,7 +134,7 @@ class TP062D(CardiacModel):
         Executes the ionic kernel function to update ionic currents and state
         variables
         """
-        ionic_kernel_2d(self.u_new, self.u, self.Cai, self.CaSR, self.CaSS,
+        ionic_kernel_2d(self.u_new, self.u, self.cai, self.casr, self.cass,
                         self.nai, self.Ki, self.m, self.h, self.j, self.xr1,
                         self.xr2, self.xs, self.r, self.s, self.d, self.f,
                         self.f2, self.fcass, self.rr, self.oo,
@@ -778,7 +778,7 @@ def calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, capacitance):
 
 # tp06 epi kernel
 @njit(parallel=True)
-def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, nai, Ki, m, h, j_, xr1, xr2,
+def ionic_kernel_2d(u_new, u, cai, casr, cass, nai, Ki, m, h, j_, xr1, xr2,
                     xs, r, s, d, f, f2, fcass, rr, oo, indexes, dt, 
                     ko, cao, nao, Vc, Vsr, Vss, Bufc, Kbufc, Bufsr, Kbufsr,
                     Bufss, Kbufss, Vmaxup, Kup, Vrel, k1_, k2_, k3, k4, EC,
@@ -799,11 +799,11 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, nai, Ki, m, h, j_, xr1, xr2,
         Array to store the updated membrane potential values.
     u : numpy.ndarray
         Array of current membrane potential values.
-    Cai : numpy.ndarray
+    cai : numpy.ndarray
         Array of calcium concentration in the cytosol.
-    CaSR : numpy.ndarray
+    casr : numpy.ndarray
         Array of calcium concentration in the sarcoplasmic reticulum.
-    CaSS : numpy.ndarray
+    cass : numpy.ndarray
         Array of calcium concentration in the submembrane space.
     nai : numpy.ndarray
         Array of sodium ion concentration in the intracellular space.
@@ -865,30 +865,30 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, nai, Ki, m, h, j_, xr1, xr2,
         Ek = RTONF*(np.log((ko/Ki[i, j])))
         Ena = RTONF*(np.log((nao/nai[i, j])))
         Eks = RTONF*(np.log((ko+pKNa*nao)/(Ki[i, j]+pKNa*nai[i, j])))
-        Eca = 0.5*RTONF*(np.log((cao/Cai[i, j])))
+        Eca = 0.5*RTONF*(np.log((cao/cai[i, j])))
 
         # Compute currents
         ina, m[i, j], h[i, j], j_[i, j] = calc_ina(u[i, j], dt, m[i, j], h[i, j], j_[i, j], gna, Ena)
-        ical, d[i, j], f[i, j], f2[i, j], fcass[i, j] = calc_ical(u[i, j], dt, d[i, j], f[i, j], f2[i, j], fcass[i, j], cao, CaSS[i, j], gcal, F, R, T)
+        ical, d[i, j], f[i, j], f2[i, j], fcass[i, j] = calc_ical(u[i, j], dt, d[i, j], f[i, j], f2[i, j], fcass[i, j], cao, cass[i, j], gcal, F, R, T)
         ito, r[i, j], s[i, j] = calc_ito(u[i, j], dt, r[i, j], s[i, j], Ek, gto)
         ikr, xr1[i, j], xr2[i, j] = calc_ikr(u[i, j], dt, xr1[i, j], xr2[i, j], Ek, gkr, ko)
         iks, xs[i, j] = calc_iks(u[i, j], dt, xs[i, j], Eks, gks)
         ik1 = calc_ik1(u[i, j], Ek, gk1)
-        inaca = calc_inaca(u[i, j], nao, nai[i, j], cao, Cai[i, j], KmNai, KmCa, knaca, ksat, n_, F, R, T) 
+        inaca = calc_inaca(u[i, j], nao, nai[i, j], cao, cai[i, j], KmNai, KmCa, knaca, ksat, n_, F, R, T) 
         inak = calc_inak(u[i, j], nai[i, j], ko, KmK, KmNa, knak, F, R, T)
-        ipca = calc_ipca(Cai[i, j], KpCa, gpca)
+        ipca = calc_ipca(cai[i, j], KpCa, gpca)
         ipk = calc_ipk(u[i, j], Ek, gpk)
         ibna = calc_ibna(u[i, j], Ena, gbna)
         ibca = calc_ibca(u[i, j], Eca, gbca)
-        irel, rr[i, j], oo[i, j] = calc_irel(dt, rr[i, j], oo[i, j], CaSR[i, j], CaSS[i, j], Vrel, k1_, k2_, k3, k4, maxsr, minsr, EC)
-        ileak = calc_ileak(CaSR[i, j], Cai[i, j], Vleak)
-        iup = calc_iup(Cai[i, j], Vmaxup, Kup)
-        ixfer = calc_ixfer(CaSS[i, j], Cai[i, j], Vxfer)
+        irel, rr[i, j], oo[i, j] = calc_irel(dt, rr[i, j], oo[i, j], casr[i, j], cass[i, j], Vrel, k1_, k2_, k3, k4, maxsr, minsr, EC)
+        ileak = calc_ileak(casr[i, j], cai[i, j], Vleak)
+        iup = calc_iup(cai[i, j], Vmaxup, Kup)
+        ixfer = calc_ixfer(cass[i, j], cai[i, j], Vxfer)
 
         # Compute concentrations
-        CaSR[i, j] = calc_casr(dt, CaSR[i, j], Bufsr, Kbufsr, iup, irel, ileak)
-        CaSS[i, j] = calc_cass(dt, CaSS[i, j], Bufss, Kbufss, ixfer, irel, ical, CAPACITANCE, Vc, Vss, Vsr, inversevssF2)
-        Cai[i, j], Cai[i, j] = calc_cai(dt, Cai[i, j], Bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, CAPACITANCE, Vsr, Vc, inverseVcF2)
+        casr[i, j] = calc_casr(dt, casr[i, j], Bufsr, Kbufsr, iup, irel, ileak)
+        cass[i, j] = calc_cass(dt, cass[i, j], Bufss, Kbufss, ixfer, irel, ical, CAPACITANCE, Vc, Vss, Vsr, inversevssF2)
+        cai[i, j], cai[i, j] = calc_cai(dt, cai[i, j], Bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, CAPACITANCE, Vsr, Vc, inverseVcF2)
         nai[i, j] += calc_nai(dt, ina, ibna, inak, inaca, CAPACITANCE, inverseVcF)
         Ki[i, j] += calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, CAPACITANCE)
 
