@@ -57,9 +57,8 @@ class AlievPanfilov2D(CardiacModel):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
-        ionic_kernel_2d(self.u_new, self.u, self.v, self.a, self.k, self.eap,
-            self.mu_1, self.mu_2,
-            self.cardiac_tissue.myo_indexes, self.dt)
+        ionic_kernel_2d(self.u_new, self.u, self.v, self.cardiac_tissue.myo_indexes, self.dt, 
+                        self.a, self.k, self.eap, self.mu_1, self.mu_2)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -118,7 +117,7 @@ def calc_v(v, u, dt, a, k, eap, mu_1, mu_2):
 
 
 @njit(parallel=True)
-def ionic_kernel_2d(u_new, u, v, a, k, eap, mu_1, mu_2, indexes, dt):
+def ionic_kernel_2d(u_new, u, v, indexes, dt, a, k, eap, mu_1, mu_2):
     """
     Computes the ionic kernel for the Aliev-Panfilov 2D model.
 

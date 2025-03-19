@@ -85,9 +85,9 @@ class LuoRudy912D(CardiacModel):
         """
         ionic_kernel_2d(self.u_new, self.u, 
                         self.m, self.h, self.j_, self.d,self.f, self.x, self.cai, 
+                        self.cardiac_tissue.myo_indexes, self.dt, 
                         self.gna, self.gsi, self.gk, self.gk1, self.gkp, self.gb, 
-                        self.ko, self.ki, self.nai, self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK,
-                        self.cardiac_tissue.myo_indexes, self.dt)
+                        self.ko, self.ki, self.nai, self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -248,7 +248,7 @@ def calc_ib(u, gb):
 
 
 @njit(parallel=True)
-def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, gna, gsi, gk, gk1, gkp, gb, ko, ki, nai, nao, cao, R, T, F, PR_NaK, indexes, dt):
+def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, indexes, dt, gna, gsi, gk, gk1, gkp, gb, ko, ki, nai, nao, cao, R, T, F, PR_NaK):
     """
     Computes the ionic currents and updates the state variables in the 2D
     Luo-Rudy 1991 cardiac model.

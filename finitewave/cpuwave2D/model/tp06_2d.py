@@ -30,6 +30,73 @@ class TP062D(CardiacModel):
                            "S_", "D_", "F_", "F2_", "FCass", "RR", "OO"]
         self.npfloat = 'float64'
 
+        self.Ko = 5.4
+        self.Cao = 2.0
+        self.Nao = 140.0
+
+        self.Vc = 0.016404
+        self.Vsr = 0.001094
+        self.Vss = 0.00005468
+
+        self.Bufc = 0.2
+        self.Kbufc = 0.001
+        self.Bufsr = 10.
+        self.Kbufsr = 0.3
+        self.Bufss = 0.4
+        self.Kbufss = 0.00025
+
+        self.Vmaxup = 0.006375
+        self.Kup = 0.00025
+        self.Vrel = 0.102  # 40.8
+        self.k1_ = 0.15
+        self.k2_ = 0.045
+        self.k3 = 0.060
+        self.k4 = 0.005  # 0.000015
+        self.EC = 1.5
+        self.maxsr = 2.5
+        self.minsr = 1.
+        self.Vleak = 0.00036
+        self.Vxfer = 0.0038
+
+        self.R = 8314.472
+        self.F = 96485.3415
+        self.T = 310.0
+        self.RTONF = 26.713760659695648
+
+        self.CAPACITANCE = 0.185
+
+        self.Gkr = 0.153
+
+        self.pKNa = 0.03
+
+        self.GK1 = 5.405
+
+        self.GNa = 14.838
+
+        self.GbNa = 0.00029
+
+        self.KmK = 1.0
+        self.KmNa = 40.0
+        self.knak = 2.724
+
+        self.GCaL = 0.00003980
+
+        self.GbCa = 0.000592
+
+        self.knaca = 1000
+        self.KmNai = 87.5
+        self.KmCa = 1.38
+        self.ksat = 0.1
+        self.n_ = 0.35
+
+        self.GpCa = 0.1238
+        self.KpCa = 0.0005
+
+        self.GpK = 0.0146
+
+        self.Gto = 0.294
+        self.Gks = 0.392
+
     def initialize(self):
         """
         Initializes the model's state variables and diffusion/ionic kernels.
@@ -71,7 +138,12 @@ class TP062D(CardiacModel):
                         self.Nai, self.Ki, self.M_, self.H_, self.J_, self.Xr1,
                         self.Xr2, self.Xs, self.R_, self.S_, self.D_, self.F_,
                         self.F2_, self.FCass, self.RR, self.OO,
-                        self.cardiac_tissue.myo_indexes, self.dt)
+                        self.cardiac_tissue.myo_indexes, self.dt,
+                        self.Ko, self.Cao, self.Nao, self.Vc, self.Vsr, self.Vss, self.Bufc, self.Kbufc, self.Bufsr, self.Kbufsr,
+                        self.Bufss, self.Kbufss, self.Vmaxup, self.Kup, self.Vrel, self.k1_, self.k2_, self.k3, self.k4, self.EC,
+                        self.maxsr, self.minsr, self.Vleak, self.Vxfer, self.R, self.F, self.T, self.RTONF, self.CAPACITANCE,
+                        self.Gkr, self.pKNa, self.GK1, self.GNa, self.GbNa, self.KmK, self.KmNa, self.knak, self.GCaL, self.GbCa,
+                        self.knaca, self.KmNai, self.KmCa, self.ksat, self.n_, self.GpCa, self.KpCa, self.GpK, self.Gto, self.Gks)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -707,7 +779,12 @@ def calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, capacitance):
 # tp06 epi kernel
 @njit(parallel=True)
 def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
-                    Xs, R_, S_, D_, F_, F2_, FCass, RR, OO, indexes, dt):
+                    Xs, R_, S_, D_, F_, F2_, FCass, RR, OO, indexes, dt, 
+                    Ko, Cao, Nao, Vc, Vsr, Vss, Bufc, Kbufc, Bufsr, Kbufsr,
+                    Bufss, Kbufss, Vmaxup, Kup, Vrel, k1_, k2_, k3, k4, EC,
+                    maxsr, minsr, Vleak, Vxfer, R, F, T, RTONF, CAPACITANCE,
+                    Gkr, pKNa, GK1, GNa, GbNa, KmK, KmNa, knak, GCaL, GbCa,
+                    knaca, KmNai, KmCa, ksat, n_, GpCa, KpCa, GpK, Gto, Gks):
     """
     Compute the ionic currents and update the state variables for the 2D TP06
     cardiac model.
@@ -775,74 +852,6 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         produced.
     """
     n_j = u.shape[1]
-
-    # Needed to compute currents
-    Ko = 5.4
-    Cao = 2.0
-    Nao = 140.0
-
-    Vc = 0.016404
-    Vsr = 0.001094
-    Vss = 0.00005468
-
-    Bufc = 0.2
-    Kbufc = 0.001
-    Bufsr = 10.
-    Kbufsr = 0.3
-    Bufss = 0.4
-    Kbufss = 0.00025
-
-    Vmaxup = 0.006375
-    Kup = 0.00025
-    Vrel = 0.102  # 40.8
-    k1_ = 0.15
-    k2_ = 0.045
-    k3 = 0.060
-    k4 = 0.005  # 0.000015
-    EC = 1.5
-    maxsr = 2.5
-    minsr = 1.
-    Vleak = 0.00036
-    Vxfer = 0.0038
-
-    R = 8314.472
-    F = 96485.3415
-    T = 310.0
-    RTONF = 26.713760659695648
-
-    CAPACITANCE = 0.185
-
-    Gkr = 0.153
-
-    pKNa = 0.03
-
-    GK1 = 5.405
-
-    GNa = 14.838
-
-    GbNa = 0.00029
-
-    KmK = 1.0
-    KmNa = 40.0
-    knak = 2.724
-
-    GCaL = 0.00003980
-
-    GbCa = 0.000592
-
-    knaca = 1000
-    KmNai = 87.5
-    KmCa = 1.38
-    ksat = 0.1
-    n_ = 0.35
-
-    GpCa = 0.1238
-    KpCa = 0.0005
-
-    GpK = 0.0146
-
-    Gto = 0.294
-    Gks = 0.392
 
     inverseVcF2 = 1./(2*Vc*F)
     inverseVcF = 1./(Vc*F)
