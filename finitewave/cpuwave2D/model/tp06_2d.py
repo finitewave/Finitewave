@@ -25,14 +25,14 @@ class TP062D(CardiacModel):
     def __init__(self):
         super().__init__()
         self.D_model = 0.154
-        self.state_vars = ["u", "Cai", "CaSR", "CaSS", "Nai", "Ki",
-                           "M_", "H_", "J_", "Xr1", "Xr2", "Xs", "R_",
-                           "S_", "D_", "F_", "F2_", "FCass", "RR", "OO"]
+        self.state_vars = ["u", "Cai", "CaSR", "CaSS", "nai", "Ki",
+                           "m", "h", "j", "xr1", "xr2", "xs", "r",
+                           "s", "d", "f", "f2", "fcass", "rr", "oo"]
         self.npfloat = 'float64'
 
-        self.Ko = 5.4
-        self.Cao = 2.0
-        self.Nao = 140.0
+        self.ko = 5.4
+        self.cao = 2.0
+        self.nao = 140.0
 
         self.Vc = 0.016404
         self.Vsr = 0.001094
@@ -65,23 +65,23 @@ class TP062D(CardiacModel):
 
         self.CAPACITANCE = 0.185
 
-        self.Gkr = 0.153
+        self.gkr = 0.153
 
         self.pKNa = 0.03
 
-        self.GK1 = 5.405
+        self.gk1 = 5.405
 
-        self.GNa = 14.838
+        self.gna = 14.838
 
-        self.GbNa = 0.00029
+        self.gbna = 0.00029
 
         self.KmK = 1.0
         self.KmNa = 40.0
         self.knak = 2.724
 
-        self.GCaL = 0.00003980
+        self.gcal = 0.00003980
 
-        self.GbCa = 0.000592
+        self.gbca = 0.000592
 
         self.knaca = 1000
         self.KmNai = 87.5
@@ -89,13 +89,13 @@ class TP062D(CardiacModel):
         self.ksat = 0.1
         self.n_ = 0.35
 
-        self.GpCa = 0.1238
+        self.gpca = 0.1238
         self.KpCa = 0.0005
 
-        self.GpK = 0.0146
+        self.gpk = 0.0146
 
-        self.Gto = 0.294
-        self.Gks = 0.392
+        self.gto = 0.294
+        self.gks = 0.392
 
     def initialize(self):
         """
@@ -112,22 +112,22 @@ class TP062D(CardiacModel):
         self.Cai = 0.00007*np.ones(shape, dtype=self.npfloat)
         self.CaSR = 1.3*np.ones(shape, dtype=self.npfloat)
         self.CaSS = 0.00007*np.ones(shape, dtype=self.npfloat)
-        self.Nai = 7.67*np.ones(shape, dtype=self.npfloat)
+        self.nai = 7.67*np.ones(shape, dtype=self.npfloat)
         self.Ki = 138.3*np.ones(shape, dtype=self.npfloat)
-        self.M_ = np.zeros(shape, dtype=self.npfloat)
-        self.H_ = 0.75*np.ones(shape, dtype=self.npfloat)
-        self.J_ = 0.75*np.ones(shape, dtype=self.npfloat)
-        self.Xr1 = np.zeros(shape, dtype=self.npfloat)
-        self.Xr2 = np.ones(shape, dtype=self.npfloat)
-        self.Xs = np.zeros(shape, dtype=self.npfloat)
-        self.R_ = np.zeros(shape, dtype=self.npfloat)
-        self.S_ = np.ones(shape, dtype=self.npfloat)
-        self.D_ = np.zeros(shape, dtype=self.npfloat)
-        self.F_ = np.ones(shape, dtype=self.npfloat)
-        self.F2_ = np.ones(shape, dtype=self.npfloat)
-        self.FCass = np.ones(shape, dtype=self.npfloat)
-        self.RR = np.ones(shape, dtype=self.npfloat)
-        self.OO = np.zeros(shape, dtype=self.npfloat)
+        self.m = np.zeros(shape, dtype=self.npfloat)
+        self.h = 0.75*np.ones(shape, dtype=self.npfloat)
+        self.j = 0.75*np.ones(shape, dtype=self.npfloat)
+        self.xr1 = np.zeros(shape, dtype=self.npfloat)
+        self.xr2 = np.ones(shape, dtype=self.npfloat)
+        self.xs = np.zeros(shape, dtype=self.npfloat)
+        self.r = np.zeros(shape, dtype=self.npfloat)
+        self.s = np.ones(shape, dtype=self.npfloat)
+        self.d = np.zeros(shape, dtype=self.npfloat)
+        self.f = np.ones(shape, dtype=self.npfloat)
+        self.f2 = np.ones(shape, dtype=self.npfloat)
+        self.fcass = np.ones(shape, dtype=self.npfloat)
+        self.rr = np.ones(shape, dtype=self.npfloat)
+        self.oo = np.zeros(shape, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """
@@ -135,15 +135,15 @@ class TP062D(CardiacModel):
         variables
         """
         ionic_kernel_2d(self.u_new, self.u, self.Cai, self.CaSR, self.CaSS,
-                        self.Nai, self.Ki, self.M_, self.H_, self.J_, self.Xr1,
-                        self.Xr2, self.Xs, self.R_, self.S_, self.D_, self.F_,
-                        self.F2_, self.FCass, self.RR, self.OO,
+                        self.nai, self.Ki, self.m, self.h, self.j, self.xr1,
+                        self.xr2, self.xs, self.r, self.s, self.d, self.f,
+                        self.f2, self.fcass, self.rr, self.oo,
                         self.cardiac_tissue.myo_indexes, self.dt,
-                        self.Ko, self.Cao, self.Nao, self.Vc, self.Vsr, self.Vss, self.Bufc, self.Kbufc, self.Bufsr, self.Kbufsr,
+                        self.ko, self.cao, self.nao, self.Vc, self.Vsr, self.Vss, self.Bufc, self.Kbufc, self.Bufsr, self.Kbufsr,
                         self.Bufss, self.Kbufss, self.Vmaxup, self.Kup, self.Vrel, self.k1_, self.k2_, self.k3, self.k4, self.EC,
                         self.maxsr, self.minsr, self.Vleak, self.Vxfer, self.R, self.F, self.T, self.RTONF, self.CAPACITANCE,
-                        self.Gkr, self.pKNa, self.GK1, self.GNa, self.GbNa, self.KmK, self.KmNa, self.knak, self.GCaL, self.GbCa,
-                        self.knaca, self.KmNai, self.KmCa, self.ksat, self.n_, self.GpCa, self.KpCa, self.GpK, self.Gto, self.Gks)
+                        self.gkr, self.pKNa, self.gk1, self.gna, self.gbna, self.KmK, self.KmNa, self.knak, self.gcal, self.gbca,
+                        self.knaca, self.KmNai, self.KmCa, self.ksat, self.n_, self.gpca, self.KpCa, self.gpk, self.gto, self.gks)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -168,7 +168,7 @@ class TP062D(CardiacModel):
 
 
 @njit
-def calc_ina(u, dt, m, h, j, Gna, Ena):
+def calc_ina(u, dt, m, h, j, gna, Ena):
     """
     Calculates the fast sodium current.
 
@@ -184,7 +184,7 @@ def calc_ina(u, dt, m, h, j, Gna, Ena):
         Gating variable for sodium channels (inactivation).
     j : np.ndarray
         Gating variable for sodium channels (inactivation).
-    Gna : float
+    gna : float
         Sodium conductance.
     Ena : float
         Sodium reversal potential.
@@ -231,10 +231,10 @@ def calc_ina(u, dt, m, h, j, Gna, Ena):
     h = h_inf-(h_inf-h)*np.exp(-dt/tau_h)
     j = j_inf-(j_inf-j)*np.exp(-dt/tau_j)
 
-    return Gna*m*m*m*h*j*(u-Ena), m, h, j
+    return gna*m*m*m*h*j*(u-Ena), m, h, j
 
 @njit
-def calc_ical(u, dt, d, f, f2, fcass, cao, cass, Gcal, F, R, T):
+def calc_ical(u, dt, d, f, f2, fcass, cao, cass, gcal, F, R, T):
     """
     Calculates the L-type calcium current.
     
@@ -256,7 +256,7 @@ def calc_ical(u, dt, d, f, f2, fcass, cao, cass, Gcal, F, R, T):
         Extracellular calcium concentration.
     cass : np.ndarray
         Calcium concentration in the submembrane space.
-    Gcal : float
+    gcal : float
         Calcium conductance.
     F : float
         Faraday's constant.
@@ -288,12 +288,12 @@ def calc_ical(u, dt, d, f, f2, fcass, cao, cass, Gcal, F, R, T):
     f2 = f2_inf-(f2_inf-f2)*np.exp(-dt/tau_f2)
     fcass = fcass_inf-(fcass_inf-fcass)*np.exp(-dt/tau_fcass)
 
-    return Gcal*d*f*f2*fcass*4*(u-15)*(F*F/(R*T)) *\
+    return gcal*d*f*f2*fcass*4*(u-15)*(F*F/(R*T)) *\
         (0.25*np.exp(2*(u-15)*F/(R*T))*cass-cao) / \
         (np.exp(2*(u-15)*F/(R*T))-1.), d, f, f2, fcass
 
 @njit
-def calc_ito(u, dt, r, s, Ek, Gto):
+def calc_ito(u, dt, r, s, Ek, gto):
     """
     Calculates the transient outward current.
     
@@ -320,10 +320,10 @@ def calc_ito(u, dt, r, s, Ek, Gto):
     s = s_inf-(s_inf-s)*np.exp(-dt/tau_s)
     r = r_inf-(r_inf-r)*np.exp(-dt/tau_r)
 
-    return Gto*r*s*(u-Ek), r, s
+    return gto*r*s*(u-Ek), r, s
 
 @njit
-def calc_ikr(u, dt, xr1, xr2, Ek, Gkr, ko):
+def calc_ikr(u, dt, xr1, xr2, Ek, gkr, ko):
     """
     Calculates the rapid delayed rectifier potassium current.
 
@@ -339,7 +339,7 @@ def calc_ikr(u, dt, xr1, xr2, Ek, Gkr, ko):
         Gating variable for rapid delayed rectifier potassium channels.
     Ek : float
         Potassium reversal potential.
-    Gkr : float
+    gkr : float
         Potassium conductance.
     """
 
@@ -355,10 +355,10 @@ def calc_ikr(u, dt, xr1, xr2, Ek, Gkr, ko):
     xr1 = xr1_inf-(xr1_inf-xr1)*np.exp(-dt/tau_xr1)
     xr2 = xr2_inf-(xr2_inf-xr2)*np.exp(-dt/tau_xr2)
 
-    return Gkr*np.sqrt(ko/5.4)*xr1*xr2*(u-Ek), xr1, xr2
+    return gkr*np.sqrt(ko/5.4)*xr1*xr2*(u-Ek), xr1, xr2
 
 @njit
-def calc_iks(u, dt, xs, Eks, Gks):
+def calc_iks(u, dt, xs, Eks, gks):
     xs_inf = 1./(1.+np.exp((-5.-u)/14.))
     Axs = (1400./(np.sqrt(1.+np.exp((5.-u)/6))))
     Bxs = (1./(1.+np.exp((u-35.)/15.)))
@@ -367,10 +367,10 @@ def calc_iks(u, dt, xs, Eks, Gks):
 
     xs = xs_inf-(xs_inf-xs)*np.exp(-dt/tau_xs)
 
-    return Gks*xs*xs*(u-Eks), xs
+    return gks*xs*xs*(u-Eks), xs
 
 @njit
-def calc_ik1(u, Ek, Gk1):
+def calc_ik1(u, Ek, gk1):
     """
     Calculates the inward rectifier potassium current.
 
@@ -380,7 +380,7 @@ def calc_ik1(u, Ek, Gk1):
         Membrane potential array.
     Ek : float
         Potassium reversal potential.
-    Gk1 : float
+    gk1 : float
         Inward rectifier potassium conductance.
     """
 
@@ -389,7 +389,7 @@ def calc_ik1(u, Ek, Gk1):
            np.exp(0.1*(u-Ek-10)))/(1.+np.exp(-0.5*(u-Ek)))
     rec_iK1 = ak1/(ak1+bk1)
 
-    return Gk1*rec_iK1*(u-Ek)
+    return gk1*rec_iK1*(u-Ek)
 
 @njit
 def calc_inaca(u, nao, nai, cao, cai, KmNai, KmCa, knaca, ksat, n_, F, R, T):
@@ -438,7 +438,7 @@ def calc_inak(u, nai, ko, KmK, KmNa, knak, F, R, T):
         Sodium ion concentration in the intracellular space.
     ko : float
         Potassium ion concentration in the extracellular space.
-    Nao : float
+    nao : float
         Sodium ion concentration in the extracellular space.
     KmK : float
         Michaelis constant for potassium.
@@ -456,7 +456,7 @@ def calc_inak(u, nai, ko, KmK, KmNa, knak, F, R, T):
     return knak*(ko/(ko+KmK))*(nai/(nai+KmNa))*rec_iNaK
 
 @njit
-def calc_ipca(cai, KpCa, GpCa):
+def calc_ipca(cai, KpCa, gpca):
     """
     Calculates the calcium pump current.
 
@@ -466,14 +466,14 @@ def calc_ipca(cai, KpCa, GpCa):
         Calcium concentration in the submembrane space.
     KpCa : float
         Michaelis constant for calcium pump.
-    GpCa : float
+    gpca : float
         Calcium pump conductance.
     """
 
-    return GpCa*cai/(KpCa+cai)
+    return gpca*cai/(KpCa+cai)
 
 @njit
-def calc_ipk(u, Ek, GpK):
+def calc_ipk(u, Ek, gpk):
     """
     Calculates the potassium pump current.
 
@@ -487,15 +487,15 @@ def calc_ipk(u, Ek, GpK):
         Potassium reversal potential.
     rec_ipK : float
         Activation factor for potassium pump.
-    GpK : float
+    gpk : float
         Potassium pump conductance.
     """
     rec_ipK = 1./(1.+np.exp((25-u)/5.98))
 
-    return GpK*rec_ipK*(u-Ek)
+    return gpk*rec_ipK*(u-Ek)
 
 @njit
-def calc_ibna(u, Ena, GbNa):
+def calc_ibna(u, Ena, gbna):
     """
     Calculates the background sodium current.
 
@@ -507,14 +507,14 @@ def calc_ibna(u, Ena, GbNa):
         Time step for the simulation.
     Ena : float
         Sodium reversal potential.
-    GbNa : float
+    gbna : float
         Background sodium conductance.
     """
 
-    return GbNa*(u-Ena)
+    return gbna*(u-Ena)
 
 @njit
-def calc_ibca(u, Eca, GbCa):
+def calc_ibca(u, Eca, gbca):
     """
     Calculates the background calcium current.
 
@@ -526,11 +526,11 @@ def calc_ibca(u, Eca, GbCa):
         Time step for the simulation.
     Eca : float
         Calcium reversal potential.
-    GbCa : float
+    gbca : float
         Background calcium conductance.
     """
 
-    return GbCa*(u-Eca)
+    return gbca*(u-Eca)
 
 @njit
 def calc_irel(dt, rr, oo, casr, cass, vrel, k1, k2, k3, k4, maxsr, minsr, EC):
@@ -556,8 +556,8 @@ def calc_irel(dt, rr, oo, casr, cass, vrel, k1, k2, k3, k4, maxsr, minsr, EC):
     kCaSR = maxsr-((maxsr-minsr)/(1+(EC/casr)*(EC/casr)))
     k1_ = k1/kCaSR
     k2_ = k2*kCaSR
-    dRR = k4*(1-rr)-k2_*cass*rr
-    rr += dt*dRR
+    drr = k4*(1-rr)-k2_*cass*rr
+    rr += dt*drr
     oo = k1_*cass*cass * rr/(k3+k1_*cass*cass)
 
     return vrel*oo*(casr-cass), rr, oo
@@ -778,13 +778,13 @@ def calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, capacitance):
 
 # tp06 epi kernel
 @njit(parallel=True)
-def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
-                    Xs, R_, S_, D_, F_, F2_, FCass, RR, OO, indexes, dt, 
-                    Ko, Cao, Nao, Vc, Vsr, Vss, Bufc, Kbufc, Bufsr, Kbufsr,
+def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, nai, Ki, m, h, j_, xr1, xr2,
+                    xs, r, s, d, f, f2, fcass, rr, oo, indexes, dt, 
+                    ko, cao, nao, Vc, Vsr, Vss, Bufc, Kbufc, Bufsr, Kbufsr,
                     Bufss, Kbufss, Vmaxup, Kup, Vrel, k1_, k2_, k3, k4, EC,
                     maxsr, minsr, Vleak, Vxfer, R, F, T, RTONF, CAPACITANCE,
-                    Gkr, pKNa, GK1, GNa, GbNa, KmK, KmNa, knak, GCaL, GbCa,
-                    knaca, KmNai, KmCa, ksat, n_, GpCa, KpCa, GpK, Gto, Gks):
+                    gkr, pKNa, gk1, gna, gbna, KmK, KmNa, knak, gcal, gbca,
+                    knaca, KmNai, KmCa, ksat, n_, gpca, KpCa, gpk, gto, gks):
     """
     Compute the ionic currents and update the state variables for the 2D TP06
     cardiac model.
@@ -805,40 +805,40 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         Array of calcium concentration in the sarcoplasmic reticulum.
     CaSS : numpy.ndarray
         Array of calcium concentration in the submembrane space.
-    Nai : numpy.ndarray
+    nai : numpy.ndarray
         Array of sodium ion concentration in the intracellular space.
     Ki : numpy.ndarray
         Array of potassium ion concentration in the intracellular space.
-    M_ : numpy.ndarray
+    m : numpy.ndarray
         Array of gating variable for sodium channels (activation).
-    H_ : numpy.ndarray
+    h : numpy.ndarray
         Array of gating variable for sodium channels (inactivation).
-    J_ : numpy.ndarray
+    j_ : numpy.ndarray
         Array of gating variable for sodium channels (inactivation).
-    Xr1 : numpy.ndarray
+    xr1 : numpy.ndarray
         Array of gating variable for rapid delayed rectifier potassium
         channels.
-    Xr2 : numpy.ndarray
+    xr2 : numpy.ndarray
         Array of gating variable for rapid delayed rectifier potassium
         channels.
-    Xs : numpy.ndarray
+    xs : numpy.ndarray
         Array of gating variable for slow delayed rectifier potassium channels.
-    R_ : numpy.ndarray
+    r : numpy.ndarray
         Array of gating variable for ryanodine receptors.
-    S_ : numpy.ndarray
+    s : numpy.ndarray
         Array of gating variable for calcium-sensitive current.
-    D_ : numpy.ndarray
+    d : numpy.ndarray
         Array of gating variable for L-type calcium channels.
-    F_ : numpy.ndarray
+    f : numpy.ndarray
         Array of gating variable for calcium-dependent calcium channels.
-    F2_ : numpy.ndarray
+    f2 : numpy.ndarray
         Array of secondary gating variable for calcium-dependent calcium
         channels.
-    FCass : numpy.ndarray
+    fcass : numpy.ndarray
         Array of gating variable for calcium-sensitive current.
-    RR : numpy.ndarray
+    rr : numpy.ndarray
         Array of ryanodine receptor gating variable for calcium release.
-    OO : numpy.ndarray
+    oo : numpy.ndarray
         Array of ryanodine receptor gating variable for calcium release.
     indexes: numpy.ndarray
         Array of indexes where the kernel should be computed (``mesh == 1``).
@@ -862,25 +862,25 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         i = int(ii/n_j)
         j = ii % n_j
 
-        Ek = RTONF*(np.log((Ko/Ki[i, j])))
-        Ena = RTONF*(np.log((Nao/Nai[i, j])))
-        Eks = RTONF*(np.log((Ko+pKNa*Nao)/(Ki[i, j]+pKNa*Nai[i, j])))
-        Eca = 0.5*RTONF*(np.log((Cao/Cai[i, j])))
+        Ek = RTONF*(np.log((ko/Ki[i, j])))
+        Ena = RTONF*(np.log((nao/nai[i, j])))
+        Eks = RTONF*(np.log((ko+pKNa*nao)/(Ki[i, j]+pKNa*nai[i, j])))
+        Eca = 0.5*RTONF*(np.log((cao/Cai[i, j])))
 
         # Compute currents
-        ina, M_[i, j], H_[i, j], J_[i, j] = calc_ina(u[i, j], dt, M_[i, j], H_[i, j], J_[i, j], GNa, Ena)
-        ical, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j] = calc_ical(u[i, j], dt, D_[i, j], F_[i, j], F2_[i, j], FCass[i, j], Cao, CaSS[i, j], GCaL, F, R, T)
-        ito, R_[i, j], S_[i, j] = calc_ito(u[i, j], dt, R_[i, j], S_[i, j], Ek, Gto)
-        ikr, Xr1[i, j], Xr2[i, j] = calc_ikr(u[i, j], dt, Xr1[i, j], Xr2[i, j], Ek, Gkr, Ko)
-        iks, Xs[i, j] = calc_iks(u[i, j], dt, Xs[i, j], Eks, Gks)
-        ik1 = calc_ik1(u[i, j], Ek, GK1)
-        inaca = calc_inaca(u[i, j], Nao, Nai[i, j], Cao, Cai[i, j], KmNai, KmCa, knaca, ksat, n_, F, R, T) 
-        inak = calc_inak(u[i, j], Nai[i, j], Ko, KmK, KmNa, knak, F, R, T)
-        ipca = calc_ipca(Cai[i, j], KpCa, GpCa)
-        ipk = calc_ipk(u[i, j], Ek, GpK)
-        ibna = calc_ibna(u[i, j], Ena, GbNa)
-        ibca = calc_ibca(u[i, j], Eca, GbCa)
-        irel, RR[i, j], OO[i, j] = calc_irel(dt, RR[i, j], OO[i, j], CaSR[i, j], CaSS[i, j], Vrel, k1_, k2_, k3, k4, maxsr, minsr, EC)
+        ina, m[i, j], h[i, j], j_[i, j] = calc_ina(u[i, j], dt, m[i, j], h[i, j], j_[i, j], gna, Ena)
+        ical, d[i, j], f[i, j], f2[i, j], fcass[i, j] = calc_ical(u[i, j], dt, d[i, j], f[i, j], f2[i, j], fcass[i, j], cao, CaSS[i, j], gcal, F, R, T)
+        ito, r[i, j], s[i, j] = calc_ito(u[i, j], dt, r[i, j], s[i, j], Ek, gto)
+        ikr, xr1[i, j], xr2[i, j] = calc_ikr(u[i, j], dt, xr1[i, j], xr2[i, j], Ek, gkr, ko)
+        iks, xs[i, j] = calc_iks(u[i, j], dt, xs[i, j], Eks, gks)
+        ik1 = calc_ik1(u[i, j], Ek, gk1)
+        inaca = calc_inaca(u[i, j], nao, nai[i, j], cao, Cai[i, j], KmNai, KmCa, knaca, ksat, n_, F, R, T) 
+        inak = calc_inak(u[i, j], nai[i, j], ko, KmK, KmNa, knak, F, R, T)
+        ipca = calc_ipca(Cai[i, j], KpCa, gpca)
+        ipk = calc_ipk(u[i, j], Ek, gpk)
+        ibna = calc_ibna(u[i, j], Ena, gbna)
+        ibca = calc_ibca(u[i, j], Eca, gbca)
+        irel, rr[i, j], oo[i, j] = calc_irel(dt, rr[i, j], oo[i, j], CaSR[i, j], CaSS[i, j], Vrel, k1_, k2_, k3, k4, maxsr, minsr, EC)
         ileak = calc_ileak(CaSR[i, j], Cai[i, j], Vleak)
         iup = calc_iup(Cai[i, j], Vmaxup, Kup)
         ixfer = calc_ixfer(CaSS[i, j], Cai[i, j], Vxfer)
@@ -889,7 +889,7 @@ def ionic_kernel_2d(u_new, u, Cai, CaSR, CaSS, Nai, Ki, M_, H_, J_, Xr1, Xr2,
         CaSR[i, j] = calc_casr(dt, CaSR[i, j], Bufsr, Kbufsr, iup, irel, ileak)
         CaSS[i, j] = calc_cass(dt, CaSS[i, j], Bufss, Kbufss, ixfer, irel, ical, CAPACITANCE, Vc, Vss, Vsr, inversevssF2)
         Cai[i, j], Cai[i, j] = calc_cai(dt, Cai[i, j], Bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, CAPACITANCE, Vsr, Vc, inverseVcF2)
-        Nai[i, j] += calc_nai(dt, ina, ibna, inak, inaca, CAPACITANCE, inverseVcF)
+        nai[i, j] += calc_nai(dt, ina, ibna, inak, inaca, CAPACITANCE, inverseVcF)
         Ki[i, j] += calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, CAPACITANCE)
 
         # Update membrane potential
