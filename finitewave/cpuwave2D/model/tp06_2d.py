@@ -30,72 +30,73 @@ class TP062D(CardiacModel):
                            "s", "d", "f", "f2", "fcass", "rr", "oo"]
         self.npfloat = 'float64'
 
-        self.ko = 5.4
-        self.cao = 2.0
-        self.nao = 140.0
+        # Extracellular Ion Concentrations (mM)
+        self.ko  = 5.4     # Potassium extracellular concentration
+        self.cao = 2.0     # Calcium extracellular concentration
+        self.nao = 140.0   # Sodium extracellular concentration
 
-        self.Vc = 0.016404
-        self.Vsr = 0.001094
-        self.Vss = 0.00005468
+        # Cell Volume (in uL)
+        self.Vc  = 0.016404   # Cytoplasmic volume
+        self.Vsr = 0.001094   # Sarcoplasmic reticulum volume
+        self.Vss = 0.00005468 # Subsarcolemmal space volume
 
-        self.Bufc = 0.2
-        self.Kbufc = 0.001
-        self.Bufsr = 10.
-        self.Kbufsr = 0.3
-        self.Bufss = 0.4
-        self.Kbufss = 0.00025
+        # Buffering Parameters
+        self.Bufc   = 0.2     # Cytoplasmic buffer concentration
+        self.Kbufc  = 0.001   # Cytoplasmic buffer affinity
+        self.Bufsr  = 10.0    # SR buffer concentration
+        self.Kbufsr = 0.3     # SR buffer affinity
+        self.Bufss  = 0.4     # Subsarcolemmal buffer concentration
+        self.Kbufss = 0.00025 # Subsarcolemmal buffer affinity
 
-        self.Vmaxup = 0.006375
-        self.Kup = 0.00025
-        self.Vrel = 0.102  # 40.8
-        self.k1_ = 0.15
-        self.k2_ = 0.045
-        self.k3 = 0.060
-        self.k4 = 0.005  # 0.000015
-        self.EC = 1.5
-        self.maxsr = 2.5
-        self.minsr = 1.
-        self.Vleak = 0.00036
-        self.Vxfer = 0.0038
+        # Calcium Handling Parameters
+        self.Vmaxup = 0.006375  # Maximal calcium uptake rate
+        self.Kup    = 0.00025   # Calcium uptake affinity
+        self.Vrel   = 0.102     # Calcium release rate from SR
+        self.k1_    = 0.15      # Transition rate for SR calcium release
+        self.k2_    = 0.045
+        self.k3     = 0.060
+        self.k4     = 0.005      # Alternative transition rate
+        self.EC     = 1.5        # Calcium-induced calcium release sensitivity
+        self.maxsr  = 2.5        # Maximum SR calcium release permeability
+        self.minsr  = 1.0        # Minimum SR calcium release permeability
+        self.Vleak  = 0.00036    # SR calcium leak rate
+        self.Vxfer  = 0.0038     # Calcium transfer rate from subspace to cytosol
 
-        self.R = 8314.472
-        self.F = 96485.3415
-        self.T = 310.0 # Temperature in Kelvin (37°C)
-        self.RTONF = 26.713760659695648
+        # Physical Constants
+        self.R     = 8314.472   # Universal gas constant (J/(kmol·K))
+        self.F     = 96485.3415 # Faraday constant (C/mol)
+        self.T     = 310.0      # Temperature (Kelvin, 37°C)
+        self.RTONF = 26.71376   # RT/F constant for Nernst equation
 
-        self.CAPACITANCE = 0.185
+        # Membrane Capacitance
+        self.CAPACITANCE = 0.185 # Membrane capacitance (μF/cm²)
 
-        self.gkr = 0.153
+        # Ion Channel Conductances
+        self.gkr  = 0.153       # Rapid delayed rectifier K+ conductance
+        self.gks  = 0.392       # Slow delayed rectifier K+ conductance
+        self.gk1  = 5.405       # Inward rectifier K+ conductance
+        self.gto  = 0.294       # Transient outward K+ conductance
+        self.gna  = 14.838      # Fast Na+ conductance
+        self.gbna = 0.00029     # Background Na+ conductance
+        self.gcal = 0.00003980  # L-type Ca2+ channel conductance
+        self.gbca = 0.000592    # Background Ca2+ conductance
+        self.gpca = 0.1238      # Sarcolemmal Ca2+ pump current conductance
+        self.KpCa = 0.0005      # Sarcolemmal Ca2+ pump affinity
+        self.gpk  = 0.0146      # Na+/K+ pump current conductance
 
-        self.pKNa = 0.03
+        # Na+/K+ Pump Parameters
+        self.pKNa = 0.03        # Na+/K+ permeability ratio
+        self.KmK  = 1.0         # Half-saturation for K+ activation
+        self.KmNa = 40.0        # Half-saturation for Na+ activation
+        self.knak = 2.724       # Maximal Na+/K+ pump rate
 
-        self.gk1 = 5.405
+        # Na+/Ca2+ Exchanger Parameters
+        self.knaca = 1000       # Maximal Na+/Ca2+ exchanger current
+        self.KmNai = 87.5       # Half-saturation for Na+ binding
+        self.KmCa  = 1.38       # Half-saturation for Ca2+ binding
+        self.ksat  = 0.1        # Saturation factor
+        self.n_   = 0.35        # Exponent for Na+ dependence
 
-        self.gna = 14.838
-
-        self.gbna = 0.00029
-
-        self.KmK = 1.0
-        self.KmNa = 40.0
-        self.knak = 2.724
-
-        self.gcal = 0.00003980
-
-        self.gbca = 0.000592
-
-        self.knaca = 1000
-        self.KmNai = 87.5
-        self.KmCa = 1.38
-        self.ksat = 0.1
-        self.n_ = 0.35
-
-        self.gpca = 0.1238
-        self.KpCa = 0.0005
-
-        self.gpk = 0.0146
-
-        self.gto = 0.294
-        self.gks = 0.392
 
     def initialize(self):
         """
@@ -745,7 +746,6 @@ def calc_nai(dt, ina, ibna, inak, inaca, capacitance, inverseVcF):
 
     dNai = -(ina+ibna+3*inak+3*inaca)*inverseVcF*capacitance
     return dt*dNai
-### !!!! nai += ...
 
 @njit
 def calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, capacitance):
@@ -774,7 +774,6 @@ def calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, capacitance):
 
     dKi = -(ik1+ito+ikr+iks-2*inak+ipk)*inverseVcF*capacitance
     return dt*dKi
-### !!!! ki += ...
 
 # tp06 epi kernel
 @njit(parallel=True)

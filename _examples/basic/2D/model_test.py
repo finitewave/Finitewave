@@ -23,11 +23,11 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 1, 5, 1, n-1, 1, 9))
 
 # create model object:
-model = fw.AlievPanfilov3D()
+model = fw.TP063D()
 # set up numerical parameters:
 model.dt = 0.01
 model.dr = 0.25
-model.t_max = 100
+model.t_max = 400
 # add the tissue and the stim parameters to the model object:
 model.cardiac_tissue = tissue
 model.stim_sequence = stim_sequence

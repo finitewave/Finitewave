@@ -29,40 +29,43 @@ class LuoRudy912D(CardiacModel):
         self.D_model = 0.1
         self.m = np.ndarray
         self.h = np.ndarray
-        self.j_ = np.ndarray
+        self.j = np.ndarray
         self.d = np.ndarray
         self.f = np.ndarray
         self.x = np.ndarray
         self.cai = np.ndarray
-        self.state_vars = ["u", "m", "h", "j_", "d", "f", "x", "cai"]
+        self.state_vars = ["u", "m", "h", "j", "d", "f", "x", "cai"]
         self.npfloat = 'float64'
 
-        # model parameters
-        self.gna = 23
-        self.gsi = 0.09
-        self.gk = 0.282
-        self.gk1 = 0.6047
-        self.gkp = 0.0183
-        self.gb = 0.03921
+        # Ion Channel Conductances (mS/µF)
+        self.gna = 23.0     # Fast sodium (Na+) conductance
+        self.gsi = 0.09     # Slow inward calcium (Ca2+) conductance
+        self.gk  = 0.282    # Time-dependent potassium (K+) conductance
+        self.gk1 = 0.6047   # Inward rectifier potassium (K1) conductance
+        self.gkp = 0.0183   # Plateau potassium (Kp) conductance
+        self.gb  = 0.03921  # Background conductance (leak current)
 
-        self.ko = 5.4
-        self.ki = 145
-        self.nai = 18
-        self.nao = 140
-        self.cao = 1.8
+        # Extracellular and Intracellular Ion Concentrations (mM)
+        self.ko  = 5.4      # Extracellular potassium concentration
+        self.ki  = 145.0    # Intracellular potassium concentration
+        self.nai = 18.0     # Intracellular sodium concentration
+        self.nao = 140.0    # Extracellular sodium concentration
+        self.cao = 1.8      # Extracellular calcium concentration
 
-        self.R = 8.314
-        self.T = 310  # Temperature in Kelvin (37°C)
-        self.F = 96.5
+        # Physical Constants
+        self.R = 8.314      # Universal gas constant (J/(mol·K))
+        self.T = 310.0      # Temperature (Kelvin, 37°C)
+        self.F = 96.5       # Faraday constant (C/mmol)
 
-        self.PR_NaK = 0.01833
+        # Ion Permeability Ratios
+        self.PR_NaK = 0.01833  # Na+/K+ permeability ratio
 
     def initialize(self):
         """
         Initializes the state variables.
 
         This method sets the initial values for the membrane potential ``u``,
-        gating variables ``m``, ``h``, ``j_``, ``d``, ``f``, ``x``,
+        gating variables ``m``, ``h``, ``j``, ``d``, ``f``, ``x``,
         and intracellular calcium concentration ``cai``.
         """
         super().initialize()
@@ -72,7 +75,7 @@ class LuoRudy912D(CardiacModel):
         self.u_new = self.u.copy()
         self.m = 0.0017 * np.ones(shape, dtype=self.npfloat)
         self.h = 0.9832 * np.ones(shape, dtype=self.npfloat)
-        self.j_ = 0.995484 * np.ones(shape, dtype=self.npfloat)
+        self.j = 0.995484 * np.ones(shape, dtype=self.npfloat)
         self.d = 0.000003 * np.ones(shape, dtype=self.npfloat)
         self.f = np.ones(shape, dtype=self.npfloat)
         self.x = 0.0057 * np.ones(shape, dtype=self.npfloat)
@@ -84,7 +87,7 @@ class LuoRudy912D(CardiacModel):
         potential.
         """
         ionic_kernel_2d(self.u_new, self.u, 
-                        self.m, self.h, self.j_, self.d,self.f, self.x, self.cai, 
+                        self.m, self.h, self.j, self.d,self.f, self.x, self.cai, 
                         self.cardiac_tissue.myo_indexes, self.dt, 
                         self.gna, self.gsi, self.gk, self.gk1, self.gkp, self.gb, 
                         self.ko, self.ki, self.nai, self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK)
