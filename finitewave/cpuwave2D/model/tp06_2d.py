@@ -60,7 +60,7 @@ class TP062D(CardiacModel):
 
         self.R = 8314.472
         self.F = 96485.3415
-        self.T = 310.0
+        self.T = 310.0 # Temperature in Kelvin (37°C)
         self.RTONF = 26.713760659695648
 
         self.CAPACITANCE = 0.185
