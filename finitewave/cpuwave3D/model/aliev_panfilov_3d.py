@@ -1,6 +1,7 @@
+import numpy as np
 from numba import njit, prange
 
-from finitewave.cpuwave2D.model.aliev_panfilov_2d import AlievPanfilov2D
+from finitewave.cpuwave2D.model.aliev_panfilov_2d import AlievPanfilov2D, calc_v
 from finitewave.cpuwave3D.stencil.isotropic_stencil_3d import (
     IsotropicStencil3D
 )
@@ -22,7 +23,8 @@ class AlievPanfilov3D(AlievPanfilov2D):
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
         ionic_kernel_3d(self.u_new, self.u, self.v,
-                        self.cardiac_tissue.myo_indexes, self.dt)
+                        self.cardiac_tissue.myo_indexes, self.dt,
+                        self.a, self.k, self.eap, self.mu_1, self.mu_2)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -48,7 +50,7 @@ class AlievPanfilov3D(AlievPanfilov2D):
 
 
 @njit(parallel=True)
-def ionic_kernel_3d(u_new, u, v, indexes, dt):
+def ionic_kernel_3d(u_new, u, v, indexes, dt, a, k, eap, mu_1, mu_2):
     """
     Computes the ionic kernel for the Aliev-Panfilov 3D model.
 
@@ -65,12 +67,6 @@ def ionic_kernel_3d(u_new, u, v, indexes, dt):
     indexes : np.ndarray
         Array of indices where the kernel should be computed (``mesh == 1``).
     """
-    # constants
-    a = 0.1
-    k_ = 8.
-    eap = 0.01
-    mu_1 = 0.2
-    mu_2 = 0.3
 
     n_j = u.shape[1]
     n_k = u.shape[2]
@@ -79,11 +75,10 @@ def ionic_kernel_3d(u_new, u, v, indexes, dt):
         ii = indexes[ni]
         i = ii//(n_j*n_k)
         j = (ii % (n_j*n_k))//n_k
-        k = (ii % (n_j*n_k)) % n_k
+        k_ = (ii % (n_j*n_k)) % n_k
+        
+        v[i, j, k_] = calc_v(v[i, j, k_], u[i, j, k_], dt, a, k, eap, mu_1, mu_2)
 
-        u_new[i, j, k] += dt * (- k_ * u[i, j, k] * (u[i, j, k] - a) *
-                                (u[i, j, k] - 1.) - u[i, j, k] * v[i, j, k])
-
-        v[i, j, k] += (- dt * (eap + (mu_1 * v[i, j, k]) / (mu_2 + u[i, j, k]))
-                       * (v[i, j, k] + k_ * u[i, j, k] * (u[i, j, k] - a - 1.))
-                       )
+        u_new[i, j, k_] += dt * (- k * u[i, j, k_] * (u[i, j, k_] - a) * (u[i, j, k_] - 1.) -
+                            u[i, j, k_] * v[i, j, k_])
+    return u_new, v
