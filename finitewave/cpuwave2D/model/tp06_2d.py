@@ -32,11 +32,12 @@ class TP062D(CardiacModel):
 
     def __init__(self):
         super().__init__()
-        self.D_model = 0.154
+        self.D_model    = 0.154
+
         self.state_vars = ["u", "cai", "casr", "cass", "nai", "Ki",
                            "m", "h", "j", "xr1", "xr2", "xs", "r",
                            "s", "d", "f", "f2", "fcass", "rr", "oo"]
-        self.npfloat = 'float64'
+        self.npfloat    = 'float64'
 
         # Extracellular Ion Concentrations (mM)
         self.ko  = 5.4     # Potassium extracellular concentration
@@ -197,6 +198,11 @@ def calc_ina(u, dt, m, h, j, gna, Ena):
         Sodium conductance.
     Ena : float
         Sodium reversal potential.
+
+    Returns
+    -------
+    np.ndarray
+        Updated fast sodium current array.
     """
 
     alpha_m = 1./(1.+np.exp((-60.-u)/5.))
@@ -272,6 +278,11 @@ def calc_ical(u, dt, d, f, f2, fcass, cao, cass, gcal, F, R, T):
     R : float
         Ideal gas constant.
     T : float
+
+    Returns
+    -------
+    np.ndarray
+        Updated L-type calcium current array.
     """
 
     d_inf = 1./(1.+np.exp((-8-u)/7.5))
@@ -318,6 +329,11 @@ def calc_ito(u, dt, r, s, Ek, gto):
         Gating variable for calcium-sensitive current.
     ek : float
         Potassium reversal potential.
+
+    Returns
+    -------
+    np.ndarray
+        Updated transient outward current array.
     """
 
     r_inf = 1./(1.+np.exp((20-u)/6.))
@@ -350,6 +366,11 @@ def calc_ikr(u, dt, xr1, xr2, Ek, gkr, ko):
         Potassium reversal potential.
     gkr : float
         Potassium conductance.
+
+    Returns
+    -------
+    np.ndarray
+        Updated rapid delayed rectifier potassium current array.
     """
 
     xr1_inf = 1./(1.+np.exp((-26.-u)/7.))
@@ -368,6 +389,27 @@ def calc_ikr(u, dt, xr1, xr2, Ek, gkr, ko):
 
 @njit
 def calc_iks(u, dt, xs, Eks, gks):
+    """
+    Calculates the slow delayed rectifier potassium current.
+
+    Parameters
+    ----------
+    u : np.ndarray
+        Membrane potential array.
+    dt : float
+        Time step for the simulation.
+    xs : np.ndarray
+        Gating variable for slow delayed rectifier potassium channels.
+    Eks : float
+        Potassium reversal potential.
+    gks : float
+        Potassium conductance.
+    
+    Returns
+    -------
+    np.ndarray
+        Updated slow delayed rectifier potassium current array.
+    """
     xs_inf = 1./(1.+np.exp((-5.-u)/14.))
     Axs = (1400./(np.sqrt(1.+np.exp((5.-u)/6))))
     Bxs = (1./(1.+np.exp((u-35.)/15.)))
@@ -391,6 +433,11 @@ def calc_ik1(u, Ek, gk1):
         Potassium reversal potential.
     gk1 : float
         Inward rectifier potassium conductance.
+
+    Returns
+    -------
+    np.ndarray
+        Updated inward rectifier potassium current array.
     """
 
     ak1 = 0.1/(1.+np.exp(0.06*(u-Ek-200)))
@@ -409,12 +456,14 @@ def calc_inaca(u, nao, nai, cao, cai, KmNai, KmCa, knaca, ksat, n_, F, R, T):
     ----------
     u : np.ndarray
         Membrane potential array.
+    nao : float
+        Sodium ion concentration in the extracellular space.
     nai : np.ndarray
         Sodium ion concentration in the intracellular space.
     cao : float
-        Extracellular calcium concentration.
+        Calcium ion concentration in the extracellular space.
     cai : np.ndarray
-        Calcium concentration in the submembrane space.
+        Calcium ion concentration in the submembrane space.
     KmNai : float
         Michaelis constant for sodium.
     KmCa : float
@@ -424,7 +473,18 @@ def calc_inaca(u, nao, nai, cao, cai, KmNai, KmCa, knaca, ksat, n_, F, R, T):
     ksat : float
         Saturation factor.
     n_ : float
-        Exponent factor.
+        Exponent for sodium dependence.
+    F : float
+        Faraday's constant.
+    R : float
+        Ideal gas constant.
+    T : float
+        Temperature.
+    
+    Returns
+    -------
+    np.ndarray
+        Updated sodium-calcium exchanger current array.
     """
 
     return knaca*(1./(KmNai*KmNai*KmNai+nao*nao*nao))*(1./(KmCa+cao)) *\
@@ -441,22 +501,27 @@ def calc_inak(u, nai, ko, KmK, KmNa, knak, F, R, T):
     ----------
     u : np.ndarray
         Membrane potential array.
-    dt : float
-        Time step for the simulation.
     nai : np.ndarray
         Sodium ion concentration in the intracellular space.
     ko : float
         Potassium ion concentration in the extracellular space.
-    nao : float
-        Sodium ion concentration in the extracellular space.
     KmK : float
         Michaelis constant for potassium.
     KmNa : float
         Michaelis constant for sodium.
     knak : float
         Sodium-potassium pump conductance.
-    pKNa : float
-        Permeability ratio of sodium to potassium.
+    F : float
+        Faraday's constant.
+    R : float
+        Ideal gas constant.
+    T : float
+        Temperature.
+
+    Returns
+    -------
+    np.ndarray
+        Updated sodium-potassium pump current array.
     """
 
     rec_iNaK = (
@@ -477,6 +542,11 @@ def calc_ipca(cai, KpCa, gpca):
         Michaelis constant for calcium pump.
     gpca : float
         Calcium pump conductance.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium pump current array.
     """
 
     return gpca*cai/(KpCa+cai)
@@ -490,14 +560,15 @@ def calc_ipk(u, Ek, gpk):
     ----------
     u : np.ndarray
         Membrane potential array.
-    dt : float
-        Time step for the simulation.
     Ek : float
         Potassium reversal potential.
-    rec_ipK : float
-        Activation factor for potassium pump.
     gpk : float
         Potassium pump conductance.
+    
+    Returns
+    -------
+    np.ndarray
+        Updated potassium pump current array.
     """
     rec_ipK = 1./(1.+np.exp((25-u)/5.98))
 
@@ -512,12 +583,15 @@ def calc_ibna(u, Ena, gbna):
     ----------
     u : np.ndarray
         Membrane potential array.
-    dt : float
-        Time step for the simulation.
     Ena : float
         Sodium reversal potential.
     gbna : float
         Background sodium conductance.
+
+    Returns
+    -------
+    np.ndarray
+        Updated background sodium current array.
     """
 
     return gbna*(u-Ena)
@@ -531,12 +605,15 @@ def calc_ibca(u, Eca, gbca):
     ----------
     u : np.ndarray
         Membrane potential array.
-    dt : float
-        Time step for the simulation.
     Eca : float
         Calcium reversal potential.
     gbca : float
         Background calcium conductance.
+
+    Returns
+    -------
+    np.ndarray
+        Updated background calcium current array.
     """
 
     return gbca*(u-Eca)
@@ -554,12 +631,31 @@ def calc_irel(dt, rr, oo, casr, cass, vrel, k1, k2, k3, k4, maxsr, minsr, EC):
         Ryanodine receptor gating variable for calcium release.
     oo : np.ndarray
         Ryanodine receptor gating variable for calcium release.
-    caSR : np.ndarray
+    casr : np.ndarray
         Calcium concentration in the sarcoplasmic reticulum.
-    caSS : np.ndarray
+    cass : np.ndarray
         Calcium concentration in the submembrane space.
-    Vrel : float
+    vrel : float
         Release rate of calcium from the sarcoplasmic reticulum.
+    k1 : float
+        Transition rate for SR calcium release.
+    k2 : float
+        Transition rate for SR calcium release.
+    k3 : float
+        Transition rate for SR calcium release.
+    k4 : float
+        Alternative transition rate.
+    maxsr : float
+        Maximum SR calcium release permeability.
+    minsr : float
+        Minimum SR calcium release permeability.
+    EC : float
+        Calcium-induced calcium release sensitivity.
+    
+    Returns
+    -------
+    np.ndarray
+        Updated ryanodine receptor current array.
     """
 
     kCaSR = maxsr-((maxsr-minsr)/(1+(EC/casr)*(EC/casr)))
@@ -578,12 +674,17 @@ def calc_ileak(casr, cai, vleak):
 
     Parameters
     ----------
-    caSR : np.ndarray
+    casr : np.ndarray
         Calcium concentration in the sarcoplasmic reticulum.
     cai : np.ndarray
         Calcium concentration in the submembrane space.
-    Vleak : float
+    vleak : float
         Leak rate of calcium from the sarcoplasmic reticulum.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium leak current array.
     """
 
     return vleak*(casr-cai)
@@ -597,10 +698,15 @@ def calc_iup(cai, vmaxup, Kup):
     ----------
     cai : np.ndarray
         Calcium concentration in the submembrane space.
-    Vmaxup : float
+    vmaxup : float
         Uptake rate of calcium into the sarcoplasmic reticulum.
     Kup : float
         Michaelis constant for calcium uptake.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium uptake current array.
     """
 
     return vmaxup/(1.+((Kup*Kup)/(cai*cai)))
@@ -616,8 +722,13 @@ def calc_ixfer(cass, cai, vxfer):
         Calcium concentration in the submembrane space.
     cai : np.ndarray
         Calcium concentration in the submembrane space.
-    Vxfer : float
+    vxfer : float
         Transfer rate of calcium between the submembrane space and cytosol.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium transfer current array.
     """
 
     return vxfer*(cass-cai)
@@ -629,7 +740,7 @@ def calc_casr(dt, caSR, bufsr, Kbufsr, iup, irel, ileak):
 
     Parameters
     ----------
-    caSR : np.ndarray
+    casr : np.ndarray
         Calcium concentration in the sarcoplasmic reticulum.
     bufsr : float
         Buffering capacity of the sarcoplasmic reticulum.
@@ -639,8 +750,13 @@ def calc_casr(dt, caSR, bufsr, Kbufsr, iup, irel, ileak):
         Calcium uptake current.
     irel : float
         Calcium release current.
-    Ileak : float
+    ileak : float
         Leak rate of calcium from the sarcoplasmic reticulum.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium concentration in the sarcoplasmic reticulum.
     """
 
     CaCSQN = bufsr*caSR/(caSR+Kbufsr)
@@ -656,7 +772,7 @@ def calc_cass(dt, caSS, bufss, Kbufss, ixfer, irel, ical, capacitance, Vc, Vss, 
 
     Parameters
     ----------
-    caSS : np.ndarray
+    cass : np.ndarray
         Calcium concentration in the submembrane space.
     bufss : float
         Buffering capacity of the submembrane space.
@@ -679,6 +795,11 @@ def calc_cass(dt, caSS, bufss, Kbufss, ixfer, irel, ical, capacitance, Vc, Vss, 
     inversevssF2 : float
         Inverse of the product of 2
         times the volume of the submembrane space and Faraday's constant.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium concentration in the submembrane space.
     """
 
     CaSSBuf = bufss*caSS/(caSS+Kbufss)
@@ -722,6 +843,11 @@ def calc_cai(dt, cai, bufc, Kbufc, ibca, ipca, inaca, iup, ileak, ixfer, capacit
     inverseVcF2 : float
         Inverse of the product of 2
         times the volume of the cytosol and Faraday's constant.
+
+    Returns
+    -------
+    np.ndarray
+        Updated calcium concentration in the cytosol.
     """
 
     CaCBuf = bufc*cai/(cai+Kbufc)
@@ -738,6 +864,8 @@ def calc_nai(dt, ina, ibna, inak, inaca, capacitance, inverseVcF):
 
     Parameters
     ----------
+    dt : float
+        Time step for the simulation.
     ina : float
         Fast sodium current.
     ibna : float
@@ -750,6 +878,11 @@ def calc_nai(dt, ina, ibna, inak, inaca, capacitance, inverseVcF):
         Membrane capacitance.
     inverseVcF : float
         Inverse of the product of the volume of the cytosol and Faraday's constant.
+
+    Returns
+    -------
+    np.ndarray
+        Updated sodium concentration in the cytosol.
     """
 
     dNai = -(ina+ibna+3*inak+3*inaca)*inverseVcF*capacitance
@@ -778,6 +911,11 @@ def calc_ki(dt, ik1, ito, ikr, iks, inak, ipk, inverseVcF, capacitance):
         Membrane capacitance.
     inverseVcF : float
         Inverse of the product of the volume of the cytosol and Faraday's constant.
+
+    Returns
+    -------
+    np.ndarray
+        Updated potassium concentration in the cytosol.
     """
 
     dKi = -(ik1+ito+ikr+iks-2*inak+ipk)*inverseVcF*capacitance

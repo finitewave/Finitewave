@@ -35,13 +35,15 @@ class LuoRudy912D(CardiacModel):
         """
         CardiacModel.__init__(self)
         self.D_model = 0.1
-        self.m = np.ndarray
-        self.h = np.ndarray
-        self.j = np.ndarray
-        self.d = np.ndarray
-        self.f = np.ndarray
-        self.x = np.ndarray
+
+        self.m   = np.ndarray
+        self.h   = np.ndarray
+        self.j   = np.ndarray
+        self.d   = np.ndarray
+        self.f   = np.ndarray
+        self.x   = np.ndarray
         self.cai = np.ndarray
+        
         self.state_vars = ["u", "m", "h", "j", "d", "f", "x", "cai"]
         self.npfloat = 'float64'
 
@@ -125,6 +127,28 @@ class LuoRudy912D(CardiacModel):
 def calc_ina(u, dt, m, h, j, E_Na, gna):
     """
     Calculates the fast sodium current.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    dt : float
+        Time step for the simulation.
+    m : float
+        Gating variable `m`.
+    h : float
+        Gating variable `h`.
+    j : float
+        Gating variable `j`.
+    E_Na : float
+        Sodium equilibrium potential.
+    gna : float
+        Sodium conductance.
+
+    Returns
+    -------
+    float
+        Sodium current.
     """
     alpha_h, beta_h, beta_J, alpha_J = 0, 0, 0, 0
     if u >= -40.:
@@ -163,6 +187,26 @@ def calc_ina(u, dt, m, h, j, E_Na, gna):
 def calc_isk(u, dt, d, f, cai, gsi):
     """
     Calculates the slow inward current.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    dt : float
+        Time step for the simulation.
+    d : float
+        Gating variable `d`.
+    f : float
+        Gating variable `f`.
+    cai : float
+        Intracellular calcium concentration.
+    gsi : float
+        Slow inward calcium conductance.
+    
+    Returns
+    -------
+    float
+        Slow inward current.
     """
     E_Si = 7.7 - 13.0287 * np.log(cai)
     I_Si = gsi * d * f * (u - E_Si)
@@ -195,6 +239,38 @@ def calc_isk(u, dt, d, f, cai, gsi):
 def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
     """
     Calculates the time-dependent potassium current.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    dt : float
+        Time step for the simulation.
+    x : float
+        Gating variable `x`.
+    ko : float
+        Extracellular potassium concentration.
+    ki : float
+        Intracellular potassium concentration.
+    nao : float
+        Extracellular sodium concentration.
+    nai : float
+        Intracellular sodium concentration.
+    PR_NaK : float
+        Sodium-potassium pump permeability ratio.
+    R : float
+        Universal gas constant.
+    T : float
+        Temperature.
+    F : float
+        Faraday constant.
+    gk : float
+        Time-dependent potassium conductance.
+    
+    Returns
+    -------
+    float
+        Time-dependent potassium current.
     """
     E_K = (R * T / F) * \
         np.log((ko + PR_NaK * nao) / (ki + PR_NaK * nai))
@@ -227,6 +303,22 @@ def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
 def calc_ik1(u, ko, E_K1, gk1):
     """
     Calculates the time-independent potassium current.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    ko : float
+        Extracellular potassium concentration.
+    E_K1 : float
+        Inward rectifier potassium equilibrium potential.
+    gk1 : float
+        Inward rectifier potassium conductance.
+    
+    Returns
+    -------
+    float
+        Time-independent potassium current.
     """
     alpha_K1 = 1.02 / (1 + np.exp(0.2385 * (u - E_K1 - 59.215)))
     beta_K1 = (0.49124 * np.exp(0.08032 * (u - E_K1 + 5.476)) + np.exp(0.06175 * (u - E_K1 - 594.31))) / \
@@ -243,6 +335,22 @@ def calc_ik1(u, ko, E_K1, gk1):
 def calc_ikp(u, ko, E_K1, gkp):
     """
     Calculates the plateau potassium current.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    ko : float
+        Extracellular potassium concentration.
+    E_K1 : float
+        Inward rectifier potassium equilibrium potential.
+    gkp : float
+        Plateau potassium conductance.
+
+    Returns
+    -------
+    float
+        Plateau potassium current.
     """
     E_Kp = E_K1
     K_p = 1. / (1 + np.exp((7.488 - u) / 5.98))
@@ -254,6 +362,18 @@ def calc_ikp(u, ko, E_K1, gkp):
 def calc_ib(u, gb):
     """
     Calculates the background current.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    gb : float
+        Background conductance.
+    
+    Returns
+    -------
+    float
+        Background current.
     """
     return gb * (u + 59.87)
 

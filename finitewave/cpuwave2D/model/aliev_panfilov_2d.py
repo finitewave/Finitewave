@@ -46,14 +46,16 @@ class AlievPanfilov2D(CardiacModel):
         super().__init__()
         self.v = np.ndarray
         self.w = np.ndarray
+
         self.D_model = 1.
+    
         self.state_vars = ["u", "v"]
-        self.npfloat = 'float64'
+        self.npfloat    = 'float64'
 
         # model parameters
-        self.a = 0.1
-        self.k = 8.0
-        self.eap = 0.01
+        self.a    = 0.1
+        self.k    = 8.0
+        self.eap  = 0.01
         self.mu_1 = 0.2
         self.mu_2 = 0.3
 
