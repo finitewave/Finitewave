@@ -136,6 +136,13 @@ class CardiacModel(ABC):
         numba.set_num_threads(numba.config.NUMBA_NUM_THREADS)
 
         if num_of_theads is not None:
+            if num_of_theads > numba.config.NUMBA_NUM_THREADS:
+                import warnings
+                warnings.warn(
+                    f"Selected number of threads ({num_of_theads}) exceeds the available threads ({numba.config.NUMBA_NUM_THREADS}). "
+                    f"Using the maximum available threads instead."
+                )
+            num_of_theads = min(num_of_theads, numba.config.NUMBA_NUM_THREADS)
             numba.set_num_threads(num_of_theads)
 
         if self.t_max < self.t:
