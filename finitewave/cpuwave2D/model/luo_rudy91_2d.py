@@ -13,6 +13,14 @@ class LuoRudy912D(CardiacModel):
     """
     Implements the 2D Luo-Rudy 1991 cardiac model.
 
+    Paper
+    -----
+    Luo CH, Rudy Y. 
+    A model of the ventricular cardiac action potential. Depolarization, repolarization, and their interaction. 
+    Circ Res. 1991 Jun;68(6):1501-26. 
+    doi: 10.1161/01.res.68.6.1501. 
+    PMID: 1709839.
+
     Attributes
     ----------
     state_vars : list

@@ -14,6 +14,17 @@ class AlievPanfilov2D(CardiacModel):
     """
     Implementation of the Aliev-Panfilov 2D cardiac model.
 
+    Paper
+    -----
+    Rubin R. Aliev, Alexander V. Panfilov,
+    A simple two-variable model of cardiac excitation,
+    Chaos, Solitons & Fractals,
+    Volume 7, Issue 3,
+    1996,
+    Pages 293-301,
+    ISSN 0960-0779,
+    https://doi.org/10.1016/0960-0779(95)00089-5.
+
     Attributes
     ----------
     v : np.ndarray

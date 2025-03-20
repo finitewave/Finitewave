@@ -14,6 +14,14 @@ class TP062D(CardiacModel):
     """
     A class to represent the TP06 cardiac model in 2D.
 
+    Paper
+    -----
+    ten Tusscher KH, Panfilov AV. 
+    Alternans and spiral breakup in a human ventricular tissue model.
+    Am J Physiol Heart Circ Physiol. 2006 Sep;291(3):H1088-100. 
+    doi: 10.1152/ajpheart.00109.2006. 
+    Epub 2006 Mar 24. PMID: 16565318.
+
     Attributes
     ----------
     D_model : float
