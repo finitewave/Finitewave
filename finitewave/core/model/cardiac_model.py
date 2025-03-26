@@ -161,7 +161,6 @@ class CardiacModel(ABC):
                 self.stim_sequence.stimulate_next()
 
             self.run_diffusion_kernel()
-            # self.transmembrane_current = self.u_new - self.u
             self.run_ionic_kernel()
 
             if self.tracker_sequence:
