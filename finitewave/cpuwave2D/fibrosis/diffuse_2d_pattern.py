@@ -9,7 +9,7 @@ class Diffuse2DPattern(FibrosisPattern):
 
     Attributes
     ----------
-    dens : float
+    density : float
         The density of the fibrosis in the specified area
     x1 : int
         The starting x-coordinate of the fibrosis area.
@@ -21,13 +21,13 @@ class Diffuse2DPattern(FibrosisPattern):
         The ending y-coordinate of the fibrosis area.
     """
 
-    def __init__(self, dens, x1=None, x2=None, y1=None, y2=None):
+    def __init__(self, density, x1=None, x2=None, y1=None, y2=None):
         """
         Initializes the Diffuse2DPattern with the specified parameters.
 
         Parameters
         ----------
-        dens : float
+        density : float
             The density of the fibrosis in the specified area.
         x1 : int
             The starting x-coordinate of the fibrosis area.
@@ -42,7 +42,7 @@ class Diffuse2DPattern(FibrosisPattern):
         self.x2 = x2
         self.y1 = y1
         self.y2 = y2
-        self.dens = dens
+        self.density = density
 
     def generate(self, shape=None, mesh=None):
         """
@@ -84,4 +84,4 @@ class Diffuse2DPattern(FibrosisPattern):
         return mesh
 
     def _generate(self, shape):
-        return 1 + (np.random.random(shape) <= self.dens).astype(np.int8)
+        return 1 + (np.random.random(shape) <= self.density).astype(np.int8)
