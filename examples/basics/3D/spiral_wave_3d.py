@@ -1,8 +1,53 @@
 """
-Sphere with spiral waves in 3D
-==============================
+Spiral Waves on a 3D Spherical Shell
+====================================
 
-This example demonstrates how to create a 3D sphere with spiral waves.
+This example demonstrates how to simulate spiral (scroll) waves inside
+a 3D spherical shell using the Aliev-Panfilov model with Finitewave.
+
+A hollow sphere is embedded inside a 3D Cartesian grid. The propagation
+of electrical activity is initiated by sequential stimuli, creating a
+scroll wave that circulates within the curved geometry.
+
+The resulting potential distribution is visualized with Finitewave's
+3D mesh tools.
+
+Geometry Setup:
+---------------
+- Domain size: 200×200×200 grid
+- Geometry: Spherical shell created using a binary mask
+    - Outer radius: 95 voxels
+    - Inner radius: 90 voxels
+    - Mesh values: 1 inside the shell, 0 outside
+- The sphere is centered in the domain
+
+Stimulation Protocol:
+---------------------
+- Stimulus 1:
+    - Time: t = 0
+    - Location: One side of the sphere (thin planar region near the edge)
+- Stimulus 2:
+    - Time: t = 50
+    - Location: One hemisphere only
+- This breaks the initial wave symmetry and initiates a scroll wave
+
+Model:
+------
+- Aliev-Panfilov 3D reaction-diffusion model
+- Time step (dt): 0.01
+- Space step (dr): 0.25
+- Total simulation time: 100
+
+Visualization:
+--------------
+The 3D scalar field (`u`) is rendered on the shell mesh using
+Finitewave’s `VisMeshBuilder3D`.
+
+Applications:
+-------------
+- Simulation of scroll wave dynamics in spherical domains
+- Study of wave breakups, phase singularities, and 3D reentry
+- Modeling electrical activity in simplified anatomical geometries
 """
 
 import matplotlib.pyplot as plt

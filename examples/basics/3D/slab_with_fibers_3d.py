@@ -1,9 +1,51 @@
 """
-Slab with rotating fibers
-==============================
+3D Slab with Rotating Fibers
+============================
 
-This example demonstrates how to create a 3D slab with rotating fibers.
+This example demonstrates how to create a 3D slab of cardiac tissue
+with smoothly rotating fiber orientation along the depth (z-axis).
+Such setups are used to mimic myocardial fiber architecture in 
+ventricular walls, where fiber orientation rotates across the wall.
+
+A central stimulus initiates activation, and the resulting 
+wave propagation is influenced by the local fiber direction at each depth.
+
+Fiber Setup:
+------------
+- Domain size: 200×200×100 (i, j, k)
+- Fiber rotation:
+    • Varies linearly from -π/3 to +π/2 along the k-axis (depth)
+    • In-plane rotation only (z-component of fibers = 0)
+    • Represented as 3D unit vectors: (cos(ϕ), sin(ϕ), 0)
+
+Model & Stimulation:
+--------------------
+- Model: Aliev-Panfilov 3D
+- Time: 15 time units total
+- Stimulus:
+    • Applied at the center of the i-j plane
+    • Extends fully along the z-axis (column stimulation)
+    • Time: t = 0
+    • Strength: 1 (voltage)
+
+Numerical Setup:
+----------------
+- Time step (dt): 0.01
+- Space step (dr): 0.25
+
+Visualization:
+--------------
+- The slab is rendered using `VisMeshBuilder3D`
+- The upper half is clipped away for a better internal view
+- Voltage (`u`) is shown using a colormap
+
+Applications:
+-------------
+- Mimics realistic ventricular transmural fiber rotation
+- Useful for studying anisotropic conduction, twist in scroll waves,
+  and depth-dependent activation patterns
 """
+
 
 import finitewave as fw
 

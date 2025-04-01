@@ -1,10 +1,50 @@
 """
-LV Simulation
--------------
+Left Ventricle Simulation with Anatomical Mesh and Fibers
+----------------------------------------------------------
 
-This example demonstrates usage of the left ventricle mesh and fibers from
-data storage (https://zenodo.org/records/3890034) and the Aliev-Panfilov model.
+This example demonstrates how to simulate electrical activity in a
+realistic left ventricular (LV) geometry using the Aliev-Panfilov
+model in 3D.
+
+The LV mesh and corresponding fiber orientations are loaded from
+external data (available at https://zenodo.org/records/3890034).
+The mesh is embedded in a regular grid, and fiber directions are
+assigned to the myocardium using a vector field.
+
+Stimulation is applied at the base of the ventricle to initiate 
+activation, and wave propagation is visualized in 3D.
+
+Data Requirements:
+------------------
+This example assumes the following files exist in the `data/` directory:
+- `mesh.npy`: 3D binary array (1 = myocardium, 0 = empty)
+- `fibers.npy`: Flattened array of fiber vectors (same shape as mesh[mesh > 0])
+
+Simulation Setup:
+-----------------
+- Model: Aliev-Panfilov 3D
+- Mesh: Realistic LV shape, embedded in a cubic grid
+- Fibers: Anatomically derived vectors per voxel
+- Stimulus:
+    - Type: Voltage
+    - Location: Basal region (first 20 z-slices)
+    - Time: t = 0 
+- Time step (dt): 0.01 
+- Space step (dr): 0.25 
+- Total time: 40 
+
+Visualization:
+--------------
+- The scalar voltage field (`u`) is rendered in 3D using 
+  Finitewave’s `VisMeshBuilder3D`.
+
+Applications:
+-------------
+- Realistic whole-ventricle simulations
+- Exploration of fiber-driven anisotropic conduction
+- Foundation for further patient-specific modeling or ECG computation
 """
+
 
 from pathlib import Path
 import numpy as np
