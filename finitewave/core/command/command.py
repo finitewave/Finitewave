@@ -48,5 +48,5 @@ class Command(ABC):
         model : CardiacModel
             The cardiac model instance on which the command was executed
         """
-        self.passed = self.t >= model.t
+        self.passed = model.t >= self.t
         return self.passed
