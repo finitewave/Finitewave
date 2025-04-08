@@ -79,6 +79,7 @@ from finitewave.cpuwave3D import (
     CardiacTissue3D,
     ActionPotential3DTracker,
     ActivationTime3DTracker,
+    LocalActivationTime3DTracker,
     AnimationSlice3DTracker,
     ECG3DTracker,
     Period3DTracker,

@@ -64,8 +64,9 @@ import shutil
 import finitewave as fw
 
 # Setup
-n = 100
-cell = [n//2, n//2]
+ni = 100
+nj = 10
+cell = [ni//2, nj//2]
 s1_cl = 400 # ms
 num_s1 = 10 # number of S1 beats
 s2_intervals = np.arange(400, 0, -25)
@@ -75,13 +76,13 @@ threshold_up = -20 # mV
 save_time = (num_s1-1) * s1_cl
 
 # Pre-pace the tissue with 10 S1 beats
-tissue = fw.CardiacTissue2D((n, n))
+tissue = fw.CardiacTissue2D((ni, nj))
 stim_sequence = fw.StimSequence()
 for i in range(num_s1):
     t = i * s1_cl
     stim_sequence.add_stim(fw.StimCurrentCoord2D(t, stim_amp, stim_dur, 
-                                                 0, n,
-                                                 0, 5))
+                                                 0, 5,
+                                                 0, nj))
 
 # Save state after 10 S1 beats to reuse for S2 branches
 state_savers = fw.StateSaverCollection()
@@ -109,8 +110,8 @@ for s2_delay in s2_intervals:
     stim_sequence = fw.StimSequence()
     s2_time = s2_delay
     stim_sequence.add_stim(fw.StimVoltageCoord2D(s2_time, stim_amp,
-                                                 0, n,
-                                                 0, 5))
+                                                 0, 5,
+                                                 0, nj))
 
     tracker_sequence = fw.TrackerSequence()
     ap_tracker = fw.ActionPotential2DTracker()

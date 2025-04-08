@@ -55,10 +55,10 @@ import finitewave as fw
 path = Path(__file__).parent
 
 # Load mesh as cubic array
-mesh = np.load(path.joinpath("data", "mesh.npy"))
+mesh = np.load(path.joinpath("..", "..", "data", "mesh.npy"))
 
 # Load fibers as cubic array
-fibers_list = np.load(path.joinpath("data", "fibers.npy"))
+fibers_list = np.load(path.joinpath("..", "..", "data", "fibers.npy"))
 fibers = np.zeros(mesh.shape + (3,), dtype=float)
 fibers[mesh > 0] = fibers_list
 

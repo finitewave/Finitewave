@@ -26,6 +26,7 @@ Each tracker class has basic attributes such as ``start_time``, ``end_time``,
 
 from .action_potential_3d_tracker import ActionPotential3DTracker
 from .activation_time_3d_tracker import ActivationTime3DTracker
+from .local_activation_time_3d_tracker import LocalActivationTime3DTracker
 from .animation_slice_3d_tracker import AnimationSlice3DTracker
 from .ecg_3d_tracker import ECG3DTracker
 from .period_3d_tracker import Period3DTracker
