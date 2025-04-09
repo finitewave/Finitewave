@@ -46,7 +46,7 @@ import numpy as np
 import finitewave as fw
 from mpl_toolkits.mplot3d import Axes3D
 
-# create a tissue of size 300x300 with cardiomycytes:
+# create a tissue of size 100x100x10 with cardiomycytes:
 n = 100
 nk = 10
 tissue = fw.CardiacTissue3D([n, n, nk])
