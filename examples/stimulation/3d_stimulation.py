@@ -4,7 +4,7 @@ Stimulation in 3D
 
 Overview:
 ---------
-This example demonstrates how to apply two opposite **planar waves** in 3D tissue using:
+This example demonstrates how to apply two opposite planar waves in 3D tissue using:
 - `StimVoltageCoord3D`: voltage stimulation with spatial bounds (`x1`, `x2`, `y1`, `y2`, `z1`, `z2`)
 - `StimCurrentMatrix3D`: matrix-based current stimulation with a 3D boolean array.
 
@@ -14,8 +14,8 @@ with the only difference being the inclusion of the Z-axis (`z1`, `z2` or 3D mat
 Simulation Setup:
 -----------------
 - Tissue: 3D slab (200×200×10)
-- Stimulus 1: Voltage-based planar wave on the **left face** at `t=0`
-- Stimulus 2: Current-based planar wave on the **right face** at `t=0`
+- Stimulus 1: Voltage-based planar wave on the left face at `t=0`
+- Stimulus 2: Current-based planar wave on the right face at `t=0`
 - Duration: 10 time units
 
 Application:
