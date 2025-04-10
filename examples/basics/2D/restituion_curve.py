@@ -22,7 +22,7 @@ and scalable.
 
 Protocol Overview:
 ------------------
-- Tissue: 2D grid of size 100×100
+- Tissue: 2D grid of size 100×10
 - Model: Luo-Rudy 1991 (LuoRudy912D)
 - S1 stimulation:
     - 10 beats at 400 ms cycle length
