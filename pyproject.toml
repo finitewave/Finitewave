@@ -25,6 +25,7 @@ dependencies = [
   "ffmpeg-python==0.2.0",
   "pandas==2.2.3",
   "scikit-image==0.24.0",
+  "pytest=8.3.5"
 ]
 
 [project.optional-dependencies]
