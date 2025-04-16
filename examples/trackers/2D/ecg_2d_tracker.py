@@ -60,44 +60,46 @@ import numpy as np
 import finitewave as fw
 
 # set up the tissue:
-n = 400
+n = 200
+
 tissue = fw.CardiacTissue2D([n, n])
+# create a mesh of cardiomyocytes (elems = 1):
 
-# set up stimulation parameters:
+# create model object:
+aliev_panfilov = fw.AlievPanfilov2D()
+aliev_panfilov.dt = 0.0015
+aliev_panfilov.dr = 0.1
+aliev_panfilov.t_max = 50
+
+# induce the spiral wave:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 1, n-1, 1, 5))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1,
+                                             0, n,
+                                             0, 5))
 
-# set up tracker parameters:
 tracker_sequence = fw.TrackerSequence()
-ecg_tracker = fw.ECG2DTracker(distance_power=2)
-ecg_tracker.measure_points = [[n//2, n//4, 10],
-                              [n//2, n//2, 10],
-                              [n//2, 3*n//4, 10]]
+# create an ECG tracker:
+ecg_tracker = fw.ECG2DTracker()
+ecg_tracker.start_time = 0
+ecg_tracker.step = 100
+ecg_tracker.measure_coords = np.array([[n//2, n//2, 10],
+                                       [n//4, n//2, 10],
+                                       [3*n//4, 3*n//4, 10]])
 
-ecg_tracker.step = 10
 tracker_sequence.add_tracker(ecg_tracker)
 
-ecg = {}
-model = fw.AlievPanfilov2D()
-model.dt = 0.001
-model.dr = 0.1
-model.t_max = 50
 # add the tissue and the stim parameters to the model object:
-model.cardiac_tissue = tissue
-model.stim_sequence = stim_sequence
-model.tracker_sequence = tracker_sequence
+aliev_panfilov.cardiac_tissue = tissue
+aliev_panfilov.stim_sequence = stim_sequence
+aliev_panfilov.tracker_sequence = tracker_sequence
 
-model.run()
+aliev_panfilov.run()
 
-ecg = ecg_tracker.output
-
-# fig, axs = plt.subplots(ncols=2, sharex=True, sharey=True)
-# axs[0].imshow(model.u, cmap='viridis', origin='lower')
-# axs[1].imshow(model.transmembrane_current, cmap='viridis', origin='lower')
-# plt.show()
-
+colors = ['tab:blue', 'tab:orange', 'tab:green']
 plt.figure()
-t = np.arange(len(ecg)) * model.dt * ecg_tracker.step
-plt.plot(t, ecg, label="ECG")
-plt.legend()
+for i, y in enumerate(ecg_tracker.output.T):
+    x = np.arange(len(y)) * aliev_panfilov.dt * ecg_tracker.step
+    plt.plot(x, y, '-o', color=colors[i], label='precomputed distances')
+
+plt.legend(title='ECG computed with')
 plt.show()

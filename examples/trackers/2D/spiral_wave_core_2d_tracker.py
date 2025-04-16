@@ -67,7 +67,7 @@ tracker_sequence = fw.TrackerSequence()
 sw_core_tracker = fw.SpiralWaveCore2DTracker()
 sw_core_tracker.threshold = 0.5
 sw_core_tracker.start_time = 50
-sw_core_tracker.step = 100  # Record the spiral wave core every 1 ms
+sw_core_tracker.step = 100  # Record the spiral wave core every 1 time unit
 tracker_sequence.add_tracker(sw_core_tracker)
 
 # create model object:

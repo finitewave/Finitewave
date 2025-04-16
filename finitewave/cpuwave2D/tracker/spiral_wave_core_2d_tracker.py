@@ -97,7 +97,11 @@ class SpiralWaveCore2DTracker(Tracker):
         pd.DataFrame
             A DataFrame containing the tracked spiral core data.
         """
-        return pd.concat(self.sprial_wave_cores, ignore_index=True)
+        validated = [df for df in self.sprial_wave_cores if not df.empty]
+        if not validated:
+            return pd.DataFrame(columns=["x", "y", "time", "step"])
+
+        return pd.concat(validated, ignore_index=True)
 
 
 @njit

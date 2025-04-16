@@ -5,35 +5,51 @@ import pytest
 import finitewave as fw
 
 @pytest.fixture
-def tissue():
+def planar_model():
     ni = 50
     nj = 10
     tissue = fw.CardiacTissue2D([ni, nj])
-    return tissue
 
-@pytest.fixture
-def model(tissue):
-    stim = fw.StimSequence()
-    stim.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, 10))
+    stim_sequence = fw.StimSequence()
+    stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, 10))
     
     model = fw.AlievPanfilov2D()
     model.dt = 0.01
     model.dr = 0.25
     model.t_max = 50
     model.cardiac_tissue = tissue
-    model.stim_sequence = stim
+    model.stim_sequence = stim_sequence
     return model
 
-def test_action_potential_2d_tracker(model):
+@pytest.fixture
+def spiral_model():
+    n = 200
+    n = 200
+    tissue = fw.CardiacTissue2D([n, n])
+
+    stim_sequence = fw.StimSequence()
+    stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, n//2))
+    stim_sequence.add_stim(fw.StimVoltageCoord2D(31, 1, 0, n//2, 0, n))
+    
+    model = fw.AlievPanfilov2D()
+    model.dt = 0.01
+    model.dr = 0.25
+    model.t_max = 50
+    model.cardiac_tissue = tissue
+    model.stim_sequence = stim_sequence
+    return model
+
+
+def test_action_potential_2d_tracker(planar_model):
     tracker = fw.ActionPotential2DTracker()
     tracker.cell_ind = [10, 5]
     tracker.step = 1
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    model.tracker_sequence = seq
+    planar_model.tracker_sequence = seq
 
-    model.run()
+    planar_model.run()
 
     u = tracker.output
 
@@ -57,7 +73,7 @@ def test_action_potential_2d_tracker(model):
     # apd = (ap_end - ap_start) * model.dt
     # assert 25 <= apd <= 27, f"APD90 is out of expected range {apd}"
 
-def test_animation_2d_tracker(model):
+def test_animation_2d_tracker(planar_model):
     tracker = fw.Animation2DTracker()
     tracker.variable_name = "u"
     tracker.dir_name = "test_frames"
@@ -66,14 +82,14 @@ def test_animation_2d_tracker(model):
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    model.tracker_sequence = seq
+    planar_model.tracker_sequence = seq
 
-    model.run()
+    planar_model.run()
 
     # Check if the animation files are created
     assert os.path.exists(tracker.dir_name), "Output directory was not created."
     files = sorted(os.listdir(tracker.dir_name))
-    expected_frames = (model.t_max/model.dt) // tracker.step
+    expected_frames = (planar_model.t_max/planar_model.dt) // tracker.step
     assert len(files) == expected_frames, f"Expected {expected_frames} frames, got {len(files)}"
 
     # Check if the frames are not empty
@@ -83,7 +99,7 @@ def test_animation_2d_tracker(model):
 
     shutil.rmtree(tracker.dir_name)
 
-def test_activation_time_2d_tracker(model):
+def test_activation_time_2d_tracker(planar_model):
     tracker = fw.ActivationTime2DTracker()
     tracker.threshold = 0.5
     tracker.step = 1
@@ -92,12 +108,12 @@ def test_activation_time_2d_tracker(model):
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    model.tracker_sequence = seq
+    planar_model.tracker_sequence = seq
 
-    model.stim_sequence.add_stim(fw.StimVoltageCoord2D(50, 1, 0, 5, 0, 10))
-    model.t_max = 100
+    planar_model.stim_sequence.add_stim(fw.StimVoltageCoord2D(50, 1, 0, 5, 0, 10))
+    planar_model.t_max = 100
 
-    model.run()
+    planar_model.run()
 
     ats = tracker.output
 
@@ -109,7 +125,7 @@ def test_activation_time_2d_tracker(model):
     # Check if the activation time values are within expected range
     assert ats[50//2, 10//2] == pytest.approx(3.5, abs=0.01)
 
-def test_local_activation_time_2d_tracker(model):
+def test_local_activation_time_2d_tracker(planar_model):
     tracker = fw.LocalActivationTime2DTracker()
     tracker.threshold = 0.5
     tracker.step = 1
@@ -118,12 +134,12 @@ def test_local_activation_time_2d_tracker(model):
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    model.tracker_sequence = seq
+    planar_model.tracker_sequence = seq
 
-    model.stim_sequence.add_stim(fw.StimVoltageCoord2D(50, 1, 0, 5, 0, 10))
-    model.t_max = 100
+    planar_model.stim_sequence.add_stim(fw.StimVoltageCoord2D(50, 1, 0, 5, 0, 10))
+    planar_model.t_max = 100
 
-    model.run()
+    planar_model.run()
 
     lats = tracker.output
 
@@ -141,16 +157,16 @@ def test_local_activation_time_2d_tracker(model):
     assert LAT1 == pytest.approx(3.5, abs=0.01)
     assert LAT2 == pytest.approx(53.68, abs=0.01)
 
-def test_multi_variable_2d_tracker(model):
+def test_multi_variable_2d_tracker(planar_model):
     tracker = fw.MultiVariable2DTracker()
     tracker.cell_ind = [10, 5]
     tracker.var_list = ["v"]
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    model.tracker_sequence = seq
+    planar_model.tracker_sequence = seq
 
-    model.run()
+    planar_model.run()
 
     v = tracker.output["v"]
 
@@ -160,4 +176,95 @@ def test_multi_variable_2d_tracker(model):
 
     # Check if the Aliev-Panfilov model 'v' maximal amplitude is within expected range
     assert np.max(v) == pytest.approx(2, abs=0.1)
+
+def test_spiral_wave_core_2d_tracker(spiral_model):
+    tracker = fw.SpiralWaveCore2DTracker()
+    tracker.threshold = 0.5
+    tracker.start_time = 50
+    tracker.step = 100  # Record the spiral wave core every 1 time unit
+
+    seq = fw.TrackerSequence()
+    seq.add_tracker(tracker)
+    spiral_model.tracker_sequence = seq
+
+    spiral_model.t_max = 90
+
+    spiral_model.run()
+
+    sw_core = tracker.output
+
+    x, y =  sw_core['x'], sw_core['y']
+
+    # Check if the output is not empty
+    assert x is not None
+    assert y is not None
+    assert len(x) > 0
+    assert len(y) > 0
+
+    # Check if the spiral wave core is within expected range
+    assert np.min(x) >= 116.95
+    assert np.max(x) <= 140.97
+    assert np.min(y) >= 109.94
+    assert np.max(y) <= 136.33
+
+def test_spiral_wave_period_2d_tracker(spiral_model):
+    tracker = fw.Period2DTracker()
+    # Here we create an int array of detectors as a list of positions in which we want to calculate the period.
+    positions = np.array([[80, 80], [20, 140], [160, 160], [130, 50]])
+    tracker.cell_ind = positions
+    tracker.threshold = 0.5
+    tracker.start_time = 100
+    tracker.step = 10
+
+    seq = fw.TrackerSequence()
+    seq.add_tracker(tracker)
+    spiral_model.tracker_sequence = seq
+
+    spiral_model.t_max = 300
+
+    spiral_model.run()
+
+    periods = tracker.output
+    period_mean = np.mean(np.array([np.mean(x) if len(x) > 0 else np.nan for x in periods]))
+
+    # Check if the output is not empty
+    assert periods is not None
+    assert len(periods) > 0
+
+    # Check if the spiral wave period is within expected range
+    assert period_mean == pytest.approx(25.6, abs=0.1)
+
+def test_ecg_2d_tracker(planar_model):
+    n = 200
+    tissue = fw.CardiacTissue2D([n, n])
+
+    tracker = fw.ECG2DTracker()
+    tracker.start_time = 0
+    tracker.step = 100
+    tracker.measure_coords = np.array([[100, 100, 10]])
+
+    stim_sequence = fw.StimSequence()
+    stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1,
+                                                0, n,
+                                                0, 5))
+    
+    seq = fw.TrackerSequence()
+    seq.add_tracker(tracker)
+    planar_model.tracker_sequence = seq
+    planar_model.cardiac_tissue = tissue
+    planar_model.stim_sequence = stim_sequence
+
+    planar_model.dt = 0.0015
+    planar_model.dr = 0.1
+
+    planar_model.run()
+
+    ecg = tracker.output.T[0]
+
+    assert ecg.max() > 0.005
+    assert ecg.min() < -0.005
+    assert np.argmax(ecg) > 10  # Check if the peak occurs not at the beginning
+
+
+
 
