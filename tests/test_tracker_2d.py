@@ -95,7 +95,7 @@ def test_animation_2d_tracker(planar_model):
     # Check if the frames are not empty
     for fname in files:
         frame = np.load(os.path.join(tracker.dir_name, fname))
-        assert np.any(frame > 0), f"Frame {fname} appears to be empty."
+        assert np.any(frame > 0), f"Frame {fname} appears to be empty." # Aliev-Panfilov model
 
     shutil.rmtree(tracker.dir_name)
 
