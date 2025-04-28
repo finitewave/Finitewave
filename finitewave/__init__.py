@@ -40,6 +40,7 @@ from finitewave.cpuwave2D import (
     ScarRect2DPattern,
     Structural2DPattern,
     AlievPanfilov2D,
+    MitchellSchaeffer2D,
     LuoRudy912D,
     TP062D,
     AsymmetricStencil2D,

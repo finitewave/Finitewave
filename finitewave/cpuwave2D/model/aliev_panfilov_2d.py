@@ -162,4 +162,4 @@ def ionic_kernel_2d(u_new, u, v, indexes, dt, a, k, eap, mu_1, mu_2):
 
         u_new[i, j] += dt * (- k * u[i, j] * (u[i, j] - a) * (u[i, j] - 1.) -
                             u[i, j] * v[i, j])
-    return u_new, v
+

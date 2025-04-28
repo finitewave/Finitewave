@@ -7,6 +7,7 @@ from .fibrosis import (
 )
 from .model import (
     AlievPanfilov2D,
+    MitchellSchaeffer2D,
     LuoRudy912D,
     TP062D,
 )
