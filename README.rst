@@ -200,7 +200,7 @@ lead to incorrect simulation results.
 Available models
 """""""""""""""""""""""""""
 
-Currently, finitewave includes four built-in models for 2D and 3D simulations,
+Currently, finitewave includes five built-in models for 2D and 3D simulations,
 but you can easily add your own models by extending the base class and
 implementing the necessary methods.
 
@@ -209,6 +209,8 @@ implementing the necessary methods.
 +====================+===============================================================+
 | Aliev-Panfilov     | A phenomenological two-variable model                         |
 +--------------------+---------------------------------------------------------------+ 
+| Barkley            | A phenomenological model                                      |
++--------------------+---------------------------------------------------------------+
 | Mitchell-Schaeefer | A phenomenological model                                      |
 +--------------------+---------------------------------------------------------------+
 | Luo-Rudy 1991      | An ionic ventricular guinea pig model                         |

@@ -15,6 +15,14 @@ class MitchellSchaeffer2D(CardiacModel):
     def __init__(self):
         """
         Initializes the Mitchell-Schaeffer instance with default parameters.
+
+        Paper
+        -----
+        Mitchell, C. C., & Schaeffer, D. G. (2003).
+        A two-current model for the dynamics of cardiac membrane
+        potential. Bulletin of Mathematical Biology, 65, 767–793.
+        https://doi.org/10.1016/S0092-8240(03)00041-7
+            
         """
         super().__init__()
         self.h = np.ndarray
