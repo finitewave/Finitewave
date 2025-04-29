@@ -1,15 +1,15 @@
 """
-Running the Aliev-Panfilov Model in 2D
+Running the Mitchell-Schaeffer Model in 3D
 ======================================
 
 Overview:
 ---------
-This example demonstrates how to run a basic 2D simulation of the 
-Aliev-Panfilov model using the Finitewave framework. 
+This example demonstrates how to run a basic 3D simulation of the 
+Mitchell-Schaeffer model using the Finitewave framework. 
 
 Simulation Setup:
 -----------------
-- Tissue Grid: A 100×5 cardiac tissue domain.
+- Tissue Grid: A 100×5×3 cardiac tissue domain.
 - Stimulation:
   - A square side stimulus is applied at t = 0.
 - Time and Space Resolution:
@@ -19,9 +19,9 @@ Simulation Setup:
 
 Execution:
 ----------
-1. Create a 2D cardiac tissue grid.
+1. Create a 3D cardiac tissue grid.
 2. Apply a stimulus along the upper boundary to initiate excitation.
-3. Set up and run the Aliev-Panfilov model.
+3. Set up and run the Mitchell-Schaeffer model.
 4. Visualize the transmembrane potential.
 
 """
@@ -34,38 +34,40 @@ import finitewave as fw
 # create a tissue:
 n = 100
 m = 5
-tissue = fw.CardiacTissue2D([n, m])
+k = 3
+tissue = fw.CardiacTissue3D([n, m, k])
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, 5, 0, m, 0, k))
 
 # create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilov2D()
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 50
+mitchell_schaeffer = fw.MitchellSchaeffer3D()
+mitchell_schaeffer.dt = 0.01
+mitchell_schaeffer.dr = 0.25
+mitchell_schaeffer.t_max = 500
 # add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
+mitchell_schaeffer.cardiac_tissue = tissue
+mitchell_schaeffer.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotential2DTracker()
+action_pot_tracker = fw.ActionPotential3DTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[50, 3]]
+action_pot_tracker.cell_ind = [[50, 3, 1]]
 action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
-aliev_panfilov.tracker_sequence = tracker_sequence
+mitchell_schaeffer.tracker_sequence = tracker_sequence
 
 # run the model:
-aliev_panfilov.run()
+mitchell_schaeffer.run()
 
 # plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * aliev_panfilov.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-plt.legend(title='Aliev-Panfilov')
+time = np.arange(len(action_pot_tracker.output)) * mitchell_schaeffer.dt
+plt.plot(time, action_pot_tracker.output, label="cell_50_3_1")
+plt.legend(title='Mitchell-Schaeffer')
+plt.xlabel('Time (ms)')
 plt.title('Action Potential')
 plt.grid()
 plt.show()

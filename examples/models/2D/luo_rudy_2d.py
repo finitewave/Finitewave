@@ -6,11 +6,10 @@ Overview:
 ---------
 This example demonstrates how to run a 2D simulation of the 
 Luo-Rudy 1991 ventricular action potential model using the Finitewave framework.
-It simulates wave propagation in cardiac tissue in response to a stimulus.
 
 Simulation Setup:
 -----------------
-- Tissue Grid: A 300×300 cardiac tissue domain.
+- Tissue Grid: A 100×5 cardiac tissue domain.
 - Stimulation:
   - A planar stimulus is applied along the top edge of the domain at t = 0 ms
     to initiate wavefront propagation.
@@ -24,45 +23,52 @@ Execution:
 1. Create a 2D cardiac tissue grid.
 2. Apply a stimulus along the upper boundary to initiate excitation.
 3. Set up and run the Luo-Rudy 1991 model.
-4. Visualize the transmembrane potential (`u`) at the final time step.
-
-Application:
-------------
-- Demonstrates how to use more detailed biophysical models.
-
-Output:
--------
-A color map of the membrane potential distribution (`u`) is displayed at 
-the end of the simulation using matplotlib.
+4. Visualize the transmembrane potential.
 
 """
 
+import numpy as np
 import matplotlib.pyplot as plt
 import finitewave as fw
 
-n = 300
+n = 100
+m = 5
 # create mesh
-tissue = fw.CardiacTissue2D((n, n))
+tissue = fw.CardiacTissue2D((n, m))
 
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, 5))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
 
 # create model object and set up parameters
 luo_rudy = fw.LuoRudy912D()
 luo_rudy.dt = 0.01
 luo_rudy.dr = 0.25
-luo_rudy.t_max = 50
+luo_rudy.t_max = 500
 
 # add the tissue and the stim parameters to the model object
 luo_rudy.cardiac_tissue = tissue
 luo_rudy.stim_sequence = stim_sequence
 
-# run the model
+tracker_sequence = fw.TrackerSequence()
+action_pot_tracker = fw.ActionPotential2DTracker()
+# to specify the mesh node under the measuring - use the cell_ind field:
+# eather list or list of lists can be used
+action_pot_tracker.cell_ind = [[50, 3]]
+action_pot_tracker.step = 1
+tracker_sequence.add_tracker(action_pot_tracker)
+luo_rudy.tracker_sequence = tracker_sequence
+
+# run the model:
 luo_rudy.run()
 
-# show the potential map at the end of calculations:
+# plot the action potential
 plt.figure()
-plt.imshow(luo_rudy.u)
-plt.colorbar()
+time = np.arange(len(action_pot_tracker.output)) * luo_rudy.dt
+plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+plt.legend(title='Luo-Rudy 1991')
+plt.xlabel('Time (ms)')
+plt.ylabel('Voltage (mV)')
+plt.title('Action Potential')
+plt.grid()
 plt.show()

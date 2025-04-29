@@ -6,12 +6,11 @@ Overview:
 ---------
 This example demonstrates how to run a 3D simulation of the 
 ten Tusscher–Panfilov 2006 (TP06) model for ventricular cardiomyocytes 
-using the Finitewave framework. The TP06 model provides a detailed 
-biophysical representation of cardiac electrophysiology.
+using the Finitewave framework. 
 
 Simulation Setup:
 -----------------
-- Tissue Grid: A 300×300×10 cardiac tissue domain.
+- Tissue Grid: A 100×5×3 cardiac tissue domain.
 - Stimulation:
   - A planar stimulus is applied along the top edge (rows 0 to 5) at t = 0 ms
     to initiate wave propagation.
@@ -25,60 +24,53 @@ Execution:
 1. Create a 3D cardiac tissue grid.
 2. Apply a stimulus to initiate excitation.
 3. Set up and run the TP06 model.
-4. Visualize the final membrane potential (`u`) distribution.
-
-Application:
-------------
-- Demonstrates how to use more detailed biophysical models.
-
-Output:
--------
-Displays the membrane potential at the final time step using matplotlib.
+4. Visualize the membrane potential.
 
 """
 
-import matplotlib.pyplot as plt
-from matplotlib import cm
 import numpy as np
+import matplotlib.pyplot as plt
 import finitewave as fw
 
 n = 100
-nk = 10
+m = 5
+k = 3
 # create mesh
-tissue = fw.CardiacTissue3D((n, n, nk))
+tissue = fw.CardiacTissue3D((n, m, k))
 
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, n, 0, 5, 0, nk))
+stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, 5, 0, m, 0, k))
 
 # create model object and set up parameters
 tp06 = fw.TP063D()
 tp06.dt = 0.01
 tp06.dr = 0.25
-tp06.t_max = 30
+tp06.t_max = 500
 
 # add the tissue and the stim parameters to the model object
 tp06.cardiac_tissue = tissue
 tp06.stim_sequence = stim_sequence
 
-# run the model
+tracker_sequence = fw.TrackerSequence()
+action_pot_tracker = fw.ActionPotential3DTracker()
+# to specify the mesh node under the measuring - use the cell_ind field:
+# eather list or list of lists can be used
+action_pot_tracker.cell_ind = [[50, 3, 1]]
+action_pot_tracker.step = 1
+tracker_sequence.add_tracker(action_pot_tracker)
+tp06.tracker_sequence = tracker_sequence
+
+# run the model:
 tp06.run()
 
-# Visualization of selected slices (z = 2, 5, 8)
-slice_z_indices = [2, 5, 8]
-fig, axs = plt.subplots(1, len(slice_z_indices), figsize=(15, 5))
-
-for i, z in enumerate(slice_z_indices):
-    ax = axs[i]
-    u = tp06.u[:, :, z]
-    im = ax.imshow(u, cmap='viridis', origin='lower',
-                   vmin=np.min(u), vmax=np.max(u))
-    ax.set_title(f"Slice at z = {z}")
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-
-# Add colorbar
-cbar = fig.colorbar(im, ax=axs.ravel().tolist(), shrink=0.7)
-cbar.set_label("Membrane potential (u)")
-
+# plot the action potential
+plt.figure()
+time = np.arange(len(action_pot_tracker.output)) * tp06.dt
+plt.plot(time, action_pot_tracker.output, label="cell_50_3_1")
+plt.legend(title='Ten Tusscher-Panfilov 2006')
+plt.xlabel('Time (ms)')
+plt.ylabel('Voltage (mV)')
+plt.title('Action Potential')
+plt.grid()
 plt.show()
