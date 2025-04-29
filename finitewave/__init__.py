@@ -67,6 +67,7 @@ from finitewave.cpuwave3D import (
     Diffuse3DPattern,
     Structural3DPattern,
     AlievPanfilov3D,
+    MitchellSchaeffer3D,
     LuoRudy913D,
     TP063D,
     AsymmetricStencil3D,

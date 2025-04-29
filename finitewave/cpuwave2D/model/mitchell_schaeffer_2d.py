@@ -132,8 +132,8 @@ def ionic_kernel_2d(u_new, u, h, indexes, dt, tau_close, tau_open, tau_in, tau_o
         The new state of the u variable.
     u : ndarray
         The current state of the u variable.
-    v : ndarray
-        The current state of the v variable.
+    h : ndarray
+        The gating variable h.
     myo_indexes : list
         List of indexes representing myocardial cells.
     dt : float

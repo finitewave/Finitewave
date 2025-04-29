@@ -1,4 +1,3 @@
-import numpy as np
 from numba import njit, prange
 
 from finitewave.cpuwave2D.model.aliev_panfilov_2d import AlievPanfilov2D, calc_v
@@ -81,4 +80,4 @@ def ionic_kernel_3d(u_new, u, v, indexes, dt, a, k, eap, mu_1, mu_2):
 
         u_new[i, j, k_] += dt * (- k * u[i, j, k_] * (u[i, j, k_] - a) * (u[i, j, k_] - 1.) -
                             u[i, j, k_] * v[i, j, k_])
-    return u_new, v
+

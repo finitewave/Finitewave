@@ -2,6 +2,7 @@
 from finitewave.cpuwave3D.fibrosis import Diffuse3DPattern, Structural3DPattern
 from finitewave.cpuwave3D.model import (
     AlievPanfilov3D,
+    MitchellSchaeffer3D,
     LuoRudy913D,
     TP063D,
 )
