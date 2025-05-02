@@ -26,7 +26,6 @@ class MitchellSchaeffer2D(CardiacModel):
         """
         super().__init__()
         self.h = np.ndarray
-        self.w = np.ndarray
 
         self.D_model = 1.
 
@@ -45,7 +44,7 @@ class MitchellSchaeffer2D(CardiacModel):
         Initializes the model for simulation.
         """
         super().initialize()
-        self.h = np.zeros_like(self.u, dtype=self.npfloat) + 1
+        self.h = np.ones_like(self.u, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

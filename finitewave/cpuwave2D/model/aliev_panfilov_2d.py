@@ -45,8 +45,7 @@ class AlievPanfilov2D(CardiacModel):
         """
         super().__init__()
         self.v = np.ndarray
-        self.w = np.ndarray
-
+        
         self.D_model = 1.
     
         self.state_vars = ["u", "v"]

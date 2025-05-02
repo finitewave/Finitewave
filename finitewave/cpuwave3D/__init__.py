@@ -4,6 +4,7 @@ from finitewave.cpuwave3D.model import (
     AlievPanfilov3D,
     Barkley3D,
     MitchellSchaeffer3D,
+    FentonKarma3D,
     LuoRudy913D,
     TP063D,
 )

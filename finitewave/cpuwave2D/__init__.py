@@ -9,6 +9,7 @@ from .model import (
     AlievPanfilov2D,
     Barkley2D,
     MitchellSchaeffer2D,
+    FentonKarma2D,
     LuoRudy912D,
     TP062D,
 )
