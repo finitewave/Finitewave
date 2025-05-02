@@ -1,10 +1,5 @@
 .. _finitewave:
 
-.. image:: images/finitewave_logo.png
-   :alt: Finitewave logo
-   :align: center
-   :width: 200px
-
 finitewave
 ===========
 

@@ -29,8 +29,9 @@ class FentonKarma3D(FentonKarma2D):
         Executes the ionic kernel for the Fenton-Karma model.
         """
         ionic_kernel_3d(self.u_new, self.u, self.v, self.w, self.cardiac_tissue.myo_indexes, 
-                        self.dt, self.u_c, self.tau_d, self.tau_o, self.tau_r, self.tau_si, 
-                        self.tau_v_m, self.tau_v_p, self.tau_w_m, self.tau_w_p)
+                        self.dt, self.tau_d, self.tau_o, self.tau_r, self.tau_si, 
+                        self.tau_v_m, self.tau_v_p, self.tau_w_m, self.tau_w_p,
+                        self.k, self.u_c, self.uc_si)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -84,12 +85,12 @@ def ionic_kernel_3d(u_new, u, v, w, indexes, dt,
         j = (ii % (n_j*n_k))//n_k
         k_ = (ii % (n_j*n_k)) % n_k
         
+        v[i, j, k_] = calc_v(v[i, j, k_], u[i, j, k_], dt, u_c, tau_v_m, tau_v_p)
+        w[i, j, k_] = calc_w(w[i, j, k_], u[i, j, k_], dt, u_c, tau_w_m, tau_w_p)
+
         J_fi = calc_Jfi(u[i, j, k_], v[i, j, k_], u_c, tau_d)
         J_so = calc_Jso(u[i, j, k_], u_c, tau_o, tau_r)
         J_si = calc_Jsi(u[i, j, k_], v[i, j, k_], k, uc_si, tau_si)
-
-        v[i, j, k_] = calc_v(v[i, j, k_], u[i, j, k_], u_c, tau_v_m, tau_v_p)
-        w[i, j, k_] = calc_w(w[i, j, k_], u[i, j, k_], u_c, tau_w_m, tau_w_p)
 
         u_new[i, j, k_] += dt * (-J_fi - J_so - J_si)
 
