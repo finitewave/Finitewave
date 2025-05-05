@@ -10,6 +10,7 @@ from .model import (
     Barkley2D,
     MitchellSchaeffer2D,
     FentonKarma2D,
+    BuenoOrovio2D,
     LuoRudy912D,
     TP062D,
 )

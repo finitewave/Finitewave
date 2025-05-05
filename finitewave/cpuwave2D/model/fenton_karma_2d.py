@@ -20,7 +20,7 @@ class FentonKarma2D(CardiacModel):
         -----
         Fenton, F., & Karma, A. (1998).
         Vortex dynamics in three-dimensional continuous myocardium 
-        with fiber rotation: Filament instability and fibrillationa
+        with fiber rotation: Filament instability and fibrillation.
         Chaos, 8(1), 20-47.
         https://doi.org/10.1063/1.166311
             

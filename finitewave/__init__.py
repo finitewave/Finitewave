@@ -43,6 +43,7 @@ from finitewave.cpuwave2D import (
     Barkley2D,
     MitchellSchaeffer2D,
     FentonKarma2D,
+    BuenoOrovio2D,
     LuoRudy912D,
     TP062D,
     AsymmetricStencil2D,
@@ -65,6 +66,7 @@ from finitewave.cpuwave2D import (
     SpiralWaveCore2DTracker,
     Variable2DTracker,
 )
+
 from finitewave.cpuwave3D import (
     Diffuse3DPattern,
     Structural3DPattern,
@@ -72,6 +74,7 @@ from finitewave.cpuwave3D import (
     Barkley3D,
     MitchellSchaeffer3D,
     FentonKarma3D,
+    BuenoOrovio3D,
     LuoRudy913D,
     TP063D,
     AsymmetricStencil3D,

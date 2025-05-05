@@ -5,6 +5,7 @@ from finitewave.cpuwave3D.model import (
     Barkley3D,
     MitchellSchaeffer3D,
     FentonKarma3D,
+    BuenoOrovio3D,
     LuoRudy913D,
     TP063D,
 )
