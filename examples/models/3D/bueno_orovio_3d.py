@@ -1,3 +1,30 @@
+"""
+Running the Bueno-Orovio Model in 3D
+======================================
+
+Overview:
+---------
+This example demonstrates how to run a basic 3D simulation of the 
+Bueno-Orovio model using the Finitewave framework. 
+
+Simulation Setup:
+-----------------
+- Tissue Grid: A 100×5×3 cardiac tissue domain.
+- Stimulation:
+  - A square side stimulus is applied at t = 0.
+- Time and Space Resolution:
+  - Temporal step (dt): 0.01
+  - Spatial resolution (dr): 0.25
+  - Total simulation time (t_max): 20
+
+Execution:
+----------
+1. Create a 3D cardiac tissue grid.
+2. Apply a stimulus along the upper boundary to initiate excitation.
+3. Set up and run the Bueno-Orovio model.
+4. Visualize the transmembrane potential.
+
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt

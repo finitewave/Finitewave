@@ -1,3 +1,30 @@
+"""
+Running the Bueno-Orovio Model in 2D
+======================================
+
+Overview:
+---------
+This example demonstrates how to run a basic 2D simulation of the 
+Bueno-Orovio model using the Finitewave framework. 
+
+Simulation Setup:
+-----------------
+- Tissue Grid: A 100×5 cardiac tissue domain.
+- Stimulation:
+  - A square side stimulus is applied at t = 0.
+- Time and Space Resolution:
+  - Temporal step (dt): 0.01
+  - Spatial resolution (dr): 0.25
+  - Total simulation time (t_max): 20
+
+Execution:
+----------
+1. Create a 2D cardiac tissue grid.
+2. Apply a stimulus along the upper boundary to initiate excitation.
+3. Set up and run the Bueno-Orovio model.
+4. Visualize the transmembrane potential.
+
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
