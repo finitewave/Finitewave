@@ -21,6 +21,8 @@ from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import (
 class LuoRudy913D(LuoRudy912D):
     """
     Implements the 3D Luo-Rudy 1991 cardiac model.
+
+    See LuoRudy912D for the 2D model description.
     """
     def __init__(self):
         super().__init__()
@@ -116,7 +118,7 @@ def ionic_kernel_3d(u_new, u, m, h, j_, d, f, x, cai, indexes, dt, gna, gsi, gk,
         ik1 = calc_ik1(u[i, j, k], ko, E_K1, gk1)
 
         # Plateau potassium current:
-        ikp = calc_ikp(u[i, j, k], ko, E_K1, gkp)
+        ikp = calc_ikp(u[i, j, k], E_K1, gkp)
 
         # Background current:
         ib = calc_ib(u[i, j, k], gb)

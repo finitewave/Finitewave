@@ -12,22 +12,63 @@ from finitewave.cpuwave2D.stencil.isotropic_stencil_2d import (
 
 class TP062D(CardiacModel):
     """
-    A class to represent the TP06 cardiac model in 2D.
+    Implements the ten Tusscher–Panfilov 2006 (TP06) human ventricular ionic model in 2D.
+
+    The TP06 model is a detailed biophysical model of the human ventricular 
+    action potential, designed to simulate realistic electrical behavior in 
+    tissue including alternans, reentrant waves, and spiral wave breakup.
+
+    This model includes:
+    - 18 dynamic state variables (voltage, ion concentrations, channel gates, buffers)
+    - Full calcium handling with subspace (cass) and sarcoplasmic reticulum (casr)
+    - Sodium, potassium, and calcium currents including background, exchanger, and pumps
+    - Buffering effects and intracellular transport
+
+    Finitewave provides this model in 2D form for efficient simulation and 
+    reproducible experimentation with custom spatial setups.
+
+    Attributes
+    ----------
+    D_model : float
+        Diffusion coefficient specific to this model (cm²/ms).
+    state_vars : list of str
+        List of all state variable names, used for checkpointing and logging.
+    ko : float
+        Extracellular potassium concentration (mM).
+    cao : float
+        Extracellular calcium concentration (mM).
+    nao : float
+        Extracellular sodium concentration (mM).
+    Vc : float
+        Cytoplasmic volume (μL).
+    Vsr : float
+        Sarcoplasmic reticulum volume (μL).
+    Vss : float
+        Subsarcolemmal space volume (μL).
+    R, T, F : float
+        Universal gas constant, absolute temperature, and Faraday constant.
+    RTONF : float
+        Precomputed RT/F value for Nernst equation.
+    CAPACITANCE : float
+        Membrane capacitance per unit area (μF/cm²).
+    gna, gcal, gkr, gks, gk1, gto : float
+        Conductances for major ionic channels.
+    gbna, gbca : float
+        Background sodium and calcium conductances.
+    gpca, gpk : float
+        Pump-related conductances.
+    knak, knaca : float
+        Maximal Na⁺/K⁺ pump and Na⁺/Ca²⁺ exchanger rates.
+    Km*, Kbuf*, Vmaxup, Vrel, etc.
+        Numerous kinetic constants for buffering, pump activity, and calcium handling.
 
     Paper
     -----
     ten Tusscher KH, Panfilov AV. 
     Alternans and spiral breakup in a human ventricular tissue model.
-    Am J Physiol Heart Circ Physiol. 2006 Sep;291(3):H1088-100. 
-    doi: 10.1152/ajpheart.00109.2006. 
-    Epub 2006 Mar 24. PMID: 16565318.
+    Am J Physiol Heart Circ Physiol. 2006 Sep;291(3):H1088–H1100.
+    https://doi.org/10.1152/ajpheart.00109.2006
 
-    Attributes
-    ----------
-    D_model : float
-        Model specific diffusion coefficient.
-    state_vars : list of str
-        List of state variable names.
     """
 
     def __init__(self):

@@ -14,13 +14,13 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
 
 # create model object and set up parameters:
-mitchell_schaeffer = fw.FentonKarma2D()
-mitchell_schaeffer.dt = 0.01
-mitchell_schaeffer.dr = 0.25
-mitchell_schaeffer.t_max = 500
+fentom_karma = fw.FentonKarma2D()
+fentom_karma.dt = 0.01
+fentom_karma.dr = 0.25
+fentom_karma.t_max = 500
 # add the tissue and the stim parameters to the model object:
-mitchell_schaeffer.cardiac_tissue = tissue
-mitchell_schaeffer.stim_sequence = stim_sequence
+fentom_karma.cardiac_tissue = tissue
+fentom_karma.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
 action_pot_tracker = fw.ActionPotential2DTracker()
@@ -29,14 +29,14 @@ action_pot_tracker = fw.ActionPotential2DTracker()
 action_pot_tracker.cell_ind = [[50, 3]]
 action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
-mitchell_schaeffer.tracker_sequence = tracker_sequence
+fentom_karma.tracker_sequence = tracker_sequence
 
 # run the model:
-mitchell_schaeffer.run()
+fentom_karma.run()
 
 # plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * mitchell_schaeffer.dt
+time = np.arange(len(action_pot_tracker.output)) * fentom_karma.dt
 plt.plot(time, action_pot_tracker.output, label="cell_50_3")
 plt.legend(title='Fenton-Karma')
 plt.xlabel('Time (ms)')

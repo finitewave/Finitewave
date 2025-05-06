@@ -12,6 +12,8 @@ from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import (
 class Barkley3D(Barkley2D):
     """
     Implementation of the Barkley 3D cardiac model.
+
+    See Barkley2D for the 2D model description.
     """
 
     def __init__(self):

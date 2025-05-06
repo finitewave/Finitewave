@@ -1,3 +1,4 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -5,8 +6,8 @@ import finitewave as fw
 
 # create a tissue:
 n = 100
-m = 5
-k = 3
+k = 5
+m = 3
 tissue = fw.CardiacTissue3D([n, m, k])
 
 # set up stimulation parameters:
@@ -14,13 +15,13 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, 5, 0, m, 0, k))
 
 # create model object and set up parameters:
-fentom_karma = fw.FentonKarma3D()
-fentom_karma.dt = 0.01
-fentom_karma.dr = 0.25
-fentom_karma.t_max = 500
+bueno_orovio = fw.BuenoOrovio3D()
+bueno_orovio.dt = 0.01
+bueno_orovio.dr = 0.25
+bueno_orovio.t_max = 500
 # add the tissue and the stim parameters to the model object:
-fentom_karma.cardiac_tissue = tissue
-fentom_karma.stim_sequence = stim_sequence
+bueno_orovio.cardiac_tissue = tissue
+bueno_orovio.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
 action_pot_tracker = fw.ActionPotential3DTracker()
@@ -29,16 +30,16 @@ action_pot_tracker = fw.ActionPotential3DTracker()
 action_pot_tracker.cell_ind = [[50, 3, 1]]
 action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
-fentom_karma.tracker_sequence = tracker_sequence
+bueno_orovio.tracker_sequence = tracker_sequence
 
 # run the model:
-fentom_karma.run()
+bueno_orovio.run()
 
 # plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * fentom_karma.dt
+time = np.arange(len(action_pot_tracker.output)) * bueno_orovio.dt
 plt.plot(time, action_pot_tracker.output, label="cell_50_3_1")
-plt.legend(title='Fentom-Karma')
+plt.legend(title='Bueno-Orovio')
 plt.xlabel('Time (ms)')
 plt.title('Action Potential')
 plt.grid()

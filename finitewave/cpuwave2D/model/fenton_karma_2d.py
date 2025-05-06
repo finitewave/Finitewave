@@ -14,8 +14,57 @@ class FentonKarma2D(CardiacModel):
 
     def __init__(self):
         """
-        Initializes the Fenton-Karma instance with default parameters.
+        Two-dimensional implementation of the Fenton-Karma model of cardiac electrophysiology.
 
+        The Fenton-Karma model is a minimal three-variable model designed to reproduce
+        essential features of human ventricular action potentials, including restitution, 
+        conduction velocity dynamics, and spiral wave behavior. It captures the interaction 
+        between fast depolarization, slow repolarization, and calcium-mediated effects 
+        through simplified phenomenological equations.
+
+        This implementation corresponds to the MLR-I parameter set described in the original paper
+        and supports 2D isotropic and anisotropic tissue simulations with diffusion.
+
+        Attributes
+        ----------
+        u : np.ndarray
+            Transmembrane potential (normalized, dimensionless).
+        v : np.ndarray
+            Fast recovery variable, representing sodium channel inactivation.
+        w : np.ndarray
+            Slow recovery variable, representing calcium channel dynamics.
+        D_model : float
+            Baseline diffusion coefficient used in the diffusion stencil.
+        state_vars : list of str
+            Names of the state variables stored during the simulation.
+        npfloat : str
+            Floating point precision (default is 'float64').
+
+        Model Parameters
+        ----------------
+        tau_r : float
+            Time constant for repolarization (outward current).
+        tau_o : float
+            Time constant for the open-state decay of fast sodium channels.
+        tau_d : float
+            Time constant for depolarization (fast inward current).
+        tau_si : float
+            Time constant for the slow inward (calcium-like) current.
+        tau_v_m : float
+            Time constant for inactivation gate v (membrane below threshold).
+        tau_v_p : float
+            Time constant for recovery gate v (above threshold).
+        tau_w_m : float
+            Time constant for recovery gate w (below threshold).
+        tau_w_p : float
+            Time constant for decay of w (above threshold).
+        k : float
+            Steepness parameter for the slow inward current.
+        u_c : float
+            Activation threshold for recovery dynamics.
+        uc_si : float
+            Activation threshold for the slow inward current.
+        
         Paper
         -----
         Fenton, F., & Karma, A. (1998).
@@ -23,7 +72,7 @@ class FentonKarma2D(CardiacModel):
         with fiber rotation: Filament instability and fibrillation.
         Chaos, 8(1), 20-47.
         https://doi.org/10.1063/1.166311
-            
+                
         """
         super().__init__()
         self.v = np.ndarray
@@ -89,20 +138,115 @@ class FentonKarma2D(CardiacModel):
     
 @njit
 def calc_Jfi(u, v, u_c, tau_d):
+    """
+    Computes the fast inward current (J_fi) for the Fenton-Karma model.
+
+    This current is responsible for the rapid depolarization of the membrane
+    potential. It is active only when the membrane potential exceeds a threshold `u_c`.
+
+    Parameters
+    ----------
+    u : float
+        Current membrane potential (dimensionless).
+    v : float
+        Fast recovery gate (sodium channel inactivation).
+    u_c : float
+        Activation threshold for the inward current.
+    tau_d : float
+        Time constant for depolarization.
+
+    Returns
+    -------
+    float
+        Value of the fast inward current at this point.
+    """
     return (-v*(1 - u)*(u - u_c))/tau_d if (u - u_c) >= 0 else 0.0
 
 @njit
 def calc_Jso(u, u_c, tau_o, tau_r):
+    """
+    Computes the slow outward current (J_so) for repolarization.
+
+    This current contains two parts:
+    - a linear repolarizing component active below threshold `u_c`
+    - a constant repolarizing component above threshold
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    u_c : float
+        Activation threshold.
+    tau_o : float
+        Time constant for subthreshold repolarization.
+    tau_r : float
+        Time constant for suprathreshold repolarization.
+
+    Returns
+    -------
+    float
+        Value of the outward repolarizing current.
+    """
     jso_1 = u/tau_o if (u_c - u) >= 0 else 0.0 
     jso_2 = 1/tau_r if (u - u_c) >= 0 else 0.0
     return jso_1 + jso_2
 
 @njit
 def calc_Jsi(u, w, k, uc_si, tau_si):
+    """
+    Computes the slow inward (calcium-like) current (J_si).
+
+    This current is responsible for the plateau phase of the action potential
+    and depends on the gating variable `w` and a smoothed activation threshold.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    w : float
+        Slow recovery gate.
+    k : float
+        Steepness of the tanh activation curve.
+    uc_si : float
+        Activation threshold for the slow inward current.
+    tau_si : float
+        Time constant for the slow inward current.
+
+    Returns
+    -------
+    float
+        Value of the slow inward current.
+    """
     return -w*(1 + np.tanh(k*(u - uc_si)))/(2*tau_si)
 
 @njit
 def calc_v(v, u, dt, u_c, tau_v_m, tau_v_p):
+    """
+    Updates the fast recovery gate `v` over time.
+
+    This gate controls sodium channel availability and changes depending on
+    whether the membrane potential is below or above a critical threshold.
+
+    Parameters
+    ----------
+    v : float
+        Current value of the recovery variable.
+    u : float
+        Membrane potential.
+    dt : float
+        Time step.
+    u_c : float
+        Activation threshold.
+    tau_v_m : float
+        Time constant below threshold.
+    tau_v_p : float
+        Time constant above threshold.
+
+    Returns
+    -------
+    float
+        Updated value of `v`.
+    """
     v_1 = (1 - v)/tau_v_m if (u_c - u) >= 0 else 0.0
     v_2 = v/tau_v_p if (u - u_c) >= 0 else 0.0
     v += dt*(v_1 - v_2)
@@ -110,6 +254,32 @@ def calc_v(v, u, dt, u_c, tau_v_m, tau_v_p):
 
 @njit
 def calc_w(w, u, dt, u_c, tau_w_m, tau_w_p):
+    """
+    Updates the slow recovery gate `w` over time.
+
+    This gate represents the calcium channel recovery and decays similarly to `v`,
+    depending on whether the membrane potential is above or below threshold `u_c`.
+
+    Parameters
+    ----------
+    w : float
+        Current value of the recovery variable.
+    u : float
+        Membrane potential.
+    dt : float
+        Time step.
+    u_c : float
+        Activation threshold.
+    tau_w_m : float
+        Time constant below threshold.
+    tau_w_p : float
+        Time constant above threshold.
+
+    Returns
+    -------
+    float
+        Updated value of `w`.
+    """
     w_1 = (1 - w)/tau_w_m if (u_c - u) >= 0 else 0.0
     w_2 = w/tau_w_p if (u - u_c) >= 0 else 0.0
     w += dt*(w_1 - w_2)

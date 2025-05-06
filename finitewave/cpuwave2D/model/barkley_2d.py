@@ -12,7 +12,37 @@ from finitewave.cpuwave2D.stencil.isotropic_stencil_2d import (
 
 class Barkley2D(CardiacModel):
     """
-    Implementation of the Barkley 2D cardiac model.
+    Two-dimensional implementation of the Barkley model for excitable media.
+
+    The Barkley model is a simplified two-variable reaction–diffusion system
+    originally developed to study wave propagation in excitable media. While it is 
+    not biophysically detailed, it captures essential qualitative features of 
+    cardiac-like excitation dynamics such as spiral waves, wave break, and reentry.
+
+    This implementation is included for benchmarking, educational purposes, 
+    and comparison against more detailed cardiac models.
+
+    Attributes
+    ----------
+    u : np.ndarray
+        Excitation variable (analogous to membrane potential).
+    v : np.ndarray
+        Recovery variable controlling excitability.
+    D_model : float
+        Diffusion coefficient for excitation variable.
+    state_vars : list of str
+        Names of variables saved during simulation.
+    npfloat : str
+        Floating-point precision (default: 'float64').
+
+    Model Parameters
+    ----------------
+    a : float
+        Threshold-like parameter controlling excitability.
+    b : float
+        Recovery time scale.
+    eap : float
+        Controls sharpness of the activation term (nonlinear gain).
 
     Paper
     -----
@@ -78,21 +108,24 @@ class Barkley2D(CardiacModel):
 @njit
 def calc_v(v, u, dt):
     """
-    Calculates the recovery variable for the Barkley 2D model.
+    Updates the recovery variable v for the Barkley model.
+
+    The recovery variable follows a simple linear relaxation toward the
+    excitation variable `u`, simulating return to the resting state after excitation.
 
     Parameters
     ----------
-    v : np.ndarray
-        Recovery variable array.
-    u : np.ndarray
-        Action potential array.
+    v : float
+        Current value of the recovery variable.
+    u : float
+        Current value of the excitation variable.
     dt : float
-        Time step for the simulation.
+        Time step for numerical integration.
 
     Returns
     -------
-    np.ndarray
-        Updated recovery variable array.
+    float
+        Updated value of the recovery variable.
     """
 
     v += dt*(u-v)

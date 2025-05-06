@@ -12,7 +12,39 @@ from finitewave.cpuwave2D.stencil.isotropic_stencil_2d import (
 
 class AlievPanfilov2D(CardiacModel):
     """
-    Implementation of the Aliev-Panfilov 2D cardiac model.
+    Two-dimensional implementation of the Aliev–Panfilov model of cardiac excitation.
+
+    The Aliev–Panfilov model is a phenomenological two-variable model designed to
+    reproduce basic features of cardiac excitation, including wave propagation and
+    reentry, while remaining computationally efficient. It uses a single recovery
+    variable coupled with a cubic nonlinearity to simulate action potential dynamics
+    in excitable media.
+
+    Attributes
+    ----------
+    u : np.ndarray
+        Transmembrane potential (dimensionless, normalized to [0,1]).
+    v : np.ndarray
+        Recovery variable describing refractoriness.
+    D_model : float
+        Diffusion coefficient used for simulating spatial propagation.
+    state_vars : list of str
+        Names of the state variables to be saved and restored.
+    npfloat : str
+        Floating-point precision used in the simulation (default: 'float64').
+
+    Model Parameters
+    ----------------
+    a : float
+        Excitability threshold parameter.
+    k : float
+        Strength of the nonlinear source term (governs spike shape).
+    eap : float
+        Baseline recovery rate.
+    mu_1 : float
+        Recovery rate coefficient (scales v feedback).
+    mu_2 : float
+        Recovery rate offset (modulates u-dependence of recovery).
 
     Paper
     -----
@@ -96,31 +128,36 @@ class AlievPanfilov2D(CardiacModel):
 @njit
 def calc_v(v, u, dt, a, k, eap, mu_1, mu_2):
     """
-    Calculates the recovery variable for the Aliev-Panfilov 2D model.
+    Computes the update of the recovery variable v for the Aliev–Panfilov model.
+
+    This function implements the ordinary differential equation governing the
+    evolution of the recovery variable `v`, which models the refractoriness of
+    the cardiac tissue. The rate of recovery depends on both `v` and `u`, with a
+    nonlinear interaction term involving a cubic expression in `u`.
 
     Parameters
     ----------
-    v : np.ndarray
-        Recovery variable array.
-    u : np.ndarray
-        Action potential array.
+    v : float
+        Current value of the recovery variable.
+    u : float
+        Current value of the transmembrane potential.
     dt : float
-        Time step for the simulation.
+        Time step for integration.
     a : float
-        Model parameter.
+        Excitability threshold.
     k : float
-        Model parameter.
+        Strength of the nonlinear source term.
     eap : float
-        Model parameter.
+        Baseline recovery rate.
     mu_1 : float
-        Model parameter.
+        Recovery scaling parameter.
     mu_2 : float
-        Model parameter.
+        Offset parameter for recovery rate.
 
     Returns
     -------
-    np.ndarray
-        Updated recovery variable array.
+    float
+        Updated value of the recovery variable `v`.
     """
 
     v += (- dt * (eap + (mu_1 * v) / (mu_2 + u)) *
@@ -132,9 +169,6 @@ def calc_v(v, u, dt, a, k, eap, mu_1, mu_2):
 def ionic_kernel_2d(u_new, u, v, indexes, dt, a, k, eap, mu_1, mu_2):
     """
     Computes the ionic kernel for the Aliev-Panfilov 2D model.
-
-    This function updates the action potential (u) and recovery variable (v) 
-    based on the Aliev-Panfilov model equations.
 
     Parameters
     ----------

@@ -14,7 +14,27 @@ class MitchellSchaeffer2D(CardiacModel):
 
     def __init__(self):
         """
-        Initializes the Mitchell-Schaeffer instance with default parameters.
+        Implements the 2D Mitchell-Schaeffer model of cardiac excitation.
+
+        This is a phenomenological two-variable model capturing the essence of cardiac 
+        action potential dynamics using a simplified formulation. It separates inward and 
+        outward currents and uses a single gating variable to regulate excitability.
+
+        It reproduces key features like:
+        - Excitability and recovery
+        - Action potential duration (APD)
+        - Restitution and wave propagation
+
+        Attributes
+        ----------
+        h : np.ndarray
+            Gating variable controlling the availability of inward current.
+        D_model : float
+            Diffusion coefficient for spatial propagation.
+        state_vars : list
+            Names of the dynamic variables for saving/restoring state.
+        npfloat : str
+            Floating-point type used (default: float64).
 
         Paper
         -----
@@ -77,22 +97,33 @@ class MitchellSchaeffer2D(CardiacModel):
 @njit
 def calc_h(h, u, dt, tau_close, tau_open, u_gate):
     """
-    Calculates the gating variable h for the Mitchell-Schaeffer model.
+    Updates the gating variable h for the inward current.
+
+    The gating variable h plays the role of a generic recovery mechanism.
+    - It increases toward 1 with time constant tau_open when the membrane is at rest.
+    - It decreases toward 0 with time constant tau_close when the membrane is excited.
+
+    This mimics Na⁺ channel inactivation in a simplified way.
 
     Parameters
     ----------
-    h : ndarray
-        The h variable to be updated.
-    u : ndarray
-        The u variable representing the membrane potential.
+    h : float
+        Current value of the gating variable.
+    u : float
+        Membrane potential (dimensionless, in [0,1]).
     dt : float
-        The time step for the simulation.
+        Time step [ms].
     tau_close : float
-        The time constant for the closing of the h gate.
+        Inactivation time constant (closing).
     tau_open : float
-        The time constant for the opening of the h gate.
+        Recovery time constant (opening).
     u_gate : float
-        The threshold value for the gating variable.
+        Threshold potential for switching gate dynamics.
+
+    Returns
+    -------
+    float
+        Updated value of h.
     """
     h += dt * (1.0 - h) / tau_open if u < u_gate else dt * (-h) / tau_close
     return h
@@ -100,16 +131,27 @@ def calc_h(h, u, dt, tau_close, tau_open, u_gate):
 @njit
 def calc_J_in(h, u, tau_in):
     """
-    Calculates the inward current for the Mitchell-Schaeffer model.
+    Computes the inward current responsible for depolarization.
+
+    This is a regenerative current:
+    J_in = h * u² * (1 - u) / tau_in
+
+    It activates when h is high (available) and u is sufficiently depolarized.
+    The form ensures that the current grows with u but shuts off when u ~ 1.
 
     Parameters
     ----------
-    h : ndarray
-        The h variable representing the gating variable.
-    u : ndarray
-        The u variable representing the membrane potential.
+    h : float
+        Gating variable controlling channel availability.
+    u : float
+        Membrane potential (dimensionless).
     tau_in : float
-        The time constant for the inward current.
+        Time constant for inward flow.
+
+    Returns
+    -------
+    float
+        Value of the inward current.
     """
     C = (u**2)*(1-u)
     return h*C/tau_in
@@ -117,14 +159,24 @@ def calc_J_in(h, u, tau_in):
 @njit
 def calc_J_out(u, tau_out):
     """
-    Calculates the outward current for the Mitchell-Schaeffer model.
+    Computes the outward current responsible for repolarization.
+
+    This linear term simulates the slow repolarizing current that restores 
+    the membrane potential back to rest.
+
+    J_out = -u / tau_out
 
     Parameters
     ----------
-    u : ndarray
-        The u variable representing the membrane potential.
+    u : float
+        Membrane potential.
     tau_out : float
-        The time constant for the outward current.
+        Time constant for outward current (repolarization).
+
+    Returns
+    -------
+    float
+        Value of the outward current.
     """
     return -u/tau_out
 
@@ -145,12 +197,6 @@ def ionic_kernel_2d(u_new, u, h, indexes, dt, tau_close, tau_open, tau_in, tau_o
         List of indexes representing myocardial cells.
     dt : float
         The time step for the simulation.
-    tau_close : float
-        The time constant for the closing of the h gate.
-    tau_open : float
-        The time constant for the opening of the h gate.
-    u_gate : float
-        The threshold value for the gating variable.
     """
     n_j = u.shape[1]
 

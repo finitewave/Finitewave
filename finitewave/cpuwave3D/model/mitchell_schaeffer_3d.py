@@ -17,6 +17,8 @@ from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import (
 class MitchellSchaeffer3D(MitchellSchaeffer2D):
     """
     Implementation of the Mitchell-Schaeffer 3D cardiac model.
+
+    See MitchellSchaeffer2D for the 2D model description.
     """
 
     def __init__(self):

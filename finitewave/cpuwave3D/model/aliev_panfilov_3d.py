@@ -12,6 +12,8 @@ from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import (
 class AlievPanfilov3D(AlievPanfilov2D):
     """
     Implementation of the Aliev-Panfilov 3D cardiac model.
+
+    See AlievPanfilov2D for the 2D model description.
     """
 
     def __init__(self):

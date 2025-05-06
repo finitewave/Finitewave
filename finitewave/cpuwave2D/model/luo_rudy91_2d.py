@@ -11,7 +11,35 @@ from finitewave.cpuwave2D.stencil.isotropic_stencil_2d import (
 
 class LuoRudy912D(CardiacModel):
     """
-    Implements the 2D Luo-Rudy 1991 cardiac model.
+    Implements the Luo-Rudy 1991 ventricular action potential model.
+
+    This biophysically detailed model simulates the ionic currents and membrane potential 
+    of a ventricular cardiac cell based on Hodgkin-Huxley-type formalism. It was one of 
+    the first to incorporate realistic ionic channel kinetics, calcium dynamics, and 
+    multiple potassium currents to reproduce key phases of the action potential.
+
+    The model includes:
+    - Fast Na⁺ current (I_Na)
+    - Slow inward Ca²⁺ current (I_Si)
+    - Time-dependent K⁺ current (I_K)
+    - Time-independent K⁺ current (I_K1)
+    - Plateau K⁺ current (I_Kp)
+    - Background/leak current (I_b)
+
+    Attributes
+    ----------
+    state_vars : list of str
+        List of state variable names to save and restore (`u`, `m`, `h`, `j`, `d`, `f`, `x`, `cai`).
+    D_model : float
+        Diffusion coefficient representing electrical conductivity in the medium (typically set to 0.1).
+    gna, gsi, gk, gk1, gkp, gb : float
+        Maximum conductances for Na⁺, Ca²⁺, K⁺, and background channels [mS/μF].
+    ko, ki, nao, nai, cao : float
+        Ion concentrations in mM (extracellular and intracellular for Na⁺, K⁺, Ca²⁺).
+    R, T, F : float
+        Physical constants: gas constant, temperature in Kelvin, and Faraday constant.
+    PR_NaK : float
+        Sodium/potassium permeability ratio (used in reversal potential calculation for I_K).
 
     Paper
     -----
@@ -21,12 +49,6 @@ class LuoRudy912D(CardiacModel):
     doi: 10.1161/01.res.68.6.1501. 
     PMID: 1709839.
 
-    Attributes
-    ----------
-    state_vars : list
-        List of state variable names.
-    D_model : float
-        Model specific diffusion coefficient.
     """
 
     def __init__(self):
@@ -126,29 +148,36 @@ class LuoRudy912D(CardiacModel):
 @njit
 def calc_ina(u, dt, m, h, j, E_Na, gna):
     """
-    Calculates the fast sodium current.
+    Computes the fast inward sodium current (I_Na) and updates gating variables m, h, j.
+
+    I_Na is responsible for the rapid depolarization (phase 0) of the action potential. 
+    It depends on three gates:
+    - m: activation gate (opens quickly),
+    - h: fast inactivation gate,
+    - j: slow inactivation gate.
+
+    Gating dynamics follow Hodgkin-Huxley kinetics with voltage-dependent time constants 
+    and steady-state values. I_Na = g_Na * m^3 * h * j * (u - E_Na).
 
     Parameters
     ----------
     u : float
-        Membrane potential.
+        Membrane potential [mV].
     dt : float
-        Time step for the simulation.
-    m : float
-        Gating variable `m`.
-    h : float
-        Gating variable `h`.
-    j : float
-        Gating variable `j`.
+        Time step [ms].
+    m, h, j : float
+        Gating variables for the sodium channel.
     E_Na : float
-        Sodium equilibrium potential.
+        Reversal potential for Na⁺ [mV].
     gna : float
-        Sodium conductance.
+        Maximal sodium conductance [mS/μF].
 
     Returns
     -------
-    float
-        Sodium current.
+    ina : float
+        Fast sodium current [μA/μF].
+    m, h, j : float
+        Updated gating variables.
     """
     alpha_h, beta_h, beta_J, alpha_J = 0, 0, 0, 0
     if u >= -40.:
@@ -186,27 +215,33 @@ def calc_ina(u, dt, m, h, j, E_Na, gna):
 @njit
 def calc_isk(u, dt, d, f, cai, gsi):
     """
-    Calculates the slow inward current.
+    Computes the slow inward calcium current (I_Si) and updates d, f, and intracellular calcium.
+
+    I_Si is primarily carried by L-type Ca²⁺ channels and governs the plateau (phase 2).
+    The reversal potential E_Si is dynamically calculated based on intracellular Ca²⁺ levels.
+
+    Calcium handling is simplified: part of I_Si is subtracted from intracellular Ca²⁺, 
+    while a constant leak term restores it toward a baseline.
 
     Parameters
     ----------
     u : float
-        Membrane potential.
+        Membrane potential [mV].
     dt : float
-        Time step for the simulation.
-    d : float
-        Gating variable `d`.
-    f : float
-        Gating variable `f`.
+        Time step [ms].
+    d, f : float
+        Activation and inactivation gates of the calcium channel.
     cai : float
-        Intracellular calcium concentration.
+        Intracellular calcium concentration [mM].
     gsi : float
-        Slow inward calcium conductance.
-    
+        Maximal calcium conductance [mS/μF].
+
     Returns
     -------
-    float
-        Slow inward current.
+    I_Si : float
+        Slow inward calcium current [μA/μF].
+    d, f, cai : float
+        Updated gating variables and intracellular Ca²⁺.
     """
     E_Si = 7.7 - 13.0287 * np.log(cai)
     I_Si = gsi * d * f * (u - E_Si)
@@ -238,39 +273,39 @@ def calc_isk(u, dt, d, f, cai, gsi):
 @njit
 def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
     """
-    Calculates the time-dependent potassium current.
+    Computes the time-dependent outward potassium current (I_K) and updates gate x.
+
+    This current drives late repolarization (phase 3) and is voltage- and time-dependent.
+    Reversal potential is calculated via the Goldman-Hodgkin-Katz equation 
+    (with sodium/potassium permeability ratio).
+
+    An auxiliary factor Xi introduces voltage-sensitive activation near -100 mV.
 
     Parameters
     ----------
     u : float
-        Membrane potential.
+        Membrane potential [mV].
     dt : float
-        Time step for the simulation.
+        Time step [ms].
     x : float
-        Gating variable `x`.
-    ko : float
-        Extracellular potassium concentration.
-    ki : float
-        Intracellular potassium concentration.
-    nao : float
-        Extracellular sodium concentration.
-    nai : float
-        Intracellular sodium concentration.
+        Activation gate of the delayed rectifier K⁺ channel.
+    ko, ki : float
+        Extra-/intracellular potassium concentrations [mM].
+    nao, nai : float
+        Extra-/intracellular sodium concentrations [mM].
     PR_NaK : float
-        Sodium-potassium pump permeability ratio.
-    R : float
-        Universal gas constant.
-    T : float
-        Temperature.
-    F : float
-        Faraday constant.
+        Na⁺/K⁺ permeability ratio.
+    R, T, F : float
+        Gas constant, temperature [K], and Faraday constant.
     gk : float
-        Time-dependent potassium conductance.
-    
+        Maximum potassium conductance [mS/μF].
+
     Returns
     -------
-    float
-        Time-dependent potassium current.
+    I_K : float
+        Time-dependent potassium current [μA/μF].
+    x : float
+        Updated activation gate.
     """
     E_K = (R * T / F) * \
         np.log((ko + PR_NaK * nao) / (ki + PR_NaK * nai))
@@ -302,23 +337,27 @@ def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
 @njit
 def calc_ik1(u, ko, E_K1, gk1):
     """
-    Calculates the time-independent potassium current.
+    Computes the time-independent inward rectifier potassium current (I_K1).
+
+    I_K1 stabilizes the resting membrane potential and contributes to 
+    late repolarization. It is primarily active at negative voltages and 
+    follows a voltage-dependent gating-like term (K1_x).
 
     Parameters
     ----------
     u : float
-        Membrane potential.
+        Membrane potential [mV].
     ko : float
-        Extracellular potassium concentration.
+        Extracellular potassium [mM].
     E_K1 : float
-        Inward rectifier potassium equilibrium potential.
+        Equilibrium potential for K1 current [mV].
     gk1 : float
-        Inward rectifier potassium conductance.
-    
+        Maximum K1 conductance [mS/μF].
+
     Returns
     -------
-    float
-        Time-independent potassium current.
+    I_K1 : float
+        Time-independent K⁺ current [μA/μF].
     """
     alpha_K1 = 1.02 / (1 + np.exp(0.2385 * (u - E_K1 - 59.215)))
     beta_K1 = (0.49124 * np.exp(0.08032 * (u - E_K1 + 5.476)) + np.exp(0.06175 * (u - E_K1 - 594.31))) / \
@@ -332,25 +371,28 @@ def calc_ik1(u, ko, E_K1, gk1):
     return I_K1
 
 @njit
-def calc_ikp(u, ko, E_K1, gkp):
+def calc_ikp(u, E_K1, gkp):
     """
-    Calculates the plateau potassium current.
+    Computes the plateau potassium current (I_Kp).
+
+    I_Kp is a small, quasi-steady outward current that operates in the 
+    plateau phase. Its activation is a sigmoid function of voltage.
 
     Parameters
     ----------
     u : float
-        Membrane potential.
+        Membrane potential [mV].
     ko : float
-        Extracellular potassium concentration.
+        Extracellular potassium [mM].
     E_K1 : float
-        Inward rectifier potassium equilibrium potential.
+        Equilibrium potential (same as I_K1).
     gkp : float
-        Plateau potassium conductance.
+        Plateau potassium conductance [mS/μF].
 
     Returns
     -------
-    float
-        Plateau potassium current.
+    I_Kp : float
+        Plateau potassium current [μA/μF].
     """
     E_Kp = E_K1
     K_p = 1. / (1 + np.exp((7.488 - u) / 5.98))
@@ -361,19 +403,21 @@ def calc_ikp(u, ko, E_K1, gkp):
 @njit
 def calc_ib(u, gb):
     """
-    Calculates the background current.
+    Computes the non-specific background (leak) current.
+
+    This is a linear leak current contributing to resting potential maintenance.
 
     Parameters
     ----------
     u : float
-        Membrane potential.
+        Membrane potential [mV].
     gb : float
-        Background conductance.
-    
+        Background conductance [mS/μF].
+
     Returns
     -------
-    float
-        Background current.
+    I_b : float
+        Background current [μA/μF].
     """
     return gb * (u + 59.87)
 
@@ -434,7 +478,7 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, indexes, dt, gna, gsi, gk,
         ik1 = calc_ik1(u[i, j], ko, E_K1, gk1)
 
         # Plateau potassium current:
-        ikp = calc_ikp(u[i, j], ko, E_K1, gkp)
+        ikp = calc_ikp(u[i, j], E_K1, gkp)
 
         # Background current:
         ib = calc_ib(u[i, j], gb)

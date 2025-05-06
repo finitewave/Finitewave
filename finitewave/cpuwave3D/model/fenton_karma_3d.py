@@ -19,6 +19,8 @@ from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import (
 class FentonKarma3D(FentonKarma2D):
     """
     Implementation of the Fenton-Karma 3D cardiac model.
+
+    See FentonKarma2D for the 2D model description.
     """
 
     def __init__(self):

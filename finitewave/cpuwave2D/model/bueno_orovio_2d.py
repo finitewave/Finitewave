@@ -14,7 +14,72 @@ class BuenoOrovio2D(CardiacModel):
 
     def __init__(self):
         """
-        Initializes the Bueno-Orovio instance with default parameters.
+        Two-dimensional implementation of the Bueno-Orovio–Cherry–Fenton (BOCF) model 
+        for simulating human ventricular tissue electrophysiology.
+
+        The BOCF model is a minimal phenomenological model developed to capture 
+        key ionic mechanisms and reproduce realistic human ventricular action potential 
+        dynamics, including restitution, conduction block, and spiral wave behavior. 
+        It consists of four variables: transmembrane potential (u), two gating variables (v, w), 
+        and one additional slow variable (s), representing calcium-related dynamics.
+
+        This implementation corresponds to the EPI (epicardial) parameter set described in the paper.
+
+        Attributes
+        ----------
+        u : np.ndarray
+            Transmembrane potential (dimensionless, typically in [0, 1.55]).
+        v : np.ndarray
+            Fast gating variable representing sodium channel inactivation.
+        w : np.ndarray
+            Slow recovery variable representing calcium and potassium gating.
+        s : np.ndarray
+            Slow variable related to calcium inactivation.
+        D_model : float
+            Diffusion coefficient for spatial propagation.
+        state_vars : list of str
+            Names of state variables to be saved or restored.
+        npfloat : str
+            Floating point precision (default: 'float64').
+
+        Model Parameters (EPI set)
+        --------------------------
+        u_o : float
+            Resting membrane potential.
+        u_u : float
+            Peak potential (upper bound).
+        theta_v, theta_w : float
+            Activation thresholds for v and w.
+        theta_v_m, theta_o : float
+            Thresholds for switching time constants.
+        tau_v1_m, tau_v2_m : float
+            Time constants for v below/above threshold.
+        tau_v_p : float
+            Decay constant for v.
+        tau_w1_m, tau_w2_m : float
+            Base and transition time constants for w.
+        k_w_m, u_w_m : float
+            Parameters controlling the shape of τw curve.
+        tau_w_p : float
+            Time constant for decay of w above threshold.
+        tau_fi : float
+            Time constant for fast inward current (J_fi).
+        tau_o1, tau_o2 : float
+            Time constants for outward current below/above threshold.
+        tau_so1, tau_so2 : float
+            Time constants for repolarizing tail current.
+        k_so, u_so : float
+            Parameters controlling nonlinearity in tau_so.
+        tau_s1, tau_s2 : float
+            Time constants for the s-gate below/above threshold.
+        k_s, u_s : float
+            Parameters for tanh activation of the s variable.
+        tau_si : float
+            Time constant for slow inward current (J_si).
+        tau_w_inf : float
+            Slope of w∞ below threshold.
+        w_inf_ : float
+            Asymptotic value of w∞ above threshold.
 
         Paper
         -----
@@ -23,7 +88,6 @@ class BuenoOrovio2D(CardiacModel):
         J Theor Biol., 253(3), 544-60.
         https://doi.org/10.1016/j.jtbi.2008.03.029
 
-            
         """
         super().__init__()
         self.v = np.ndarray
@@ -111,62 +175,248 @@ class BuenoOrovio2D(CardiacModel):
 
 @njit
 def calc_v(v, u, dt, theta_v, v_inf, tau_v_m, tau_v_p):
+    """
+    Updates the fast inactivation gate variable `v`.
+
+    The variable `v` models the fast sodium channel inactivation.
+    It follows a piecewise ODE with different dynamics depending
+    on whether the membrane potential `u` is above or below `theta_v`.
+
+    Parameters
+    ----------
+    v : float
+        Current value of the v gate.
+    u : float
+        Current membrane potential.
+    dt : float
+        Time step.
+    theta_v : float
+        Threshold for switching recovery behavior.
+    v_inf : float
+        Steady-state value of v.
+    tau_v_m : float
+        Time constant for activation (u < threshold).
+    tau_v_p : float
+        Time constant for decay (u >= threshold).
+
+    Returns
+    -------
+    float
+        Updated value of the v gate.
+    """
     v_ = (v_inf - v)/tau_v_m if (u - theta_v) < 0 else -v/tau_v_p
     v += dt*v_
     return v
 
 @njit
 def calc_w(w, u, dt, theta_w, w_inf, tau_w_m, tau_w_p):
+    """
+    Updates the slow gating variable `w`.
+
+    The variable `w` represents calcium/potassium channel gating.
+    It has different recovery dynamics below and above the threshold `theta_w`.
+
+    Parameters
+    ----------
+    w : float
+        Current value of the w gate.
+    u : float
+        Membrane potential.
+    dt : float
+        Time step.
+    theta_w : float
+        Threshold for switching between time constants.
+    w_inf : float
+        Steady-state value of w.
+    tau_w_m : float
+        Time constant for approach to w_inf (u < threshold).
+    tau_w_p : float
+        Time constant for decay (u >= threshold).
+
+    Returns
+    -------
+    float
+        Updated value of the w gate.
+    """
     w_ = (w_inf - w)/tau_w_m if (u - theta_w) < 0 else -w/tau_w_p
     w += dt*w_
     return w
 
 @njit
 def calc_s(s, u, dt, tau_s, k_s, u_s):
+    """
+    Updates the slow variable `s`, related to calcium dynamics.
+
+    The variable `s` evolves toward a tanh-based steady-state function of `u`.
+
+    Parameters
+    ----------
+    s : float
+        Current value of the s variable.
+    u : float
+        Membrane potential.
+    dt : float
+        Time step.
+    tau_s : float
+        Time constant.
+    k_s : float
+        Slope of the tanh function.
+    u_s : float
+        Midpoint of the tanh function.
+
+    Returns
+    -------
+    float
+        Updated value of the s variable.
+    """
     s += dt*((1 + np.tanh(k_s*(u - u_s)))/2 - s)/tau_s
     return s
 
 @njit
 def calc_Jfi(u, v, theta_v, u_u, tau_fi):
+    """
+    Computes the fast inward sodium current (J_fi).
+
+    Active when membrane potential exceeds `theta_v`.
+    Models rapid depolarization due to sodium influx.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    v : float
+        Fast gating variable.
+    theta_v : float
+        Activation threshold.
+    u_u : float
+        Upper limit for depolarization.
+    tau_fi : float
+        Time constant of the fast inward current.
+
+    Returns
+    -------
+    float
+        Current value of J_fi.
+    """
     H = 1.0 if (u - theta_v) >= 0 else 0.0
     return -v*H*(u - theta_v)*(u_u - u)/tau_fi
 
 @njit
 def calc_Jso(u, u_o, theta_w, tau_o, tau_so):
+    """
+    Computes the slow outward current (J_so).
+
+    Consists of a linear repolarization component below `theta_w`
+    and a constant component above.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    u_o : float
+        Resting potential (offset).
+    theta_w : float
+        Threshold for switching between components.
+    tau_o : float
+        Time constant below threshold.
+    tau_so : float
+        Time constant above threshold.
+
+    Returns
+    -------
+    float
+        Current value of J_so.
+    """
     H = 1.0 if (u - theta_w) >= 0 else 0.0
     return (u - u_o)*(1 - H)/tau_o + H/tau_so
 
 @njit
 def calc_Jsi(u, w, s, theta_w, tau_si):
+    """
+    Computes the slow inward current (J_si), active during plateau phase.
+
+    Active only when `u > theta_w` and controlled by gating variables `w` and `s`.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    w : float
+        Slow gating variable.
+    s : float
+        Calcium-related variable.
+    theta_w : float
+        Threshold for activation.
+    tau_si : float
+        Time constant of slow inward current.
+
+    Returns
+    -------
+    float
+        Current value of J_si.
+    """
     H = 1.0 if (u - theta_w) >= 0 else 0.0
     return -H*w*s/tau_si
 
 @njit
 def calc_tau_v_m(u, theta_v_m, tau_v1_m, tau_v2_m):
+    """
+    Selects time constant for v gate depending on membrane potential.
+
+    Returns `tau_v1_m` below `theta_v_m`, and `tau_v2_m` above.
+
+    Returns
+    -------
+    float
+        Time constant for v gate.
+    """
     return tau_v1_m if (u - theta_v_m) < 0 else tau_v2_m
 
 @njit    
 def calc_tau_w_m(u, tau_w1_m, tau_w2_m, k_w_m, u_w_m):
+    """
+    Computes smooth transition time constant for w gate using tanh.
+
+    Returns
+    -------
+    float
+        Blended time constant for w gate.
+    """
     return tau_w1_m + (tau_w2_m - tau_w1_m)*(1 + np.tanh(k_w_m*(u - u_w_m)))/2
 
 @njit
 def calc_tau_so(u, tau_so1, tau_so2, k_so, u_so):
+    """
+    Computes tau_so using a sigmoidal transition between two values.
+    """
     return tau_so1 + (tau_so2 - tau_so1)*(1 + np.tanh(k_so*(u - u_so)))/2
 
 @njit
 def calc_tau_s(u, tau_s1, tau_s2, theta_w):
+    """
+    Selects tau_s based on threshold.
+    """
     return tau_s1 if (u - theta_w) < 0 else tau_s2
 
 @njit
 def calc_tau_o(u, tau_o1, tau_o2, theta_o):
+    """
+    Selects tau_o based on threshold.
+    """
     return tau_o1 if (u - theta_o) < 0 else tau_o2
     
 @njit
 def calc_v_inf(u, theta_v_m):
+    """
+    Computes the value of v based on membrane potential.
+    """
     return 1.0 if u < theta_v_m else 0.0
 
 @njit
 def calc_w_inf(u, theta_o, tau_w_inf, w_inf_):
+    """
+    Computes the value of w based on membrane potential.
+    """
     return 1 - u/tau_w_inf if (u - theta_o) < 0 else w_inf_
 
 

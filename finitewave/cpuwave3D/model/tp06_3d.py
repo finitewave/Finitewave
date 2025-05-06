@@ -36,6 +36,8 @@ from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import (
 class TP063D(TP062D):
     """
     A class to represent the TP06 cardiac model in 3D.
+
+    See TP062D for the 2D model description.
     """
 
     def __init__(self):
