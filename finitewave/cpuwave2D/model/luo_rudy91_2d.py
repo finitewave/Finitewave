@@ -146,6 +146,32 @@ class LuoRudy912D(CardiacModel):
         return AsymmetricStencil2D()
 
 @njit
+def calc_gating_var(var, dt, alpha, beta):
+    """
+    Computes the gating variable dynamics based on the Hodgkin-Huxley formalism.
+
+    Parameters
+    ----------
+    var : float
+        Current value of the gating variable.
+    dt : float
+        Time step [ms].
+    alpha : float
+        Rate constant for activation.
+    beta : float
+        Rate constant for inactivation.
+
+    Returns
+    -------
+    var_new : float
+        Updated gating variable.
+    """
+    tau = 1. / (alpha + beta)
+    inf = alpha / (alpha + beta)
+    var += dt * (inf - var) / tau
+    return var
+
+@njit
 def calc_ina(u, dt, m, h, j, E_Na, gna):
     """
     Computes the fast inward sodium current (I_Na) and updates gating variables m, h, j.
@@ -198,17 +224,9 @@ def calc_ina(u, dt, m, h, j, E_Na, gna):
         (1 - np.exp(-0.1 * (u + 47.13)))
     beta_m = 0.08 * np.exp(-u / 11)
 
-    tau_m = 1. / (alpha_m + beta_m)
-    inf_m = alpha_m / (alpha_m + beta_m)
-    m += dt * (inf_m - m) / tau_m
-
-    tau_h = 1. / (alpha_h + beta_h)
-    inf_h = alpha_h / (alpha_h + beta_h)
-    h += dt * (inf_h - h) / tau_h
-
-    tau_J = 1. / (alpha_J + beta_J)
-    inf_J = alpha_J / (alpha_J + beta_J)
-    j += dt * (inf_J - j) / tau_J
+    m = calc_gating_var(m, dt, alpha_m, beta_m)
+    h = calc_gating_var(h, dt, alpha_h, beta_h)
+    j = calc_gating_var(j, dt, alpha_J, beta_J)
 
     return gna * m * m * m * h * j * (u - E_Na), m, h, j
 
@@ -257,14 +275,9 @@ def calc_isk(u, dt, d, f, cai, gsi):
     beta_f = 0.0065 * \
         np.exp(-0.02 * (u + 30)) / \
         (1 + np.exp(-0.2 * (u + 30)))
-
-    tau_d = 1. / (alpha_d + beta_d)
-    inf_d = alpha_d / (alpha_d + beta_d)
-    d += dt * (inf_d - d) / tau_d
-
-    tau_f = 1. / (alpha_f + beta_f)
-    inf_f = alpha_f / (alpha_f + beta_f)
-    f += dt * (inf_f - f) / tau_f
+    
+    d = calc_gating_var(d, dt, alpha_d, beta_d)
+    f = calc_gating_var(f, dt, alpha_f, beta_f)
 
     cai += dt * (-0.0001 * I_Si + 0.07 * (0.0001 - cai))
 
@@ -327,10 +340,8 @@ def calc_ik(u, dt, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
     beta_x = 0.0013 * \
         np.exp(-0.06 * (u + 20)) / \
         (1 + np.exp(-0.04 * (u + 20)))
-
-    tau_x = 1. / (alpha_x + beta_x)
-    inf_x = alpha_x / (alpha_x + beta_x)
-    x += dt * (inf_x - x) / tau_x
+    
+    x = calc_gating_var(x, dt, alpha_x, beta_x)
 
     return I_K, x
 
@@ -485,9 +496,6 @@ def ionic_kernel_2d(u_new, u, m, h, j_, d, f, x, cai, indexes, dt, gna, gsi, gk,
 
         # Total time-independent potassium current:
         ik1t = ik1 + ikp + ib
-
-        # if i == 4 and j == 4:
-        #     print(cai[i, j], m[i, j]) 
 
         u_new[i, j] -= dt * (ina + isi + ik1t + ik)
 
