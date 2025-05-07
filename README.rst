@@ -200,7 +200,7 @@ lead to incorrect simulation results.
 Available models
 """""""""""""""""""""""""""
 
-Currently, finitewave includes five built-in models for 2D and 3D simulations,
+Currently, finitewave includes eight built-in models for 2D and 3D simulations,
 but you can easily add your own models by extending the base class and
 implementing the necessary methods.
 
@@ -209,15 +209,20 @@ implementing the necessary methods.
 +====================+===============================================================+
 | Aliev-Panfilov     | A phenomenological two-variable model                         |
 +--------------------+---------------------------------------------------------------+ 
-| Barkley            | A phenomenological model                                      |
+| Barkley            | A phenomenological two-variable model                         |
 +--------------------+---------------------------------------------------------------+
-| Mitchell-Schaeefer | A phenomenological model                                      |
+| Mitchell-Schaeffer | A phenomenological two-variable model                         |
++--------------------+---------------------------------------------------------------+
+| Fentom-Karma       | A phenomenological three-variables model                      |
++--------------------+---------------------------------------------------------------+
+| Bueno-Orovio       | A minimalistic ventricular model                              |
 +--------------------+---------------------------------------------------------------+
 | Luo-Rudy 1991      | An ionic ventricular guinea pig model                         |
 +--------------------+---------------------------------------------------------------+ 
 | TP06               | An ionic ventricular human model                              |
 +--------------------+---------------------------------------------------------------+
-
+| Courtemanche       | An ionic atrial human model                                   |
++--------------------+---------------------------------------------------------------+
 
 Stimulations
 ------------

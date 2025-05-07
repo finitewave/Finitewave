@@ -5,3 +5,4 @@ from .fenton_karma_2d import FentonKarma2D
 from .bueno_orovio_2d import BuenoOrovio2D
 from .luo_rudy91_2d import LuoRudy912D
 from .tp06_2d import TP062D
+from .courtemanche_2d import Courtemanche2D

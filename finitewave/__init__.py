@@ -46,6 +46,7 @@ from finitewave.cpuwave2D import (
     BuenoOrovio2D,
     LuoRudy912D,
     TP062D,
+    Courtemanche2D,
     AsymmetricStencil2D,
     SymmetricStencil2D,
     IsotropicStencil2D,

@@ -13,6 +13,7 @@ from .model import (
     BuenoOrovio2D,
     LuoRudy912D,
     TP062D,
+    Courtemanche2D
 )
 from .stencil import (
     AsymmetricStencil2D,
