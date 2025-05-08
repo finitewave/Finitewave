@@ -160,7 +160,8 @@ def calc_Jfi(u, v, u_c, tau_d):
     float
         Value of the fast inward current at this point.
     """
-    return (-v*(1 - u)*(u - u_c))/tau_d if (u - u_c) >= 0 else 0.0
+    H = 1.0 if (u - u_c) >= 0 else 0.0
+    return -(v*H*(1-u)*(u - u_c))/tau_d
 
 @njit
 def calc_Jso(u, u_c, tau_o, tau_r):
@@ -187,9 +188,10 @@ def calc_Jso(u, u_c, tau_o, tau_r):
     float
         Value of the outward repolarizing current.
     """
-    jso_1 = u/tau_o if (u_c - u) >= 0 else 0.0 
-    jso_2 = 1/tau_r if (u - u_c) >= 0 else 0.0
-    return jso_1 + jso_2
+    H1 = 1.0 if (u_c - u) >= 0 else 0.0
+    H2 = 1.0 if (u - u_c) >= 0 else 0.0
+
+    return u*H1/tau_o + H2/tau_r
 
 @njit
 def calc_Jsi(u, w, k, uc_si, tau_si):
@@ -247,9 +249,9 @@ def calc_v(v, u, dt, u_c, tau_v_m, tau_v_p):
     float
         Updated value of `v`.
     """
-    v_1 = (1 - v)/tau_v_m if (u_c - u) >= 0 else 0.0
-    v_2 = v/tau_v_p if (u - u_c) >= 0 else 0.0
-    v += dt*(v_1 - v_2)
+    H1 = 1.0 if (u_c - u) >= 0 else 0.0
+    H2 = 1.0 if (u - u_c) >= 0 else 0.0
+    v += dt*(H1*(1 - v)/tau_v_m - H2*v/tau_v_p)
     return v
 
 @njit
@@ -280,9 +282,9 @@ def calc_w(w, u, dt, u_c, tau_w_m, tau_w_p):
     float
         Updated value of `w`.
     """
-    w_1 = (1 - w)/tau_w_m if (u_c - u) >= 0 else 0.0
-    w_2 = w/tau_w_p if (u - u_c) >= 0 else 0.0
-    w += dt*(w_1 - w_2)
+    H1 = 1.0 if (u_c - u) >= 0 else 0.0
+    H2 = 1.0 if (u - u_c) >= 0 else 0.0
+    w += dt*(H1*(1 - w)/tau_w_m - H2*w/tau_w_p)
     return w
 
 @njit(parallel=True)

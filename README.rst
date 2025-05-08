@@ -1,7 +1,15 @@
 .. _finitewave:
 
-finitewave
+Finitewave
 ===========
+
+.. image:: https://img.shields.io/github/license/finitewave/Finitewave
+   :target: https://github.com/finitewave/Finitewave/blob/main/LICENSE
+   :alt: License
+
+.. image:: https://github.com/finitewave/Finitewave/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/finitewave/Finitewave/actions
+   :alt: Build Status
 
 Python package for simulating cardiac electrophysiology using
 finite-difference methods. It provides tools for modeling and visualizing the
