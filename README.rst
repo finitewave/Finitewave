@@ -217,7 +217,7 @@ implementing the necessary methods.
 +====================+===============================================================+
 | Aliev-Panfilov     | A phenomenological two-variable model                         |
 +--------------------+---------------------------------------------------------------+ 
-| Barkley            | A phenomenological two-variable model                         |
+| Barkley            | A simple reaction-diffusion model                             |
 +--------------------+---------------------------------------------------------------+
 | Mitchell-Schaeffer | A phenomenological two-variable model                         |
 +--------------------+---------------------------------------------------------------+

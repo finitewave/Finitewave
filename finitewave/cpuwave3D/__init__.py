@@ -8,6 +8,7 @@ from finitewave.cpuwave3D.model import (
     BuenoOrovio3D,
     LuoRudy913D,
     TP063D,
+    Courtemanche3D,
 )
 from finitewave.cpuwave3D.stencil import (
     AsymmetricStencil3D,

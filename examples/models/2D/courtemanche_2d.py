@@ -17,7 +17,7 @@ Simulation Setup:
 - Time and Space Resolution:
   - Temporal step (dt): 0.01 ms
   - Spatial resolution (dr): 0.25 mm
-  - Total simulation time (t_max): 50 ms
+  - Total simulation time (t_max): 500 ms
 
 Execution:
 ----------
@@ -32,7 +32,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import finitewave as fw
 
-n = 15
+n = 100
 m = 5
 # create mesh
 tissue = fw.CardiacTissue2D((n, m))
@@ -40,15 +40,16 @@ tissue = fw.CardiacTissue2D((n, m))
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
-for i in range(1, 12):
-    stim_sequence.add_stim(fw.StimVoltageCoord2D(i*1000, 1, 0, 5, 0, m))
-
 
 # create model object and set up parameters
 courtemanche = fw.Courtemanche2D()
 courtemanche.dt = 0.01
 courtemanche.dr = 0.25
-courtemanche.t_max = 1000
+courtemanche.t_max = 500
+
+# Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
+# with a visible plateau and realistic repolarization.
+courtemanche.gkur_coeff *= 3
 
 # add the tissue and the stim parameters to the model object
 courtemanche.cardiac_tissue = tissue
@@ -58,7 +59,7 @@ tracker_sequence = fw.TrackerSequence()
 action_pot_tracker = fw.ActionPotential2DTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[10, 3]]
+action_pot_tracker.cell_ind = [[50, 3]]
 action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
 courtemanche.tracker_sequence = tracker_sequence
@@ -70,12 +71,9 @@ courtemanche.run()
 plt.figure()
 time = np.arange(len(action_pot_tracker.output)) * courtemanche.dt
 plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-# plt.plot(time, courtemanche.inspected_var_1, label="incaca")
-# plt.plot(time, courtemanche.inspected_var_2, label="iks")
-# plt.plot(time, courtemanche.inspected_var_3, label="ikr")
 plt.legend(title='Courtemanche')
 plt.xlabel('Time (ms)')
-# plt.ylabel('Voltage (mV)')
-# plt.title('Action Potential')
+plt.ylabel('Voltage (mV)')
+plt.title('Action Potential')
 plt.grid()
 plt.show()

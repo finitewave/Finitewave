@@ -15,7 +15,7 @@ Simulation Setup:
 - Time and Space Resolution:
   - Temporal step (dt): 0.01
   - Spatial resolution (dr): 0.25
-  - Total simulation time (t_max): 20
+  - Total simulation time (t_max): 50
 
 Execution:
 ----------

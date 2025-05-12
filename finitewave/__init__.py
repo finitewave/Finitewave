@@ -78,6 +78,7 @@ from finitewave.cpuwave3D import (
     BuenoOrovio3D,
     LuoRudy913D,
     TP063D,
+    Courtemanche3D,
     AsymmetricStencil3D,
     IsotropicStencil3D,
     StimCurrentCoord3D,

@@ -5,3 +5,4 @@ from .fenton_karma_3d import FentonKarma3D
 from .bueno_orovio_3d import BuenoOrovio3D
 from .luo_rudy91_3d import LuoRudy913D
 from .tp06_3d import TP063D
+from .courtemanche_3d import Courtemanche3D

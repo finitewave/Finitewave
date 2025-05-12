@@ -40,6 +40,8 @@ class Courtemanche2D(CardiacModel):
         self.gcal = 0.1238
         self.gcab = 0.00113
 
+        self.gkur_coeff = 1
+
         self.F = 96485.0
         self.T = 310.0
         self.R = 8314.0 
@@ -78,12 +80,6 @@ class Courtemanche2D(CardiacModel):
         self.iupmax = 0.005
 
         self.kq10 = 3
-
-        self.inspected_var_1 = []
-        self.inspected_var_2 = []
-        self.inspected_var_3 = []
-        self.inspected_var_4 = []
-        self.inspected_var_5 = []
 
     def initialize(self):
         """
@@ -129,16 +125,12 @@ class Courtemanche2D(CardiacModel):
                         self.ui, self.xr, self.xs, self.fca, self.irel, self.vrel, self.urel, 
                         self.wrel, self.cardiac_tissue.myo_indexes, self.dt, 
                         self.gna, self.gnab, self.gk1, self.gkr, self.gks, self.gto, self.gcal,
-                        self.gcab, self.F, self.T, self.R, self.Vc, self.Vj, self.Vup,
+                        self.gcab, self.gkur_coeff, self.F, self.T, self.R, self.Vc, self.Vj, self.Vup,
                         self.Vrel, self.ibk, self.cao, self.nao, self.ko, self.caupmax,
                         self.kup, self.kmnai, self.kmko, self.kmnancx, self.kmcancx,
                         self.ksatncx, self.kmcmdn, self.kmtrpn, self.kmcsqn, self.trpnmax,
                         self.cmdnmax, self.csqnmax, self.inacamax, self.inakmax,
                         self.ipcamax, self.krel, self.iupmax, self.kq10)
-                        
-                        # self.inspected_var_1, 
-                        # self.inspected_var_2, self.inspected_var_3, self.inspected_var_4,
-                        # self.inspected_var_5)
 
     def select_stencil(self, cardiac_tissue):
         """
@@ -354,7 +346,7 @@ def calc_ito(u, dt, kq10, oa, oi, gto, ek):
     return ito, oa, oi
 
 @njit
-def calc_ikur(u, dt, kq10, ua, ui, ek):
+def calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff):
     """
     Calculates the ultra-rapid delayed rectifier potassium current.
     """
@@ -373,7 +365,7 @@ def calc_ikur(u, dt, kq10, ua, ui, ek):
     ua = calc_gating_variable(ua, ua_inf, tau_ua, dt)
     ui = calc_gating_variable(ui, ui_inf, tau_ui, dt)
 
-    ikur = 1*gkur*(ua**3)*ui*(u - ek)
+    ikur = gkur_coeff*gkur*(ua**3)*ui*(u - ek)
 
     return ikur, ua, ui
 
@@ -551,12 +543,27 @@ def calc_iupleak(caup, caupmax, iupmax):
 
 @njit(parallel=True)
 def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs, xr, fca, irel, vrel, urel, wrel, indexes, dt, 
-                    gna, gnab, gk1, gkr, gks, gto, gcal, gcab, F, T, R, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup,
+                    gna, gnab, gk1, gkr, gks, gto, gcal, gcab, gkur_coeff, F, T, R, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup,
                     kmnai, kmko, kmnancx, kmcancx, ksatncx, kmcmdn, kmtrpn, kmcsqn, trpnmax, cmdnmax, csqnmax, inacamax,
                     inakmax, ipcamax, krel, iupmax, kq10):
+    """
+    Computes the ionic currents and updates the state variables in the 2D
+    Courtemanche cardiac model.
+
+    Parameters
+    ----------
+    u_new : np.ndarray
+        Updated membrane potential values.
+    u : np.ndarray
+        Current membrane potential values.
+    v : np.ndarray
+        Recovery variable array.
+    indexes : np.ndarray
+        Array of indices where the kernel should be computed (``mesh == 1``).
+    dt : float
+        Time step for the simulation.
+    """
                     
-                    # inspected_var_1, inspected_var_2, inspected_var_3,
-                    # inspected_var_4, inspected_var_5):
     n_i = u.shape[0]
     n_j = u.shape[1]
 
@@ -567,7 +574,6 @@ def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
 
         ena, ek, eca = calc_equilibrum_potentials(nai[i, j], nao, ki[i, j], ko, cai[i, j], cao, R, T, F)
 
-        
         m[i, j] = calc_gating_m(m[i, j], u[i, j], dt)
         h[i, j] = calc_gating_h(h[i, j], u[i, j], dt)
         j_[i, j] = calc_gating_j(j_[i, j], u[i, j], dt)
@@ -578,7 +584,7 @@ def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
 
         ito, oa[i, j], oi[i, j] = calc_ito(u[i, j], dt, kq10, oa[i, j], oi[i, j], gto, ek)
 
-        ikur, ua[i, j], ui[i, j] = calc_ikur(u[i, j], dt, kq10, ua[i, j], ui[i, j], ek)
+        ikur, ua[i, j], ui[i, j] = calc_ikur(u[i, j], dt, kq10, ua[i, j], ui[i, j], ek, gkur_coeff)
 
         ikr, xr[i, j] = calc_ikr(u[i, j], dt, xr[i, j], gkr, ek)
 
@@ -607,13 +613,5 @@ def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
         cai[i, j] = calc_cai(cai[i, j], dt, inaca, ipca, ical, ibca, iup, iupleak, irel[i, j], Vrel, Vup, trpnmax, kmtrpn, cmdnmax, kmcmdn, F, Vj)
 
         carel[i, j] = calc_carel(carel[i, j], dt, itr, irel[i, j], csqnmax, kmcsqn)
-
-        # if i == 10 and j == 3:
-        #     inspected_var_1.append(inaca)
-        #     inspected_var_2.append(iks)
-        #     inspected_var_3.append(ikr)
-            # inspected_var_4.append(inak)
-            # inspected_var_5.append(ipca)
-        #     print(ical, fca[i, j])
 
         u_new[i, j] -= dt * (ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)

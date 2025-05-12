@@ -1,15 +1,15 @@
 """
-Running the Luo-Rudy 1991 Model in 2D Cardiac Tissue
+Running the Courtemanche Model in 3D Cardiac Tissue
 ====================================================
 
 Overview:
 ---------
-This example demonstrates how to run a 2D simulation of the 
-Luo-Rudy 1991 ventricular action potential model using the Finitewave framework.
+This example demonstrates how to run a 3D simulation of the 
+Courtemanche ventricular action potential model using the Finitewave framework.
 
 Simulation Setup:
 -----------------
-- Tissue Grid: A 100×5 cardiac tissue domain.
+- Tissue Grid: A 100×5×3 cardiac tissue domain.
 - Stimulation:
   - A planar stimulus is applied along the top edge of the domain at t = 0 ms
     to initiate wavefront propagation.
@@ -20,9 +20,9 @@ Simulation Setup:
 
 Execution:
 ----------
-1. Create a 2D cardiac tissue grid.
+1. Create a 3D cardiac tissue grid.
 2. Apply a stimulus along the upper boundary to initiate excitation.
-3. Set up and run the Luo-Rudy 1991 model.
+3. Set up and run the Courtemanche model.
 4. Visualize the transmembrane potential.
 
 """
@@ -33,40 +33,45 @@ import finitewave as fw
 
 n = 100
 m = 5
+k = 3
 # create mesh
-tissue = fw.CardiacTissue2D((n, m))
+tissue = fw.CardiacTissue3D((n, m, k))
 
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, 5, 0, m, 0, k))
 
 # create model object and set up parameters
-luo_rudy = fw.LuoRudy912D()
-luo_rudy.dt = 0.01
-luo_rudy.dr = 0.25
-luo_rudy.t_max = 500
+courtemanche = fw.Courtemanche3D()
+courtemanche.dt = 0.01
+courtemanche.dr = 0.25
+courtemanche.t_max = 500
+
+# Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
+# with a visible plateau and realistic repolarization.
+courtemanche.gkur_coeff *= 3
 
 # add the tissue and the stim parameters to the model object
-luo_rudy.cardiac_tissue = tissue
-luo_rudy.stim_sequence = stim_sequence
+courtemanche.cardiac_tissue = tissue
+courtemanche.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotential2DTracker()
+action_pot_tracker = fw.ActionPotential3DTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[50, 3]]
+action_pot_tracker.cell_ind = [[50, 3, 1]]
 action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
-luo_rudy.tracker_sequence = tracker_sequence
+courtemanche.tracker_sequence = tracker_sequence
 
 # run the model:
-luo_rudy.run()
+courtemanche.run()
 
 # plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * luo_rudy.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-plt.legend(title='Luo-Rudy 1991')
+time = np.arange(len(action_pot_tracker.output)) * courtemanche.dt
+plt.plot(time, action_pot_tracker.output, label="cell_50_3_1")
+plt.legend(title='Courtemanche')
 plt.xlabel('Time (ms)')
 plt.ylabel('Voltage (mV)')
 plt.title('Action Potential')

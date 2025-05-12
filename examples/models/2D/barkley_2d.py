@@ -15,7 +15,7 @@ Simulation Setup:
 - Time and Space Resolution:
   - Temporal step (dt): 0.01
   - Spatial resolution (dr): 0.25
-  - Total simulation time (t_max): 20
+  - Total simulation time (t_max): 10
 
 Execution:
 ----------
@@ -50,22 +50,37 @@ barkley.cardiac_tissue = tissue
 barkley.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotential2DTracker()
+# add the variable tracker:
+multivariable_tracker = fw.MultiVariable2DTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
-# eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[50, 3]]
-action_pot_tracker.step = 1
-tracker_sequence.add_tracker(action_pot_tracker)
+multivariable_tracker.cell_ind = [50, 3]
+multivariable_tracker.var_list = ["u", "v"]
+tracker_sequence.add_tracker(multivariable_tracker)
 barkley.tracker_sequence = tracker_sequence
 
 # run the model:
 barkley.run()
 
 # plot the action potential
-plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * barkley.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+plt.figure(figsize=(10, 5))
+
+# Subplot 1: Phase plot (u vs v)
+plt.subplot(1, 2, 1)
+plt.plot(multivariable_tracker.output["u"], multivariable_tracker.output["v"], label="cell_50_3")
 plt.legend(title='Barkley')
-plt.title('Action Potential')
+plt.title('Phase (u vs v)')
+plt.xlabel('u')
+plt.ylabel('v')
 plt.grid()
+
+# Subplot 2: Time vs u
+plt.subplot(1, 2, 2)
+time = np.arange(len(multivariable_tracker.output["u"])) * barkley.dt
+plt.plot(time, multivariable_tracker.output["u"], label="cell_50_3")
+plt.legend(title='Barkley')
+plt.title('Action potential')
+plt.xlabel('Time')
+plt.ylabel('u')
+plt.grid()
+
 plt.show()
