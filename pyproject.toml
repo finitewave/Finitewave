@@ -36,6 +36,7 @@ docs = [
   "sphinx-gallery",
   "sphinx-copybutton",
   "numpydoc",
+  "pytest-cov"
 ]
 
 # [tool.setuptools]
