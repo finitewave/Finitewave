@@ -101,23 +101,22 @@ def ionic_kernel_3d(u_new, u, v, w, s, indexes, dt,
         ii = indexes[ni]
         i = ii//(n_j*n_k)
         j = (ii % (n_j*n_k))//n_k
-        k_ = (ii % (n_j*n_k)) % n_k
-        
+        k = (ii % (n_j*n_k)) % n_k
 
-        v[i, j, k_] = calc_v(v[i, j, k_], u[i, j, k_], dt, theta_v, calc_v_inf(u[i, j, k_], theta_v_m), 
-                         calc_tau_v_m(u[i, j, k_], theta_v_m, tau_v1_m, tau_v2_m), tau_v_p)
+        v[i, j, k]  = calc_v(v[i, j, k] , u[i, j, k] , dt, theta_v, calc_v_inf(u[i, j, k] , theta_v_m), 
+                         calc_tau_v_m(u[i, j, k] , theta_v_m, tau_v1_m, tau_v2_m), tau_v_p)
         
-        w[i, j, k_] = calc_w(w[i, j, k_], u[i, j, k_], dt, theta_w, calc_w_inf(u[i, j, k_], theta_o, tau_w_inf, w_inf_), 
-                         calc_tau_w_m(u[i, j, k_], tau_w1_m, tau_w2_m, k_w_m, u_w_m), tau_w_p)
+        w[i, j, k]  = calc_w(w[i, j, k] , u[i, j, k] , dt, theta_w, calc_w_inf(u[i, j, k] , theta_o, tau_w_inf, w_inf_), 
+                         calc_tau_w_m(u[i, j, k] , tau_w1_m, tau_w2_m, k_w_m, u_w_m), tau_w_p)
         
-        s[i, j, k_] = calc_s(s[i, j, k_], u[i, j, k_], dt,
-                        calc_tau_s(u[i, j, k_], tau_s1, tau_s2, theta_w), k_s, u_s)
+        s[i, j, k]  = calc_s(s[i, j, k] , u[i, j, k] , dt,
+                        calc_tau_s(u[i, j, k] , tau_s1, tau_s2, theta_w), k_s, u_s)
         
-        J_fi = calc_Jfi(u[i, j, k_], v[i, j, k_], theta_v, u_u, tau_fi)
-        J_so = calc_Jso(u[i, j, k_], u[i, j, k_], theta_w,
-                        calc_tau_o(u[i, j, k_], tau_o1, tau_o2, theta_o), 
-                        calc_tau_so(u[i, j, k_], tau_so1, tau_so2, k_so, u_so))
-        J_si = calc_Jsi(u[i, j, k_], w[i, j, k_], s[i, j, k_], theta_w, tau_si)
+        J_fi = calc_Jfi(u[i, j, k] , v[i, j, k] , theta_v, u_u, tau_fi)
+        J_so = calc_Jso(u[i, j, k] , u_o, theta_w,
+                        calc_tau_o(u[i, j, k] , tau_o1, tau_o2, theta_o), 
+                        calc_tau_so(u[i, j, k] , tau_so1, tau_so2, k_so, u_so))
+        J_si = calc_Jsi(u[i, j, k] , w[i, j, k] , s[i, j, k] , theta_w, tau_si)
 
-        u_new[i, j, k_] += dt * (-J_fi - J_so - J_si)
+        u_new[i, j, k]  += dt * (-J_fi - J_so - J_si)
 

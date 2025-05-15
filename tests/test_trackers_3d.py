@@ -5,53 +5,72 @@ import pytest
 import finitewave as fw
 
 @pytest.fixture
-def planar_model():
-    ni = 50
-    nj = 10
-    nk = 10
+def cable_model():
+    ni = 12
+    nj = 3
+    nk = 3
     tissue = fw.CardiacTissue3D([ni, nj, nk])
 
     stim_sequence = fw.StimSequence()
-    stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, 5, 0, nj, 0, nk))
+    stim_sequence.add_stim(fw.StimCurrentCoord3D(0, 5, 0.5, 0, 5, 0, nj, 0, nk))
     
     model = fw.AlievPanfilov3D()
     model.dt = 0.01
     model.dr = 0.25
-    model.t_max = 50
+    model.t_max = 3
     model.cardiac_tissue = tissue
     model.stim_sequence = stim_sequence
     return model
 
 @pytest.fixture
 def spiral_model():
-    n = 200
-    n = 200
-    nk = 10
-    tissue = fw.CardiacTissue3D([n, n, nk])
+    ni = 100
+    nj = 100
+    nk = 3
+    tissue = fw.CardiacTissue3D([ni, nj, nk])
 
     stim_sequence = fw.StimSequence()
-    stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, n, 0, n//2, 0, nk))
-    stim_sequence.add_stim(fw.StimVoltageCoord3D(31, 1, 0, n//2, 0, n, 0, nk))
+    stim_sequence.add_stim(fw.StimVoltageCoord3D(0, 1, 0, ni, 0, 3, 0, nk))
+    stim_sequence.add_stim(fw.StimVoltageCoord3D(5, 1, 0, ni//2, 0, nj, 0, nk))
     
-    model = fw.AlievPanfilov3D()
+    model = fw.Barkley3D()
     model.dt = 0.01
     model.dr = 0.25
-    model.t_max = 50
+    model.t_max = 20
     model.cardiac_tissue = tissue
     model.stim_sequence = stim_sequence
     return model
 
+@pytest.fixture
+def planar_model():
+    ni = 50
+    nj = 5
+    nk = 3
+    tissue = fw.CardiacTissue3D([ni, nj, nk])
 
-def test_action_potential_3d_tracker(planar_model):
+    stim_sequence = fw.StimSequence()
+    stim_sequence.add_stim(fw.StimCurrentCoord3D(5, 5, 0.5, 0, 5, 0, nj, 0, nk))
+    
+    model = fw.AlievPanfilov3D()
+    model.dt = 0.0015
+    model.dr = 0.25
+    model.t_max = 15
+    model.cardiac_tissue = tissue
+    model.stim_sequence = stim_sequence
+    return model
+
+@pytest.mark.action_potential_3d_tracker
+def test_action_potential_tracker(cable_model):
     tracker = fw.ActionPotential3DTracker()
-    tracker.cell_ind = [10, 5, 5]
+    tracker.cell_ind = [10, 1, 1]
     tracker.step = 1
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    planar_model.tracker_sequence = seq
+    cable_model.tracker_sequence = seq
 
-    planar_model.run()
+    cable_model.t_max = 30
+    cable_model.run()
 
     u = tracker.output
 
@@ -69,13 +88,15 @@ def test_action_potential_3d_tracker(planar_model):
     assert len(up_idx) > 0, "Action potential upstroke not found"
     assert len(down_idx) > 0, "Action potential downstroke not found"
 
-    # ap_start = up_idx[0]
-    # ap_end = down_idx[down_idx > ap_start][0]
+    ap_start = up_idx[0]
+    ap_end = down_idx[down_idx > ap_start][0]
 
-    # apd = (ap_end - ap_start) * model.dt
-    # assert 25 <= apd <= 27, f"APD90 is out of expected range {apd}"
+    apd = (ap_end - ap_start) * cable_model.dt
+    # without prebeats:
+    assert 20 <= apd <= 30, f"APD90 is out of expected range {apd}"
 
-def test_animation_3d_tracker(planar_model):
+@pytest.mark.animation_3d_tracker
+def test_animation_3d_tracker(spiral_model):
     tracker = fw.Animation3DTracker()
     tracker.variable_name = "u"
     tracker.dir_name = "test_frames"
@@ -84,38 +105,37 @@ def test_animation_3d_tracker(planar_model):
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    planar_model.tracker_sequence = seq
+    spiral_model.tracker_sequence = seq
 
-    planar_model.run()
+    spiral_model.run()
 
     # Check if the animation files are created
     assert os.path.exists(tracker.dir_name), "Output directory was not created."
     files = sorted(os.listdir(tracker.dir_name))
-    expected_frames = (planar_model.t_max/planar_model.dt) // tracker.step
+    expected_frames = (spiral_model.t_max/spiral_model.dt) // tracker.step
     assert len(files) == expected_frames, f"Expected {expected_frames} frames, got {len(files)}"
 
     # Check if the frames are not empty
     for fname in files:
         frame = np.load(os.path.join(tracker.dir_name, fname))
-        assert np.any(frame > 0), f"Frame {fname} appears to be empty."
+        assert np.any(frame > 0), f"Frame {fname} appears to be empty." # Aliev-Panfilov model
 
     shutil.rmtree(tracker.dir_name)
 
-def test_activation_time_3d_tracker(planar_model):
+@pytest.mark.activation_time_3d_tracker
+def test_activation_time_3d_tracker(cable_model):
+    # TODO:
+    # Edge cases: start time - end time, values rewriting (should not work) 
     tracker = fw.ActivationTime3DTracker()
     tracker.threshold = 0.5
     tracker.step = 1
     tracker.start_time = 0
-    tracker.end_time = 100
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    planar_model.tracker_sequence = seq
+    cable_model.tracker_sequence = seq
 
-    planar_model.stim_sequence.add_stim(fw.StimVoltageCoord3D(50, 1, 0, 5, 0, 10, 0, 10))
-    planar_model.t_max = 100
-
-    planar_model.run()
+    cable_model.run()
 
     ats = tracker.output
 
@@ -124,24 +144,25 @@ def test_activation_time_3d_tracker(planar_model):
     assert len(ats) > 0
     assert np.any(~np.isnan(ats)), "AT array is entirely NaN"
 
-    # Check if the activation time values are within expected range
-    assert ats[25, 5, 5] == pytest.approx(3.5, abs=0.01)
+    # Check if the wavefront speed (distance/activation time) value is within expected range
+    speed = 5*cable_model.dr/ats[10, 1, 1] # 5 - number of nodes on the way
+    assert 1.5 <= speed <= 2, f"Wavefront speed is out of expected range {speed}" 
 
-def test_local_activation_time_3d_tracker(planar_model):
+@pytest.mark.local_activation_time_3d_tracker
+def test_local_activation_time_3d_tracker(cable_model):
     tracker = fw.LocalActivationTime3DTracker()
     tracker.threshold = 0.5
     tracker.step = 1
     tracker.start_time = 0
-    tracker.end_time = 100
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    planar_model.tracker_sequence = seq
+    cable_model.tracker_sequence = seq
 
-    planar_model.stim_sequence.add_stim(fw.StimVoltageCoord3D(50, 1, 0, 5, 0, 10, 0, 10))
-    planar_model.t_max = 100
-
-    planar_model.run()
+    cable_model.stim_sequence.add_stim(fw.StimVoltageCoord3D(45, 1, 0, 5, 0, 10, 0, 3))
+    
+    cable_model.t_max = 50
+    cable_model.run()
 
     lats = tracker.output
 
@@ -152,23 +173,27 @@ def test_local_activation_time_3d_tracker(planar_model):
 
     # Values at the center cell should have two LAT values
     assert len(lats) == 2, "Every cell should have two LAT values"
-    LAT1, LAT2 = lats[:, 25, 5, 5]
+    LAT1, LAT2 = lats[:, 10, 1, 1]
 
-    # Check if the LAT values are within expected range
+    # Check if the wavefront speed (distance/activation time)  values are within expected range
     assert LAT1 < LAT2, "LAT values should be in ascending order"
-    assert LAT1 == pytest.approx(3.5, abs=0.01)
-    assert LAT2 == pytest.approx(53.68, abs=0.01)
+    speed_1 = 5*cable_model.dr/LAT1 # 5 - number of nodes on the way
+    speed_2 = 5*cable_model.dr/(LAT2 - 45) # 45 - second wave start time
+    assert 1.5 <= speed_1 <= 2, f"Wavefront speed for the first wave is out of expected range {speed_1}" 
+    assert 1.5 <= speed_2 <= 2, f"Wavefront speed for the second wave is out of expected range {speed_2}"
 
-def test_multi_variable_3d_tracker(planar_model):
+@pytest.mark.activation_time_3d_tracker
+def test_multi_variable_3d_tracker(cable_model):
     tracker = fw.MultiVariable3DTracker()
-    tracker.cell_ind = [10, 5, 5]
+    tracker.cell_ind = [10, 1, 1]
     tracker.var_list = ["v"]
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    planar_model.tracker_sequence = seq
-
-    planar_model.run()
+    cable_model.tracker_sequence = seq
+    
+    cable_model.t_max = 30
+    cable_model.run()
 
     v = tracker.output["v"]
 
@@ -179,17 +204,16 @@ def test_multi_variable_3d_tracker(planar_model):
     # Check if the Aliev-Panfilov model 'v' maximal amplitude is within expected range
     assert np.max(v) == pytest.approx(2, abs=0.1)
 
+@pytest.mark.spiral_wave_core_3d_tracker
 def test_spiral_wave_core_3d_tracker(spiral_model):
     tracker = fw.SpiralWaveCore3DTracker()
     tracker.threshold = 0.5
-    tracker.start_time = 50
-    tracker.step = 100  # Record the spiral wave core every 1 time unit
+    tracker.start_time = 12
+    tracker.step = 10  # Record the spiral wave core every 10 step
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
     spiral_model.tracker_sequence = seq
-
-    spiral_model.t_max = 90
 
     spiral_model.run()
 
@@ -206,31 +230,31 @@ def test_spiral_wave_core_3d_tracker(spiral_model):
     assert len(z) > 0
 
     # Check if the spiral wave core is within expected range
-    assert np.min(x) >= 116.95
-    assert np.max(x) <= 140.97
-    assert np.min(y) >= 109.94
-    assert np.max(y) <= 136.33
-    assert np.min(z) >= 1
-    assert np.max(z) <= 8
+    assert np.min(x) >= 32
+    assert np.max(x) <= 38
+    assert np.min(y) >= 47
+    assert np.max(y) <= 53
+    assert np.min(z) >= 0
+    assert np.max(z) <= 2
 
+@pytest.mark.spiral_wave_period_3d_tracker
 def test_spiral_wave_period_3d_tracker(spiral_model):
     tracker = fw.Period3DTracker()
     # Here we create an int array of detectors as a list of positions in which we want to calculate the period.
-    positions = np.array([[80, 80, 5], [20, 140, 5], [160, 160, 5], [130, 50, 5]])
+    positions = np.array([[80, 80, 1], [20, 70, 1], [40, 10, 1], [25, 90, 1]])
     tracker.cell_ind = positions
     tracker.threshold = 0.5
-    tracker.start_time = 100
+    tracker.start_time = 10
     tracker.step = 10
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
     spiral_model.tracker_sequence = seq
 
-    spiral_model.t_max = 300
-
     spiral_model.run()
 
     periods = tracker.output
+
     period_mean = np.mean(np.array([np.mean(x) if len(x) > 0 else np.nan for x in periods]))
 
     # Check if the output is not empty
@@ -238,40 +262,27 @@ def test_spiral_wave_period_3d_tracker(spiral_model):
     assert len(periods) > 0
 
     # Check if the spiral wave period is within expected range
-    assert period_mean == pytest.approx(25.6, abs=0.1)
+    assert period_mean == pytest.approx(3.5, abs=0.2)
 
-# def test_ecg_3d_tracker(planar_model):
-#     n = 200
-#     nk = 10
-#     tissue = fw.CardiacTissue3D([n, n, nk])
+@pytest.mark.ecg_3d_tracker
+def test_ecg_3d_tracker(planar_model):
+    tracker = fw.ECG3DTracker()
+    tracker.start_time = 0
+    tracker.step = 10
+    tracker.measure_coords = np.array([[25, 2, 1]])
 
-#     tracker = fw.ECG3DTracker()
-#     tracker.start_time = 0
-#     tracker.step = 100
-#     tracker.measure_coords = np.array([[n//2, n//2, nk]])
+    seq = fw.TrackerSequence()
+    seq.add_tracker(tracker)
 
-#     stim_sequence = fw.StimSequence()
-#     stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1,
-#                                                 0, n,
-#                                                 0, 5,
-#                                                 0, nk))
-    
-#     seq = fw.TrackerSequence()
-#     seq.add_tracker(tracker)
-#     planar_model.tracker_sequence = seq
-#     planar_model.cardiac_tissue = tissue
-#     planar_model.stim_sequence = stim_sequence
+    planar_model.tracker_sequence = seq
 
-#     planar_model.dt = 0.0015
-#     planar_model.dr = 0.1
+    planar_model.run()
 
-#     planar_model.run()
+    ecg = tracker.output.T[0]
 
-#     ecg = tracker.output.T[0]
-
-#     assert ecg.max() > 0.005
-#     assert ecg.min() < -0.005
-#     assert np.argmax(ecg) > 10  # Check if the peak occurs not at the beginning
+    assert ecg.max() > 0.001
+    assert ecg.min() < -0.001
+    assert np.argmax(ecg) > 100  # Check if the peak occurs not at the beginning
 
 
 
