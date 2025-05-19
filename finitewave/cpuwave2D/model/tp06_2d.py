@@ -147,6 +147,27 @@ class TP062D(CardiacModel):
         self.ksat  = 0.1        # Saturation factor
         self.n_   = 0.35        # Exponent for Na+ dependence
 
+        # initial conditions
+        self.init_u     = -84.5
+        self.init_cai   = 0.00007
+        self.init_casr  = 1.3
+        self.init_cass  = 0.00007
+        self.init_nai   = 7.67
+        self.init_Ki    = 138.3
+        self.init_m     = 0.0
+        self.init_h     = 0.75
+        self.init_j     = 0.75
+        self.init_xr1   = 0.0
+        self.init_xr2   = 1.0
+        self.init_xs    = 0.0
+        self.init_r     = 0.0
+        self.init_s     = 1.0
+        self.init_d     = 0.0
+        self.init_f     = 1.0
+        self.init_f2    = 1.0
+        self.init_fcass = 1.0
+        self.init_rr    = 1.0
+        self.init_oo    = 0.0
 
     def initialize(self):
         """
@@ -158,27 +179,27 @@ class TP062D(CardiacModel):
         super().initialize()
         shape = self.cardiac_tissue.mesh.shape
 
-        self.u = -84.5*np.ones(shape, dtype=self.npfloat)
+        self.u = self.init_u * np.ones(shape, dtype=self.npfloat)
         self.u_new = self.u.copy()
-        self.cai = 0.00007*np.ones(shape, dtype=self.npfloat)
-        self.casr = 1.3*np.ones(shape, dtype=self.npfloat)
-        self.cass = 0.00007*np.ones(shape, dtype=self.npfloat)
-        self.nai = 7.67*np.ones(shape, dtype=self.npfloat)
-        self.Ki = 138.3*np.ones(shape, dtype=self.npfloat)
-        self.m = np.zeros(shape, dtype=self.npfloat)
-        self.h = 0.75*np.ones(shape, dtype=self.npfloat)
-        self.j = 0.75*np.ones(shape, dtype=self.npfloat)
-        self.xr1 = np.zeros(shape, dtype=self.npfloat)
-        self.xr2 = np.ones(shape, dtype=self.npfloat)
-        self.xs = np.zeros(shape, dtype=self.npfloat)
-        self.r = np.zeros(shape, dtype=self.npfloat)
-        self.s = np.ones(shape, dtype=self.npfloat)
-        self.d = np.zeros(shape, dtype=self.npfloat)
-        self.f = np.ones(shape, dtype=self.npfloat)
-        self.f2 = np.ones(shape, dtype=self.npfloat)
-        self.fcass = np.ones(shape, dtype=self.npfloat)
-        self.rr = np.ones(shape, dtype=self.npfloat)
-        self.oo = np.zeros(shape, dtype=self.npfloat)
+        self.cai = self.init_cai * np.ones(shape, dtype=self.npfloat)
+        self.casr = self.init_casr * np.ones(shape, dtype=self.npfloat)
+        self.cass = self.init_cass * np.ones(shape, dtype=self.npfloat)
+        self.nai = self.init_nai * np.ones(shape, dtype=self.npfloat)
+        self.Ki = self.init_Ki * np.ones(shape, dtype=self.npfloat)
+        self.m = self.init_m * np.ones(shape, dtype=self.npfloat)
+        self.h = self.init_h * np.ones(shape, dtype=self.npfloat)
+        self.j = self.init_j * np.ones(shape, dtype=self.npfloat)
+        self.xr1 = self.init_xr1 * np.ones(shape, dtype=self.npfloat)
+        self.xr2 = self.init_xr2 * np.ones(shape, dtype=self.npfloat)
+        self.xs = self.init_xs * np.ones(shape, dtype=self.npfloat)
+        self.r = self.init_r * np.ones(shape, dtype=self.npfloat)
+        self.s = self.init_s * np.ones(shape, dtype=self.npfloat)
+        self.d = self.init_d * np.ones(shape, dtype=self.npfloat)
+        self.f = self.init_f * np.ones(shape, dtype=self.npfloat)
+        self.f2 = self.init_f2 * np.ones(shape, dtype=self.npfloat)
+        self.fcass = self.init_fcass * np.ones(shape, dtype=self.npfloat)
+        self.rr = self.init_rr * np.ones(shape, dtype=self.npfloat)
+        self.oo = self.init_oo * np.ones(shape, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

@@ -92,6 +92,16 @@ class LuoRudy912D(CardiacModel):
         # Ion Permeability Ratios
         self.PR_NaK = 0.01833  # Na+/K+ permeability ratio
 
+        # initial conditions
+        self.init_u   = -84.5
+        self.init_m   = 0.0017
+        self.init_h   = 0.9832
+        self.init_j   = 0.995484
+        self.init_d   = 0.000003
+        self.init_f   = 1.0
+        self.init_x   = 0.0057
+        self.init_cai = 0.0002
+
     def initialize(self):
         """
         Initializes the state variables.
@@ -103,15 +113,15 @@ class LuoRudy912D(CardiacModel):
         super().initialize()
         shape = self.cardiac_tissue.mesh.shape
 
-        self.u = -84.5 * np.ones(shape, dtype=self.npfloat)
+        self.u = self.init_u * np.ones(shape, dtype=self.npfloat)
         self.u_new = self.u.copy()
-        self.m = 0.0017 * np.ones(shape, dtype=self.npfloat)
-        self.h = 0.9832 * np.ones(shape, dtype=self.npfloat)
-        self.j = 0.995484 * np.ones(shape, dtype=self.npfloat)
-        self.d = 0.000003 * np.ones(shape, dtype=self.npfloat)
-        self.f = np.ones(shape, dtype=self.npfloat)
-        self.x = 0.0057 * np.ones(shape, dtype=self.npfloat)
-        self.cai = 0.0002 * np.ones(shape, dtype=self.npfloat)
+        self.m = self.init_m * np.ones(shape, dtype=self.npfloat)
+        self.h = self.init_h * np.ones(shape, dtype=self.npfloat)
+        self.j = self.init_j * np.ones(shape, dtype=self.npfloat)
+        self.d = self.init_d * np.ones(shape, dtype=self.npfloat)
+        self.f =  self.init_f * np.ones(shape, dtype=self.npfloat)
+        self.x =  self.init_x * np.ones(shape, dtype=self.npfloat)
+        self.cai = self.init_cai * np.ones(shape, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

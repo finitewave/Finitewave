@@ -90,12 +90,17 @@ class AlievPanfilov2D(CardiacModel):
         self.mu_1 = 0.2
         self.mu_2 = 0.3
 
+        # initial conditions
+        self.init_u = 0.0
+        self.init_v = 0.0
+
     def initialize(self):
         """
         Initializes the model for simulation.
         """
         super().initialize()
-        self.v = np.zeros_like(self.u, dtype=self.npfloat)
+        self.u = self.init_u * np.ones_like(self.u, dtype=self.npfloat)
+        self.v = self.init_v * np.ones_like(self.u, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

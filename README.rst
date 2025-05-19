@@ -7,10 +7,6 @@ Finitewave
    :target: https://github.com/finitewave/Finitewave/blob/main/LICENSE
    :alt: License
 
-.. image:: https://github.com/finitewave/Finitewave/actions/workflows/tests.yml/badge.svg
-   :target: https://github.com/finitewave/Finitewave/actions
-   :alt: Build Status
-
 Python package for simulating cardiac electrophysiology using
 finite-difference methods. It provides tools for modeling and visualizing the
 propagation of electrical waves in cardiac tissue, making it ideal for
@@ -185,7 +181,6 @@ speed varies depending on the fiber orientation.
 Cardiac Models
 ----------------
 
-Finitewave currently includes three built-in models for 2D and 3D simulations.
 Each model represents the cardiac electrophysiological activity of a single
 cell, which can be combined using parabolic equations to form complex 2D or 3D
 cardiac tissue models.
@@ -199,7 +194,7 @@ cardiac tissue models.
     aliev_panfilov.t_max = 10               # simulation time
 
 We use an explicit finite-difference scheme, which requires maintaining an
-appropriate ``dt/dr`` ratio. For Aliev-Panfilov model, the recommended
+appropriate ``dt/dr`` ratio. For phenomenological models, the recommended
 calculation parameters for time and space steps are ``dt = 0.01`` and
 ``dr = 0.25``. You can increase ``dt`` to ``0.02`` to speed up calculations,
 but always verify the stability of your numerical scheme, as instability will
@@ -262,7 +257,7 @@ it simulates the activity of external electrodes.
 .. code-block:: Python
 
     stim_current = fw.StimCurrentCoord2D(time=0,
-                                         curr_value=0.15,
+                                         curr_value=5,
                                          curr_time=1,
                                          x1=1, x2=n-1, y1=1, y2=3)
 

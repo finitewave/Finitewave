@@ -59,12 +59,17 @@ class MitchellSchaeffer2D(CardiacModel):
         self.tau_in = 0.3
         self.u_gate = 0.13
 
+        # initial conditions
+        self.init_u = 0.0
+        self.init_h = 1.0 
+
     def initialize(self):
         """
         Initializes the model for simulation.
         """
         super().initialize()
-        self.h = np.ones_like(self.u, dtype=self.npfloat)
+        self.u = self.init_u * np.ones_like(self.u, dtype=self.npfloat)
+        self.h = self.init_h * np.ones_like(self.u, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

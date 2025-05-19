@@ -84,7 +84,6 @@ class FentonKarma2D(CardiacModel):
         self.npfloat    = 'float64'
 
         # model parameters (MLR-I)
-        
         self.tau_r   = 130
         self.tau_o   = 12.5
         self.tau_d   = 0.172
@@ -97,14 +96,19 @@ class FentonKarma2D(CardiacModel):
         self.u_c     = 0.13
         self.uc_si   = 0.85
 
+        # initial conditions
+        self.init_u = 0.0
+        self.init_v = 1.0
+        self.init_w = 1.0
 
     def initialize(self):
         """
         Initializes the model for simulation.
         """
         super().initialize()
-        self.v = np.ones_like(self.u, dtype=self.npfloat)
-        self.w = np.ones_like(self.u, dtype=self.npfloat)
+        self.u = self.init_u * np.ones_like(self.u, dtype=self.npfloat)
+        self.v = self.init_v * np.ones_like(self.u, dtype=self.npfloat)
+        self.w = self.init_w * np.ones_like(self.u, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

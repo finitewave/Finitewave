@@ -70,12 +70,17 @@ class Barkley2D(CardiacModel):
         self.b    = 0.02
         self.eap  = 0.02
 
+        # initial conditions
+        self.init_u = 0.0
+        self.init_v = 0
+
     def initialize(self):
         """
         Initializes the model for simulation.
         """
         super().initialize()
-        self.v = np.zeros_like(self.u, dtype=self.npfloat)
+        self.u = self.init_u * np.ones_like(self.u, dtype=self.npfloat)
+        self.v = self.init_v * np.ones_like(self.u, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

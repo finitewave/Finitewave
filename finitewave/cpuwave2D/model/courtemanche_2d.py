@@ -81,6 +81,30 @@ class Courtemanche2D(CardiacModel):
 
         self.kq10 = 3
 
+        # initial conditions
+        self.init_u     = -84.5
+        self.init_nai   = 11.2
+        self.init_ki    = 139
+        self.init_cai   = 0.000102
+        self.init_caup  = 1.6
+        self.init_carel = 1.1
+        self.init_m     = 0.00291
+        self.init_h     = 0.965
+        self.init_j     = 0.978
+        self.init_d     = 0.000137
+        self.init_f     = 0.999837
+        self.init_oa    = 0.000592
+        self.init_oi    = 0.9992
+        self.init_ua    = 0.003519
+        self.init_ui    = 0.9987
+        self.init_xs    = 0.0187
+        self.init_xr    = 0.0000329
+        self.init_fca   = 0.775
+        self.init_irel  = 0
+        self.init_vrel  = 1
+        self.init_urel  = 0
+        self.init_wrel  = 0.9
+
     def initialize(self):
         """
         Initializes the model's state variables and diffusion/ionic kernels.
@@ -91,29 +115,29 @@ class Courtemanche2D(CardiacModel):
         super().initialize()
         shape = self.cardiac_tissue.mesh.shape
 
-        self.u = -84.5*np.ones(shape, dtype=self.npfloat)      # (mV)
-        self.u_new = self.u.copy()                             # (mV)
-        self.nai = 11.2*np.ones(shape, dtype=self.npfloat)     # (mM)
-        self.ki = 139*np.ones(shape, dtype=self.npfloat)       # (mM)
-        self.cai = 0.000102*np.ones(shape, dtype=self.npfloat) # (mM)
-        self.caup = 1.6*np.ones(shape, dtype=self.npfloat)     # (mM)
-        self.carel = 1.1*np.ones(shape, dtype=self.npfloat)    # (mM)
-        self.m = 0.00291*np.ones(shape, dtype=self.npfloat)    
-        self.h = 0.965*np.ones(shape, dtype=self.npfloat)      
-        self.j_ = 0.978*np.ones(shape, dtype=self.npfloat)
-        self.d = 0.000137*np.ones(shape, dtype=self.npfloat)
-        self.f = 0.999837*np.ones(shape, dtype=self.npfloat)
-        self.oa = 0.000592*np.ones(shape, dtype=self.npfloat)
-        self.oi = 0.9992*np.ones(shape, dtype=self.npfloat)
-        self.ua = 0.003519*np.ones(shape, dtype=self.npfloat)
-        self.ui = 0.9987*np.ones(shape, dtype=self.npfloat)
-        self.xs = 0.0187*np.ones(shape, dtype=self.npfloat)
-        self.xr = 0.0000329*np.ones(shape, dtype=self.npfloat)
-        self.fca = 0.775*np.ones(shape, dtype=self.npfloat)
-        self.irel = 0*np.ones(shape, dtype=self.npfloat)
-        self.vrel = 1*np.ones(shape, dtype=self.npfloat)
-        self.urel = 0*np.ones(shape, dtype=self.npfloat)
-        self.wrel = 0.9*np.ones(shape, dtype=self.npfloat)
+        self.u = self.init_u * np.ones(shape, dtype=self.npfloat)         # (mV)
+        self.u_new = self.u.copy()                                        # (mV)
+        self.nai = self.init_nai * np.ones(shape, dtype=self.npfloat)     # (mM)
+        self.ki = self.init_ki * np.ones(shape, dtype=self.npfloat)       # (mM)
+        self.cai = self.init_cai * np.ones(shape, dtype=self.npfloat)     # (mM)
+        self.caup = self.init_caup * np.ones(shape, dtype=self.npfloat)   # (mM)
+        self.carel = self.init_carel * np.ones(shape, dtype=self.npfloat) # (mM)
+        self.m = self.init_m * np.ones(shape, dtype=self.npfloat)    
+        self.h = self.init_h * np.ones(shape, dtype=self.npfloat)      
+        self.j_ = self.init_j * np.ones(shape, dtype=self.npfloat)
+        self.d = self.init_d * np.ones(shape, dtype=self.npfloat)
+        self.f = self.init_f * np.ones(shape, dtype=self.npfloat)
+        self.oa = self.init_oa * np.ones(shape, dtype=self.npfloat)
+        self.oi = self.init_oi * np.ones(shape, dtype=self.npfloat)
+        self.ua = self.init_ua * np.ones(shape, dtype=self.npfloat)
+        self.ui = self.init_ui * np.ones(shape, dtype=self.npfloat)
+        self.xs = self.init_xs * np.ones(shape, dtype=self.npfloat)
+        self.xr =self.init_xr * np.ones(shape, dtype=self.npfloat)
+        self.fca = self.init_fca * np.ones(shape, dtype=self.npfloat)
+        self.irel = self.init_irel * np.ones(shape, dtype=self.npfloat)
+        self.vrel = self.init_vrel * np.ones(shape, dtype=self.npfloat)
+        self.urel = self.init_urel * np.ones(shape, dtype=self.npfloat)
+        self.wrel = self.init_wrel * np.ones(shape, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """

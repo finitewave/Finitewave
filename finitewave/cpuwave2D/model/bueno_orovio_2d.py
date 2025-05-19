@@ -130,14 +130,21 @@ class BuenoOrovio2D(CardiacModel):
         self.tau_w_inf = 0.07
         self.w_inf_ = 0.94
 
+        # initial conditions
+        self.init_u = 0.0
+        self.init_v = 1.0
+        self.init_w = 1.0
+        self.init_s = 0.0
+
     def initialize(self):
         """
         Initializes the model for simulation.
         """
         super().initialize()
-        self.v = np.ones_like(self.u, dtype=self.npfloat)
-        self.w = np.ones_like(self.u, dtype=self.npfloat)
-        self.s = np.zeros_like(self.u, dtype=self.npfloat)
+        self.u = self.init_u * np.ones_like(self.u, dtype=self.npfloat)
+        self.v = self.init_v * np.ones_like(self.u, dtype=self.npfloat) 
+        self.w = self.init_w * np.ones_like(self.u, dtype=self.npfloat)
+        self.s = self.init_s * np.ones_like(self.u, dtype=self.npfloat)
 
     def run_ionic_kernel(self):
         """
