@@ -1,12 +1,18 @@
 name: Run Finitewave tests
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      NUMBA_DISABLE_JIT: "1"
 
     steps:
       - uses: actions/checkout@v3
@@ -32,3 +38,4 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: finitewave/Finitewave
