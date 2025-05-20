@@ -421,8 +421,8 @@ steps described above:
     # set up the stimulation:
     stim_sequence = fw.StimSequence()
     stim_sequence.add_stim(fw.StimVoltageCoord2D(time=0,
-                                                volt_value=1,
-                                                x1=1, x2=n-1, y1=1, y2=3))
+                                                 volt_value=1,
+                                                 x1=1, x2=n-1, y1=1, y2=3))
     # set up the tracker:
     act_time_tracker = fw.ActivationTime2DTracker()
     act_time_tracker.threshold = 0.5

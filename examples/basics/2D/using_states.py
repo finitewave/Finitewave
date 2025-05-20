@@ -34,7 +34,7 @@ Simulation Setup:
 Execution Workflow:
 -------------------
 1. Run the first simulation and save the state at t = 10 and t = 20.
-2. Delete the model instance and clear memory using `gc.collect()` (just to be sure).
+2. Delete the model instance and clear memory using `gc.collect()`.
 3. Create a new model instance and load "state_0", then continue the 
    simulation from t = 10 to 20.
 4. Create another new instance, load "state_1", and run from t = 20 to 30.
@@ -70,33 +70,33 @@ tissue = fw.CardiacTissue2D([n, n])
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, n//2 - 3, n//2 + 3,
-                                             n//2 - 3, n//2 + 3))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, n//2 - 5, n//2 + 5,
+                                             n//2 - 5, n//2 + 5))
 
 # set up state saver parameters:
 # to save only one state you can use StateSaver directly
 state_savers = fw.StateSaverCollection()
-state_savers.savers.append(fw.StateSaver("state_0", time=10))
-state_savers.savers.append(fw.StateSaver("state_1"))
+state_savers.savers.append(fw.StateSaver("state_0", time=10)) # will save at t=10
+state_savers.savers.append(fw.StateSaver("state_1")) # will save at t=20 (at the end of the run)
 
 # create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilov2D()
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 20
+mitchell_schaeffer = fw.MitchellSchaeffer2D()
+mitchell_schaeffer.dt = 0.01
+mitchell_schaeffer.dr = 0.25
+mitchell_schaeffer.t_max = 20
 # add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
-aliev_panfilov.state_saver = state_savers
+mitchell_schaeffer.cardiac_tissue = tissue
+mitchell_schaeffer.stim_sequence = stim_sequence
+mitchell_schaeffer.state_saver = state_savers
 
 # run the model:
-aliev_panfilov.run()
+mitchell_schaeffer.run()
 
-u_before = aliev_panfilov.u.copy()
+u_before = mitchell_schaeffer.u.copy()
 
 # We delete model and use gc.collect() to ask the virtual machine remove
 # objects from memory. Though it's not necessary to do this.
-del aliev_panfilov
+del mitchell_schaeffer
 gc.collect()
 
 # # # # # # # # #
@@ -106,40 +106,40 @@ gc.collect()
 
 
 # recreate the model
-aliev_panfilov = fw.AlievPanfilov2D()
+mitchell_schaeffer = fw.MitchellSchaeffer2D()
 
 # set up numerical parameters:
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 10
+mitchell_schaeffer.dt = 0.01
+mitchell_schaeffer.dr = 0.25
+mitchell_schaeffer.t_max = 10
 # add the tissue and the state_loader to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.state_loader = fw.StateLoader("state_0")
+mitchell_schaeffer.cardiac_tissue = tissue
+mitchell_schaeffer.state_loader = fw.StateLoader("state_0")
 
-aliev_panfilov.run()
-u_after = aliev_panfilov.u.copy()
+mitchell_schaeffer.run()
+u_after = mitchell_schaeffer.u.copy()
 
 # recreate the model
-aliev_panfilov = fw.AlievPanfilov2D()
+mitchell_schaeffer = fw.MitchellSchaeffer2D()
 
 # set up numerical parameters:
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 10
+mitchell_schaeffer.dt = 0.01
+mitchell_schaeffer.dr = 0.25
+mitchell_schaeffer.t_max = 10
 # add the tissue and the state_loader to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.state_loader = fw.StateLoader("state_1")
+mitchell_schaeffer.cardiac_tissue = tissue
+mitchell_schaeffer.state_loader = fw.StateLoader("state_1")
 
-aliev_panfilov.run()
+mitchell_schaeffer.run()
 
 # plot the results
 fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].imshow(u_before)
-axs[0].set_title("First run from t=0")
+axs[0].set_title("First run from t=0 to t=20")
 axs[1].imshow(u_after)
-axs[1].set_title("Second run from t=10")
-axs[2].imshow(aliev_panfilov.u)
-axs[2].set_title("Third run from t=20")
+axs[1].set_title("Second run from t=10 to t=20")
+axs[2].imshow(mitchell_schaeffer.u)
+axs[2].set_title("Third run from t=20 to t=30")
 plt.show()
 
 # remove the state directory
