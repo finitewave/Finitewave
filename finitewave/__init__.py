@@ -36,8 +36,6 @@ from finitewave.core import (
 from finitewave.cpuwave2D import (
     IncorrectWeightsModeError2D,
     Diffuse2DPattern,
-    ScarGauss2DPattern,
-    ScarRect2DPattern,
     Structural2DPattern,
     AlievPanfilov2D,
     Barkley2D,

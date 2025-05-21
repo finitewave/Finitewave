@@ -1,4 +1,2 @@
 from .diffuse_2d_pattern import Diffuse2DPattern
-from .scar_gauss_2d_pattern import ScarGauss2DPattern
-from .scar_rect_2d_pattern import ScarRect2DPattern
 from .structural_2d_pattern import Structural2DPattern

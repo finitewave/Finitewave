@@ -1,8 +1,6 @@
 from .exception import IncorrectWeightsModeError2D
 from .fibrosis import (
     Diffuse2DPattern,
-    ScarGauss2DPattern,
-    ScarRect2DPattern,
     Structural2DPattern
 )
 from .model import (

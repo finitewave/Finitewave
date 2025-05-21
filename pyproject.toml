@@ -28,6 +28,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov"
+]
 docs = [
   "sphinx",
   "sphinx-rtd-theme",
@@ -35,8 +39,6 @@ docs = [
   "sphinx-gallery",
   "sphinx-copybutton",
   "numpydoc",
-  "pytest",
-  "pytest-cov"
 ]
 
 # [tool.setuptools]
