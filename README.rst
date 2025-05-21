@@ -7,10 +7,13 @@ Finitewave
    :target: https://github.com/finitewave/Finitewave/blob/main/LICENSE
    :alt: License
 
+.. image:: https://github.com/finitewave/Finitewave/actions/workflows/test.yml/badge.svg?branch=develop
+   :target: https://github.com/finitewave/Finitewave/actions/workflows/test.yml
+   :alt: Test status
+
 .. image:: https://codecov.io/gh/finitewave/Finitewave/branch/develop/graph/badge.svg
    :target: https://codecov.io/gh/finitewave/Finitewave
    :alt: Code coverage
-
 
 Python package for simulating cardiac electrophysiology using
 finite-difference methods. It provides tools for modeling and visualizing the
