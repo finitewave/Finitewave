@@ -15,16 +15,16 @@ readme = "README.rst"
 license = "MIT"
 
 dependencies = [
-  "numpy==1.26.4",
-  "numba==0.60.0",
-  "scipy==1.14.1",
-  "matplotlib==3.9.2",
-  "tqdm==4.66.5",
-  "natsort==8.4.0",
-  "pyvista==0.44.1",
-  "ffmpeg-python==0.2.0",
-  "pandas==2.2.3",
-  "scikit-image==0.24.0",
+  "numpy>=1.26.4",
+  "numba>=0.60.0",
+  "scipy>=1.14.1",
+  "matplotlib>=3.9.2",
+  "tqdm>=4.66.5",
+  "natsort>=8.4.0",
+  "pyvista>=0.44.1",
+  "ffmpeg-python>=0.2.0",
+  "pandas>=2.2.3",
+  "scikit-image>=0.24.0",
 ]
 
 [project.optional-dependencies]
