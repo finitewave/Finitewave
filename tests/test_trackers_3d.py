@@ -1,5 +1,7 @@
 import os
 import shutil
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import numpy as np
 import pytest
 import finitewave as fw
@@ -118,7 +120,7 @@ def test_animation_3d_tracker(spiral_model):
     # Check if the frames are not empty
     for fname in files:
         frame = np.load(os.path.join(tracker.dir_name, fname))
-        assert np.any(frame > 0), f"Frame {fname} appears to be empty." # Aliev-Panfilov model
+        assert np.any(frame > 0), f"Frame {fname} appears to be empty." 
 
     shutil.rmtree(tracker.dir_name)
 
@@ -284,6 +286,59 @@ def test_ecg_3d_tracker(planar_model):
     assert ecg.min() < -0.001
     assert np.argmax(ecg) > 100  # Check if the peak occurs not at the beginning
 
+def test_animation_slice_3d_tracker():
+    
+    class MockModel:
+        def __init__(self):
+            self.V = np.random.rand(5, 5, 5)
+            self.cardiac_tissue = type("Tissue", (), {})()
+            self.cardiac_tissue.mesh = np.ones((5, 5, 5), dtype=np.int8)
 
+    tracker = fw.AnimationSlice3DTracker()
+    tracker.variable_name = 'V'
+    tracker.slice_z = 2  # only one of slice_x, slice_y, slice_z must be set
+    tracker.dir_name = "test_frames"
+    tracker.file_name = "test_animation"
 
+    with TemporaryDirectory() as tmpdir:
+        tracker.path = tmpdir
+        model = MockModel()
+        tracker.initialize(model)
+
+        for _ in range(3):
+            tracker._track()
+
+        output_dir = Path(tmpdir) / "test_frames"
+        files = sorted(output_dir.glob("*.npy"))
+        assert len(files) == 3, "Should create exactly 3 frame files"
+
+        for file in files:
+            frame = np.load(file)
+            assert frame.shape == (5, 5), "Each frame should have shape (5, 5)"
+            assert frame.dtype == np.float32 or frame.dtype == np.float64
+
+def test_period_animation_3d_tracker(spiral_model):
+    tracker = fw.PeriodAnimation3DTracker()
+    tracker.dir_name = "test_frames"
+    tracker.threshold = 0.5
+    tracker.step = 100  # write every 100th step
+    tracker.overwrite = True
+
+    seq = fw.TrackerSequence()
+    seq.add_tracker(tracker)
+    spiral_model.tracker_sequence = seq
+
+    spiral_model.run()
+
+    # Check if the animation files are created
+    assert os.path.exists(tracker.dir_name), "Output directory was not created."
+    files = sorted(os.listdir(tracker.dir_name))
+    expected_frames = (spiral_model.t_max/spiral_model.dt) // tracker.step
+    assert len(files) == expected_frames, f"Expected {expected_frames} frames, got {len(files)}"
+
+    # Check if the frames are not empty
+    frame = np.load(os.path.join(tracker.dir_name, files[-1]))
+    assert np.any(frame > 0), f"Frame {frame} appears to be empty."
+
+    shutil.rmtree(tracker.dir_name)
 

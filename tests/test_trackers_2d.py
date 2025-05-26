@@ -115,7 +115,7 @@ def test_animation_2d_tracker(spiral_model):
     # Check if the frames are not empty
     for fname in files:
         frame = np.load(os.path.join(tracker.dir_name, fname))
-        assert np.any(frame > 0), f"Frame {fname} appears to be empty." # Aliev-Panfilov model
+        assert np.any(frame > 0), f"Frame {fname} appears to be empty." 
 
     shutil.rmtree(tracker.dir_name)
 
@@ -277,6 +277,29 @@ def test_ecg_2d_tracker(planar_model):
     assert ecg.min() < -0.001
     assert np.argmax(ecg) > 100  # Check if the peak occurs not at the beginning
 
+def test_period_animation_2d_tracker(spiral_model):
+    tracker = fw.PeriodAnimation2DTracker()
+    tracker.dir_name = "test_frames"
+    tracker.threshold = 0.5
+    tracker.step = 100  # write every 100th step
+    tracker.overwrite = True
 
+    seq = fw.TrackerSequence()
+    seq.add_tracker(tracker)
+    spiral_model.tracker_sequence = seq
+
+    spiral_model.run()
+
+    # Check if the animation files are created
+    assert os.path.exists(tracker.dir_name), "Output directory was not created."
+    files = sorted(os.listdir(tracker.dir_name))
+    expected_frames = (spiral_model.t_max/spiral_model.dt) // tracker.step
+    assert len(files) == expected_frames, f"Expected {expected_frames} frames, got {len(files)}"
+
+    # Check if the frames are not empty
+    frame = np.load(os.path.join(tracker.dir_name, files[-1]))
+    assert np.any(frame > 0), f"Frame {frame} appears to be empty."
+
+    shutil.rmtree(tracker.dir_name)
 
 
