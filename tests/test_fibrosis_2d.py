@@ -4,9 +4,9 @@ from finitewave.cpuwave2D.fibrosis.diffuse_2d_pattern import Diffuse2DPattern
 from finitewave.cpuwave2D.fibrosis.structural_2d_pattern import Structural2DPattern
 
 def test_diffuse_fibrosis_2d():
-    shape = (100, 100)
-    x1, x2 = 10, 90
-    y1, y2 = 20, 80
+    shape = (1000, 1000)
+    x1, x2 = 100, 900
+    y1, y2 = 200, 800
     density = 0.3
 
     random.seed(0)
@@ -24,9 +24,9 @@ def test_diffuse_fibrosis_2d():
     assert abs(fibrosis_ratio - density) < 0.01, "Diffuse: fibrosis density mismatch"
 
 def test_structural_fibrosis_2d():
-    shape = (100, 100)
-    x1, x2 = 10, 90
-    y1, y2 = 20, 80
+    shape = (1000, 1000)
+    x1, x2 = 100, 900
+    y1, y2 = 200, 800
     density = 0.4
     length_i = 5
     length_j = 4

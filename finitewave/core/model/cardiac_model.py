@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import copy
+import warnings
 from tqdm import tqdm
 import numpy as np
 import numba
@@ -62,11 +63,12 @@ class CardiacModel(ABC):
         self.state_saver = None
         self.stencil = None
 
-        self.diffuse_kernel = None
+        self.diffusion_kernel = None
         self.ionic_kernel = None
 
         self.u = np.ndarray
         self.u_new = np.ndarray
+        self.weights = np.ndarray
         self.dt = 0.
         self.dr = 0.
         self.t_max = 0.
@@ -96,12 +98,7 @@ class CardiacModel(ABC):
         self.step = 0
         self.t = 0
 
-        self.cardiac_tissue.compute_myo_indexes()
-
-        if self.stencil is None:
-            self.stencil = self.select_stencil(self.cardiac_tissue)
-
-        self.weights = self.stencil.compute_weights(self, self.cardiac_tissue)
+        self.compute_weights()
         self.diffusion_kernel = self.stencil.select_diffusion_kernel()
 
         if self.stim_sequence:
@@ -118,6 +115,17 @@ class CardiacModel(ABC):
 
         if self.state_saver:
             self.state_saver.initialize(self)
+
+    def compute_weights(self):
+        """
+        Computes the weights for the stencil.
+        """
+        self.cardiac_tissue.compute_myo_indexes()
+
+        if self.stencil is None:
+            self.stencil = self.select_stencil(self.cardiac_tissue)
+
+        self.weights = self.stencil.compute_weights(self, self.cardiac_tissue)
 
     def run(self, initialize=True, num_of_theads=None):
         """
@@ -137,7 +145,6 @@ class CardiacModel(ABC):
 
         if num_of_theads is not None:
             if num_of_theads > numba.config.NUMBA_NUM_THREADS:
-                import warnings
                 warnings.warn(
                     f"Selected number of threads ({num_of_theads}) exceeds the available threads ({numba.config.NUMBA_NUM_THREADS}). "
                     f"Using the maximum available threads instead."
