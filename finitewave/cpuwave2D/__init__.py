@@ -27,4 +27,3 @@ from .stimulation import (
 )
 from .tissue import CardiacTissue2D
 from .tracker import *
-
