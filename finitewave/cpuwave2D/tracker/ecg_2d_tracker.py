@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import numpy as np
 from numba import njit, prange
 from scipy.spatial import distance
@@ -8,102 +8,146 @@ from finitewave.core.tracker.tracker import Tracker
 
 class ECG2DTracker(Tracker):
     """
-    A class to compute and track electrocardiogram (ECG) signals from a 2D cardiac tissue model simulation.
+    A class to compute and track electrocardiogram (ECG) signals from a 2D
+    cardiac tissue model simulation.
 
-    This tracker calculates ECG signals at specified measurement points by computing the potential differences
-    across the cardiac tissue mesh and considering the inverse square of the distance from each measurement point.
+    This tracker calculates ECG signals at specified measurement points by
+    computing the potential differences across the cardiac tissue mesh and
+    considering the inverse square of the distance from each measurement point.
 
     Attributes
     ----------
-    measure_points : np.ndarray
+    measure_coords : np.ndarray
         An array of points (x, y, z) where ECG signals are measured.
-    ecg : np.ndarray
+    ecg : list
         The computed ECG signals.
-    step : int
-        Interval in time steps at which ECG signals are calculated.
-    _index : int
-        Internal counter to keep track of the current step index for saving ECG signals.
-    tissue_points : tuple
-        Indices of the tissue points in the cardiac mesh where the potential is measured.
-    distances : np.ndarray
-        Precomputed squared distances between measurement points and tissue points.
+    file_name : str
+        The name of the file to save the computed ECG signals.
+    u_tr : np.ndarray
+        The updated potential values after diffusion.
 
-    Methods
-    -------
-    initialize(model):
-        Initializes the tracker with the simulation model and precomputes necessary values.
-    calc_ecg():
-        Calculates the ECG signal based on the current potential difference in the model.
-    track():
-        Tracks and stores ECG signals at the specified intervals.
-    write():
-        Saves the computed ECG signals to disk as a NumPy file.
     """
 
-    def __init__(self):
+    def __init__(self, measure_coords=None):
         """
         Initializes the ECG2DTracker with default parameters.
-        """
-        Tracker.__init__(self)
-        self.measure_points = np.array([[0, 0, 1]])  # Default measurement points
-        self.ecg = np.ndarray  # Placeholder for ECG data array
-        self.step = 1  # Interval for ECG calculation
-        self._index = 0  # Internal step counter
-
-    def initialize(self, model):
-        """
-        Initializes the tracker with the simulation model and precomputes necessary values.
 
         Parameters
         ----------
-        model : object
-            The cardiac tissue model object containing the data to be tracked.
+        distance_power : int, optional
+            The power to which the distance is raised in the calculation of the
+            ECG signal. The default is 1.
+        """
+        super().__init__()
+        self.measure_coords = measure_coords
+        self.ecg = []
+        self.file_name = "ecg.npy"
+        self.u_tr = None
+
+    def initialize(self, model):
+        """
+        Initialize the ECG tracker with the model object.
+
+        Parameters
+        ----------
+        model : CardiacModel3D
+            The model object containing the simulation parameters.
         """
         self.model = model
-        n = int(np.ceil(model.t_max / (self.step * model.dt)))  # Number of steps to save ECG data
-        self.ecg = np.zeros((self.measure_points.shape[0], n))  # Initialize ECG array
-
-        # Get the cardiac tissue mesh and find tissue points
-        mesh = model.cardiac_tissue.mesh
-        self.tissue_points = np.where(mesh == 1)
-
-        # Calculate distances from measure points to each tissue point
-        points = np.argwhere(mesh == 1)
-        tissue_points = np.append(points, np.zeros((points.shape[0], 1)), axis=1)  # Add zero z-coordinate
-        self.distances = distance.cdist(self.measure_points, tissue_points)  # Compute distances
-        self.distances = self.distances**2  # Square distances for inverse-square law
+        self.measure_coords = np.atleast_2d(self.measure_coords)
+        self.ecg = []
+        self.u_tr = np.zeros_like(model.u)
 
     def calc_ecg(self):
         """
-        Calculates the ECG signal based on the current potential difference in the model.
+        Calculate the ECG signal at the measurement points.
 
         Returns
         -------
         np.ndarray
-            The calculated ECG signals for each measurement point.
+            The computed ECG signal.
         """
-        # Compute the current potential difference across the tissue points
-        current = (self.model.u_new - self.model.u)[self.tissue_points]
-        # Calculate the ECG signal by summing the contributions weighted by the inverse squared distances
-        return np.sum(current / self.distances, axis=1)
+        self.model.diffusion_kernel(self.u_tr,
+                                    self.model.u,
+                                    self.model.weights,
+                                    self.model.cardiac_tissue.myo_indexes)
+        ecg = compute_ecg(self.u_tr,
+                          self.model.u,
+                          self.measure_coords,
+                          self.model.dr,
+                          self.model.cardiac_tissue.myo_indexes)
+        return ecg
 
-    def track(self):
+    def _track(self):
         """
         Tracks and stores ECG signals at the specified intervals.
 
         This method should be called at each time step of the simulation.
         """
-        # Only compute ECG if the current step is a multiple of the step interval
-        if self.model.step % self.step == 0:
-            self.ecg[:, self._index] = self.calc_ecg()  # Calculate and store ECG
-            self._index += 1  # Increment the step index
+        ecg = self.calc_ecg()
+        self.ecg.append(ecg)
+
+    @property
+    def output(self):
+        """
+        Get the computed ECG signals as a numpy array.
+
+        Returns
+        -------
+        np.ndarray
+            The computed ECG signals.
+        """
+        return np.array(self.ecg)
 
     def write(self):
         """
-        Saves the computed ECG signals to disk as a NumPy file.
+        Save the computed ECG signals to a file.
+
+        The ECG signals are saved as a numpy array in the specified path.
         """
-        # Create the directory if it doesn't exist
-        if not os.path.exists(self.dir_name):
-            os.mkdir(self.dir_name)
-        # Save ECG data to a file
-        np.save(os.path.join(self.dir_name, "ecg.npy"), self.ecg)
+        if not Path(self.path).exists():
+            Path(self.path).mkdir(parents=True)
+
+        np.save(Path(self.path).joinpath(self.file_name).with_suffix('.npy'),
+                self.output)
+
+@njit(parallel=True)
+def compute_ecg(u_tr, u, coords, dr, indexes):
+    """
+    Performs isotropic diffusion on a 2D grid.
+
+    Parameters
+    ----------
+    u_tr : numpy.ndarray
+        A 2D array to store the updated potential values after diffusion.
+    u : numpy.ndarray
+        A 2D array representing the current potential values before diffusion.
+    coord : tuple
+        The coordinates of the measurement point.
+    dr : float
+        The spatial resolution of the grid.
+    indexes : numpy.ndarray
+        A 1D array of indices of the healthy tissue points.
+    """
+    n_j = u.shape[1]
+
+    n_c = len(coords)
+    ecg = np.zeros(n_c)
+
+    for c in range(n_c):
+        x, y, z = coords[c]
+        ecg_ = 0
+
+        for ind in prange(len(indexes)):
+            ii = indexes[ind]
+            i = ii // n_j
+            j = ii % n_j
+
+            d = (x - i)**2 + (y - j)**2 + (z)**2
+
+            if d > 0:
+                ecg_ += (u_tr[i, j] - u[i, j]) / (d * dr)
+
+        ecg[c] = ecg_
+
+    return ecg

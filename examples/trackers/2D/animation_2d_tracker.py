@@ -1,62 +1,89 @@
+"""
+Creating an Animation of Action Potential in 2D
+===============================================
 
-#
-# Use the Animation2DTracker to make a folder with snapshots if model variable (voltage in this example)
-# Then use the AnimationBuilder to create mp4 animation based on snapshots folder.
-# Keep in mind: you have to install ffmpeg on your system.
-#
+Overview:
+---------
+This example demonstrates how to use the `Animation2DTracker` to generate an 
+animation of the action potential (or any other variablse you choose) in a 2D cardiac tissue simulation. 
+The animation is saved as a sequence of frames and can be exported as a video or GIF.
 
+Simulation Setup:
+-----------------
+- Tissue Grid: A 200×200 cardiac tissue domain.
+- Stimulation:
+  - First stimulus is applied to the bottom half of the domain at t = 0.
+  - Second stimulus is applied to the left half at t = 31 to initiate wave break and spiral formation.
+- Time and Space Resolution:
+  - Temporal step (dt): 0.01
+  - Spatial resolution (dr): 0.25
+  - Total simulation time (t_max): 100
 
-import matplotlib.pyplot as plt
+Animation Tracker:
+------------------
+- Tracks the transmembrane potential `u` during the simulation.
+- Records a frame every 10 steps (`step = 10`).
+- Frames are saved into the `anim_data/` directory.
+- Existing data in the directory will be overwritten.
+- After the simulation, `write()` is called to render the animation:
+  - `shape_scale`: Zoom factor for each frame.
+  - `clear=True`: Deletes all raw frame data after animation is generated.
+  - `fps=30`: Frames per second for the output video.
+
+Execution:
+----------
+1. Set up cardiac tissue and stimulation sequence.
+2. Attach `Animation2DTracker` to the tracker sequence.
+3. Run the Aliev-Panfilov model with configured simulation and tracking.
+4. Call `write()` to generate and optionally clean up the animation.
+
+Application:
+------------
+- Useful for visualizing wave propagation and reentry.
+- Can be used in presentations, publications, or model comparisons.
+- Helps in debugging wave dynamics and understanding tissue behavior.
+
+Output:
+-------
+The animation is written to disk in the specified folder (`anim_data`). 
+It shows the evolution of the transmembrane potential over time in the tissue.
+
+"""
+
 import numpy as np
-import shutil
 
 import finitewave as fw
 
-# number of nodes on the side
-n = 100
-
+# set up the tissue:
+n = 200
 tissue = fw.CardiacTissue2D([n, n])
-# create a mesh of cardiomyocytes (elems = 1):
-tissue.mesh = np.ones([n, n], dtype="uint8")
-# add empty nodes on the sides (elems = 0):
-tissue.add_boundaries()
-
-# don't forget to add the fibers array even if you have an anisotropic tissue:
-tissue.fibers = np.zeros([n, n, 2])
-
-# create model object:
-aliev_panfilov = fw.AlievPanfilov2D()
-
-# set up numerical parameters:
-aliev_panfilov.dt    = 0.01
-aliev_panfilov.dr    = 0.25
-aliev_panfilov.t_max = 50
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, 5))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, n//2))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(31, 1, 0, n//2, 0, n))
 
+# set up tracker parameters:
 tracker_sequence = fw.TrackerSequence()
-# add action potential tracker
 animation_tracker = fw.Animation2DTracker()
-# We want to write the animation for the voltage variable. Use string value
-# to specify the required array.anim_data
-animation_tracker.target_array = "u"
-# Folder name:
+animation_tracker.variable_name = "u"  # Specify the variable to track
 animation_tracker.dir_name = "anim_data"
-animation_tracker.step = 1
+animation_tracker.step = 10
+animation_tracker.overwrite = True  # Remove existing files in dir_name
 tracker_sequence.add_tracker(animation_tracker)
 
+# create model object:
+aliev_panfilov = fw.AlievPanfilov2D()
+# set up numerical parameters:
+aliev_panfilov.dt = 0.01
+aliev_panfilov.dr = 0.25
+aliev_panfilov.t_max = 100
 # add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue   = tissue
-aliev_panfilov.stim_sequence    = stim_sequence
+aliev_panfilov.cardiac_tissue = tissue
+aliev_panfilov.stim_sequence = stim_sequence
 aliev_panfilov.tracker_sequence = tracker_sequence
-
+# run the model:
 aliev_panfilov.run()
 
-animation_builder = fw.AnimationBuilder()
-animation_builder.dir_name = "anim_data"
-animation_builder.write_2d_mp4("animation.mp4")
-
-# remove the snapshots folder:
-shutil.rmtree("anim_data")
+# write animation and clear the snapshot folder
+animation_tracker.write(shape_scale=5, clear=True, fps=30, clim=[0, 1]) # !Note: for ionic models use clim=[-90, 40] or similar to show the activity correctly

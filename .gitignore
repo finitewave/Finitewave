@@ -23,6 +23,7 @@ var/
 .installed.cfg
 *.egg
 .DS_Store
+auto_examples/
 
 # PyInstaller
 # Usually these files are written by a python script from a template
@@ -49,6 +50,7 @@ coverage.xml
 .pytest_cache/
 
 # Jupyter Notebook
+playground.ipynb
 .ipynb_checkpoints
 
 # pyenv
@@ -107,11 +109,12 @@ docs/_build/
 .coverage.*
 
 # Images
-*.png
+# *.png
 *.jpg
 *.jpeg
 # *.gif
-*.svg
+# *.svg
+*.zip
 
 # ffmpeg output
 *.mp4

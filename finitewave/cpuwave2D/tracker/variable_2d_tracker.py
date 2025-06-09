@@ -1,69 +1,52 @@
-import os
+from pathlib import Path
 import numpy as np
 
-from finitewave.core.tracker.tracker import Tracker
+from .multi_variable_2d_tracker import MultiVariable2DTracker
 
 
-class Variable2DTracker(Tracker):
+class Variable2DTracker(MultiVariable2DTracker):
     """
     A tracker that records the values of specified variables from a 2D model 
     over time at a given grid point.
 
-    Parameters
-    ----------
-    var_list : list of str
-        List of variable names to be tracked.
-    cell_ind : list of int
-        Indices of the cell to track. Default is [1, 1].
-    dir_name : str
-        Directory name where the data will be saved. Default is "multi_vars".
-    vars : dict
-        Dictionary to store the tracked variables over time.
-
     Attributes
     ----------
-    model : object
-        The model object from which data is being tracked.
+    cell_ind : list
+        The indices [i, j] of the cell where the variable is tracked.
     """
     def __init__(self):
-        Tracker.__init__(self)
-        self.var_list = []
+        super().__init__()
         self.cell_ind = [1, 1]
-        self.dir_name = "multi_vars"
-        self.vars = {}
 
-    def initialize(self, model):
+    @property
+    def var_name(self):
         """
-        Initializes the tracker with the given model.
+        The name of the variable to be tracked.
+        """
+        return self.var_list[0]
 
-        Parameters
-        ----------
-        model : object
-            The model object from which data is being tracked. It must have attributes
-            `t_max` (total simulation time) and `dt` (time step) to determine the length
-            of the tracking arrays.
-        """
-        self.model = model
-        t_max = self.model.t_max
-        dt    = self.model.dt
-        for var_ in self.var_list:
-            self.vars[var_] = np.zeros(int(t_max/dt)+1)
+    @var_name.setter
+    def var_name(self, value):
+        self.var_list = [value]
 
-    def track(self):
+    @property
+    def output(self):
         """
-        Updates the tracked variable values at the specified cell index for the current step.
+        Property to get the tracked variable values.
+
+        Returns
+        -------
+        np.ndarray
+            The values of the tracked variable at the specified grid point.
         """
-        step  = self.model.step
-        for var_ in self.var_list:
-            self.vars[var_][step] = self.model.__dict__[var_][self.cell_ind[0],
-                                                              self.cell_ind[1]]
+        return self.vars[self.var_name]
 
     def write(self):
         """
-        Saves the tracked variable data to files in the specified directory.
-        Creates the directory if it does not exist.
+        Saves the tracked variables to disk as NumPy files.
         """
-        if not os.path.exists(self.dir_name):
-            os.mkdir(self.dir_name)
-        for var_ in self.var_list:
-            np.save(os.path.join(self.dir_name, var_), self.vars[var_])
+        if not Path(self.path, self.dir_name).exists():
+            Path(self.path, self.dir_name).mkdir(parents=True)
+
+        np.save(Path(self.path, self.dir_name,
+                     self.var_name).with_suffix('.npy'), self.output)

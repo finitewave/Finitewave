@@ -1,22 +1,50 @@
-# Finitewave examples
+# Finitewave Examples
 
-This directory contains a collection of examples that demonstrate the usage and capabilities of the Finitewave package. These examples are organized into different sections to help you get started with basic simulations and explore more advanced tools, such as trackers.
+This directory contains a collection of **example scripts** demonstrating how to use the Finitewave framework for cardiac electrophysiology simulations.
 
-## Recommendations
+The examples are organized into subdirectories by topic. They cover a range of use cases — from basic functionality to advanced simulation setups.
 
-To run an example, navigate to the corresponding directory and execute the script. For instance, to run the Aliev-Panfilov 2D Anisotropic simulation:
+## Structure
 
-```sh
-cd basic
-python aliev_panfilov_2D_aniso.py
-```
+### 📁 `basics/`
 
-## Examples structure
+Examples of **basic framework usage** and common cardiac phenomena:
 
-*/basic*
+- How to initialize and run 2D and 3D simulations
+- Visualization of wave propagation
+- Modeling of typical phenomena such as **spiral waves/reentry**
 
-This section introduces the fundamental usage of the Finitewave package, providing minimal examples that demonstrate how to set up and execute simple cardiac simulations.
+### 📁 `fibrosis/`
 
-*/trackers/*
+Examples of **simulations in fibrotic tissue**:
 
-This section showcases the usage of various tracking tools provided by Finitewave. Trackers are used to perform measurements and gather data during simulations, which is crucial for analyzing the behavior of the cardiac models.
+- Preparing fibrosis maps
+- Studying wave behavior in heterogeneous tissue
+
+### 📁 `models/`
+
+**Minimal working examples** for each of the **electrophysiological models** implemented in Finitewave:
+
+- Demonstrate basic usage of each model in isolation
+
+### 📁 `stimulation/`
+
+Examples of different **stimulation protocols**:
+
+- stimulation by current/voltage
+- stimulation by coordinates, matrices
+- making stimulation sequences
+
+### 📁 `trackers/`
+
+Examples of using **trackers** included in the framework:
+
+- How to measure activation times, APD, egm, period maps, etc.
+- How to record and analyze simulation results during runtime
+
+## How to run
+
+You can run any example by executing it as a Python script:
+
+```bash
+python examples/<subdir>/<example_script.py>

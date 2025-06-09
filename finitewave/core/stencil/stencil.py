@@ -1,70 +1,46 @@
-from abc import ABCMeta, abstractmethod
-from collections import defaultdict
+from abc import ABC, abstractmethod
 
-class Stencil:
-    """Base class for calculating stencil weights used in numerical simulations.
 
-    This abstract base class defines the interface for calculating stencil weights for numerical
-    simulations. It includes a caching mechanism to optimize performance by reducing the number of
-    symbolic calculations.
+class Stencil(ABC):
+    """Base class for calculating stencil weights used in numerical
+    simulations.
 
-    Attributes
-    ----------
-    cache : dict
-        A dictionary used to cache previously computed stencil weights to improve performance
-        by avoiding redundant calculations.
-
-    Methods
-    -------
-    get_weights(mesh, conductivity, fibers, D_al, D_ac, dt, dr)
-        Abstract method that must be implemented by subclasses to compute and return stencil weights.
+    This abstract base class defines the interface for calculating stencil
+    weights for numerical simulations. It includes a caching mechanism to
+    optimize performance by reducing the number of symbolic calculations. Also,
+    it handles the boundary conditions for the numerical scheme.
     """
-
-    __metaclass__ = ABCMeta
-
-    def __init__(self):
-        """
-        Initializes the Stencil object with an empty cache.
-        """
-        self.cache = defaultdict()
-
     @abstractmethod
-    def get_weights(self, mesh, conductivity, fibers, D_al, D_ac, dt, dr):
+    def compute_weights(self, model, cardiac_tissue):
         """
-        Computes and returns the stencil weights based on the provided parameters.
+        Computes the stencil weights based on the provided parameters.
 
-        This method must be implemented by subclasses to compute the stencil weights used for
-        numerical simulations. The weights are calculated based on the tissue mesh, conductivity,
-        fibers orientation, diffusion coefficients, time step, and spatial step.
+        This method must be implemented by subclasses to compute the stencil
+        weights used for numerical simulations. The weights are calculated
+        based on the tissue mesh and spatial step. Additional parameters can
+        be passed as arguments or keyword arguments.
 
         Parameters
         ----------
-        mesh : np.ndarray
-            A 2D or 3D numpy array representing the tissue mesh where each value indicates the type
-            of tissue (e.g., cardiomyocyte, fibrosis).
-
-        conductivity : np.ndarray or float
-            A numpy array or constant value representing the coefficient for imitating low conductance
-            (fibrosis) areas. This affects the diffusion coefficients.
-
-        fibers : np.ndarray
-            A 2D or 3D numpy array representing the orientation vectors of the fibers within the tissue.
-
-        D_al : float
-            The diffusion coefficient along the fibers direction.
-
-        D_ac : float
-            The diffusion coefficient across the fibers direction.
-
-        dt : float
-            The time step used in the simulation.
-
-        dr : float
-            The spatial step used in the simulation.
+        model : CardiacModel
+            A model object containing the simulation parameters.
+        cardiac_tissue : CardiacTissue
+            A tissue object representing the cardiac tissue.
 
         Returns
         -------
         np.ndarray
-            A numpy array of stencil weights computed based on the provided parameters.
+            A numpy array containing the stencil weights.
+        """
+        pass
+
+    @abstractmethod
+    def select_diffusion_kernel():
+        """
+        Builds the diffusion kernel for the numerical scheme.
+
+        This method must be implemented by subclasses to build the diffusion
+        kernel used for the numerical scheme. The kernel is used to compute the
+        diffusion of the potential in the tissue mesh.
         """
         pass

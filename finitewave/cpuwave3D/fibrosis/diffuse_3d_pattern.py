@@ -24,7 +24,7 @@ class Diffuse3DPattern(FibrosisPattern):
         Generates a 3D mesh with a diffuse fibrosis pattern within the specified region.
     """
 
-    def __init__(self, x1, x2, y1, y2, z1, z2, dens):
+    def __init__(self, x1, x2, y1, y2, z1, z2, density):
         """
         Initializes the Diffuse3DPattern object with the given region of interest and density.
 
@@ -36,7 +36,7 @@ class Diffuse3DPattern(FibrosisPattern):
             The start and end indices for the region of interest along the y-axis.
         z1, z2 : int
             The start and end indices for the region of interest along the z-axis.
-        dens : float
+        dendensitys : float
             The density of fibrosis within the specified region.
         """
         self.x1 = x1
@@ -45,9 +45,9 @@ class Diffuse3DPattern(FibrosisPattern):
         self.y2 = y2
         self.z1 = z1
         self.z2 = z2
-        self.dens = dens
+        self.density = density
 
-    def generate(self, size, mesh=None):
+    def generate(self, shape, mesh=None):
         """
         Generates a 3D mesh with a diffuse fibrosis pattern within the specified region.
 
@@ -55,7 +55,7 @@ class Diffuse3DPattern(FibrosisPattern):
 
         Parameters
         ----------
-        size : tuple of int
+        shape : tuple of int
             The size of the 3D mesh grid (x, y, z).
         mesh : numpy.ndarray, optional
             A 3D NumPy array representing the existing mesh grid to which the fibrosis pattern will be applied.
@@ -64,14 +64,26 @@ class Diffuse3DPattern(FibrosisPattern):
         Returns
         -------
         numpy.ndarray
-            A 3D NumPy array of the same size as the input, with the diffuse fibrosis pattern applied.
+            A 3D NumPy array of the same shape as the input, with the diffuse fibrosis pattern applied.
         """
-        if mesh is None:
-            mesh = np.zeros(size)
 
-        msh_area = mesh[self.x1:self.x2, self.y1:self.y2, self.z1:self.z2]
-        fib_area = np.random.uniform(size=[self.x2-self.x1, self.y2-self.y1, self.z2-self.z1])
-        fib_area = np.where(np.logical_and(fib_area < self.dens, msh_area == 1), 2, msh_area)
-        mesh[self.x1:self.x2, self.y1:self.y2, self.z1:self.z2] = fib_area
+        if shape is None and mesh is None:
+            message = "Either shape or mesh must be provided."
+            raise ValueError(message)
 
+        if shape is not None:
+            mesh = np.ones(shape, dtype=np.int8)
+            fibr = self._generate(mesh.shape)
+            mesh[self.x1: self.x2, self.y1: self.y2, self.z1: self.z2] = fibr[self.x1: self.x2,
+                                                                              self.y1: self.y2,
+                                                                              self.z1: self.z2]
+            return mesh
+
+        fibr = self._generate(mesh.shape)
+        mesh[self.x1: self.x2, self.y1: self.y2, self.z1, self.z2] = fibr[self.x1: self.x2,
+                                                                          self.y1: self.y2,
+                                                                          self.z1: self.z2]
         return mesh
+
+    def _generate(self, shape):
+        return 1 + (np.random.random(shape) <= self.density).astype(np.int8)

@@ -21,21 +21,15 @@ class Structural2DPattern(FibrosisPattern):
         The starting y-coordinate of the area where blocks can be placed.
     y2 : int
         The ending y-coordinate of the area where blocks can be placed.
-    dens : float
+    density : float
         The density of the fibrosis blocks, represented as a probability.
     length_i : int
         The width of each block.
     length_j : int
         The height of each block.
-
-    Methods
-    -------
-    generate(size, mesh=None):
-        Generates and applies a structural fibrosis pattern to the mesh. If no mesh is provided, 
-        a new mesh is created with the given size.
     """
 
-    def __init__(self, x1, x2, y1, y2, dens, length_i, length_j):
+    def __init__(self, density, length_i, length_j, x1, x2, y1, y2):
         """
         Initializes the Structural2DPattern with the specified parameters.
 
@@ -49,7 +43,7 @@ class Structural2DPattern(FibrosisPattern):
             The starting y-coordinate of the area where blocks can be placed.
         y2 : int
             The ending y-coordinate of the area where blocks can be placed.
-        dens : float
+        density : float
             The density of the fibrosis blocks, represented as a probability.
         length_i : int
             The width of each block.
@@ -60,37 +54,51 @@ class Structural2DPattern(FibrosisPattern):
         self.x2 = x2
         self.y1 = y1
         self.y2 = y2
-        self.dens = dens
+        self.density = density
         self.length_i = length_i
         self.length_j = length_j
 
-    def generate(self, size, mesh=None):
+    def generate(self, shape=None, mesh=None):
         """
         Generates and applies a structural fibrosis pattern to the mesh.
 
         The mesh is divided into blocks of size `length_i` by `length_j`, with each block having 
-        a probability `dens` of being filled with fibrosis. The function ensures that blocks do not
+        a probability `density` of being filled with fibrosis. The function ensures that blocks do not
         extend beyond the specified region.
 
         Parameters
         ----------
-        size : tuple of int
-            The size of the mesh to create if no mesh is provided.
-        mesh : np.ndarray, optional
-            The mesh to which the fibrosis pattern is applied. If None, a new mesh is created 
-            with the given size.
+        shape : tuple
+            The shape of the mesh.
+        mesh : numpy.ndarray, optional
+            The existing mesh to base the pattern on. Default is None..
 
         Returns
         -------
-        np.ndarray
-            The mesh with the applied structural fibrosis pattern.
+        numpy.ndarray
+            A new mesh array with the applied fibrosis pattern.
         """
-        if mesh is None:
-            mesh = np.zeros(size)
+        if shape is None and mesh is None:
+            message = "Either shape or mesh must be provided."
+            raise ValueError(message)
 
+        if shape is not None:
+            mesh = np.ones(shape, dtype=np.int8)
+            fibr = self._generate(mesh.shape)
+            mesh[self.x1: self.x2, self.y1: self.y2] = fibr[self.x1: self.x2,
+                                                self.y1: self.y2]
+            return mesh
+
+        fibr = self._generate(mesh.shape)
+        mesh[self.x1: self.x2, self.y1: self.y2] = fibr[self.x1: self.x2,
+                                                        self.y1: self.y2]
+        return mesh
+
+    def _generate(self, shape):
+        mesh = np.ones(shape, dtype=np.int8)
         for i in range(self.x1, self.x2, self.length_i):
             for j in range(self.y1, self.y2, self.length_j):
-                if random.random() <= self.dens:
+                if random.random() <= self.density:
                     i_s = 0
                     j_s = 0
                     if i + self.length_i <= self.x2:
@@ -103,6 +111,6 @@ class Structural2DPattern(FibrosisPattern):
                     else:
                         j_s = self.length_j - (j + self.length_j - self.y2)
 
-                    mesh[i:i + i_s, j:j + j_s] = 2
+                    mesh[i:i + i_s, j:j + j_s] = 2 # fibrosis element
 
         return mesh

@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import numpy as np
 from numba import njit, prange
 from scipy import spatial
@@ -6,89 +6,135 @@ from scipy import spatial
 from finitewave.core.tracker.tracker import Tracker
 
 
-@njit(parallel=True)
-def measure(mesh, curr, coord):
-    n0 = coord.shape[0]
-    n1 = curr.shape[0]
-    n2 = curr.shape[1]
-    n3 = curr.shape[2]
-
-    ecg = np.zeros(n0)
-    for i in prange(n0 * n1 * n2 * n3):
-        i0 = i // (n1 * n2 * n3)
-        i1 = i % (n1 * n2 * n3) // (n2 * n3)
-        i2 = (i % (n1 * n2 * n3)) % (n2 * n3) // n3
-        i3 = (i % (n1 * n2 * n3)) % (n2 * n3) % n3
-        if mesh[i1, i2, i3] != 1:
-            continue
-        ecg[i0] += curr[i1, i2, i3] / ((coord[i0, 0] - i1)**2 +
-                                       (coord[i0, 1] - i2)**2 +
-                                       (coord[i0, 2] - i3)**2)
-    return ecg
-
-
 class ECG3DTracker(Tracker):
-    def __init__(self, memory_save=False):
-        Tracker.__init__(self)
-        # self.radius = radius
-        self.measure_coords = np.array([[0, 0, 1]])
-        self.ecg = np.ndarray
-        self.step = 1
-        self._index = 0
-        self.memory_save = memory_save
+    """
+    A class to compute and track electrocardiogram (ECG) signals from a 3D
+    cardiac tissue model simulation.
+
+    This tracker calculates ECG signals at specified measurement points by
+    computing the potential differences across the cardiac tissue mesh and
+    considering the inverse of the distance from each measurement point.
+
+    Attributes
+    ----------
+    measure_coords : np.ndarray
+        An array of points (x, y, z) where ECG signals are measured.
+    ecg : list
+        The computed ECG signals.
+    file_name : str
+        The name of the file to save the computed ECG signals.
+    u_tr : np.ndarray
+        The updated potential values after diffusion.
+    """
+
+    def __init__(self, measure_coords=None):
+        super().__init__()
+        self.measure_coords = measure_coords
+        self.ecg = []
+        self.file_name = "ecg.npy"
+        self.u_tr = None
 
     def initialize(self, model):
+        """
+        Initialize the ECG tracker with the model object.
+
+        Parameters
+        ----------
+        model : CardiacModel3D
+            The model object containing the simulation parameters.
+        """
         self.model = model
-        n = self.measure_coords.shape[0]
-        m = int(np.ceil(model.t_max / (self.step * model.dt)))
-        self.ecg = np.zeros((n, m), dtype=model.npfloat)
-        self.tissue_coords = np.argwhere(model.cardiac_tissue.mesh == 1
-                                         ).astype(np.int32)
-
-        if self.memory_save:
-            self.uni_voltage = self._uni_voltage_memory_save
-            return
-
-        self.compute_distance()
-
-    def compute_distance(self):
-        self.distance = np.ones((self.measure_coords.shape[0],
-                                 self.tissue_coords.shape[0]),
-                                dtype=np.float16)
-
-        for i, point in enumerate(self.measure_coords):
-            self.distance[i, :] = np.sum((point - self.tissue_coords)**2,
-                                         axis=1).astype(np.float32)
-
-    def uni_voltage(self, current):
-        return np.sum(current[tuple(self.tissue_coords.T)] / self.distance,
-                      axis=1)
-
-    def _uni_voltage_memory_save(self, current):
-        return self.measure(current, self.measure_coords)
-
-    def measure(self, current, coords, batch_size=10):
-        ecg = []
-        split_inds = np.arange(coords.shape[0])[::batch_size][1:]
-        coords = np.split(coords, split_inds)
-        for coord in coords:
-            distance = spatial.distance.cdist(coord, self.tissue_coords)
-            ecg.append(np.sum(current[tuple(self.tissue_coords.T)]
-                              / distance ** 2, axis=1))
-        ecg = np.hstack(ecg)
-        return ecg
+        self.measure_coords = np.atleast_2d(self.measure_coords)
+        self.ecg = []
+        self.u_tr = np.zeros_like(model.u)
 
     def calc_ecg(self):
-        current = self.model.u_new - self.model.u
-        current[self.model.cardiac_tissue.mesh != 1] = 0
-        return self.uni_voltage(current) / self.model.dr
+        """
+        Calculate the ECG signal at the measurement points.
 
-    def track(self):
-        if self.model.step % self.step == 0:
-            self.ecg[:, self._index] = self.calc_ecg()
-            self._index += 1
+        Returns
+        -------
+        np.ndarray
+            The computed ECG signal.
+        """
+        self.model.diffusion_kernel(self.u_tr,
+                                    self.model.u,
+                                    self.model.weights,
+                                    self.model.cardiac_tissue.myo_indexes)
+        ecg = compute_ecg(self.u_tr,
+                          self.model.u,
+                          self.measure_coords,
+                          self.model.dr,
+                          self.model.cardiac_tissue.myo_indexes)
+        return ecg
+
+    def _track(self):
+        ecg = self.calc_ecg()
+        self.ecg.append(ecg)
+
+    @property
+    def output(self):
+        """
+        Get the computed ECG signals as a numpy array.
+
+        Returns
+        -------
+        np.ndarray
+            The computed ECG signals.
+        """
+        return np.array(self.ecg)
 
     def write(self):
-        if not os.path.exists(self.dir_name):
-            os.mkdir(self.dir_name)
-        np.save(self.ecg)
+        """
+        Save the computed ECG signals to a file.
+
+        The ECG signals are saved as a numpy array in the specified path.
+        """
+        if not Path(self.path).exists():
+            Path(self.path).mkdir(parents=True)
+
+        np.save(Path(self.path, self.file_name), self.output)
+
+
+@njit(parallel=True)
+def compute_ecg(u_tr, u, coords, dr, indexes):
+    """
+    Performs isotropic diffusion on a 3D grid.
+
+    Parameters
+    ----------
+    u_tr : numpy.ndarray
+        A 3D array to store the updated potential values after diffusion.
+    u : numpy.ndarray
+        A 3D array representing the current potential values before diffusion.
+    coord : tuple
+        The coordinates of the measurement point.
+    dr : float
+        The spatial resolution of the grid.
+    indexes : numpy.ndarray
+        A 1D array of indices of the healthy tissue points.
+    """
+    n_j = u.shape[1]
+    n_k = u.shape[2]
+
+    n_c = len(coords)
+    ecg = np.zeros(n_c)
+
+    for c in range(n_c):
+        x, y, z = coords[c]
+        ecg_ = 0
+
+        for ind in prange(len(indexes)):
+            ii = indexes[ind]
+            i = ii // (n_j * n_k)
+            j = (ii % (n_j * n_k)) // n_k
+            k = (ii % (n_j * n_k)) % n_k
+
+            d = (x - i)**2 + (y - j)**2 + (z - k)**2
+
+            if d > 0:
+                ecg_ += (u_tr[i, j, k] - u[i, j, k]) / (d * dr)
+
+        ecg[c] = ecg_
+
+    return ecg

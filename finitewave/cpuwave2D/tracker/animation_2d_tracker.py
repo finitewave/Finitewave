@@ -1,45 +1,32 @@
-import os
+from pathlib import Path
 import numpy as np
 
 from finitewave.core.tracker.tracker import Tracker
+from finitewave.tools import Animation2DBuilder
 
 
 class Animation2DTracker(Tracker):
     """
-    A class to track and save frames of a 2D cardiac tissue model simulation for animation purposes.
+    A class to track and save frames of a 2D cardiac tissue model simulation
+    for animation purposes.
 
-    This tracker periodically saves the state of a specified target array from the model to disk as NumPy files,
-    which can later be used to create animations.
+    This tracker periodically saves the state of a specified target array from
+    the model to disk as NumPy files, which can later be used to create
+    animations.
 
     Attributes
     ----------
-    step : int
-        Interval in time steps at which frames are saved.
-    start : float
-        The time at which to start recording frames.
-    _t : float
-        Internal counter for keeping track of the elapsed time since the last frame was saved.
     dir_name : str
-        Directory name where animation frames are stored.
-    _frame_n : int
-        Internal counter to keep track of the number of frames saved.
-    target_array : str
-        The name of the model attribute to be saved as a frame.
-    frame_format : dict
-        A dictionary defining the format of saved frames. Contains 'type' (data type) and 'mult' (multiplier for scaling).
-    _frame_format_type : str
-        Internal storage for the data type of the saved frames.
-    _frame_format_mult : float
-        Internal storage for the multiplier for scaling the saved frames.
+        Directory for saving frames.
+    variable_name : str
+        Name of the target array to capture.
+    frame_type : str
+        Default frame format settings.
+    overwrite : bool
+        Overwrite existing frames.
+    file_name : str
+        Name of the animation file.
 
-    Methods
-    -------
-    initialize(model):
-        Initializes the tracker with the simulation model and sets up directories for saving frames.
-    track():
-        Saves frames based on the specified step interval and target array.
-    write():
-        No operation. Exists to fulfill the interface requirements.
     """
 
     def __init__(self):
@@ -47,28 +34,17 @@ class Animation2DTracker(Tracker):
         Initializes the Animation2DTracker with default parameters.
         """
         Tracker.__init__(self)
-        self.step = 1  # Interval for frame capture
-        self.start = 0  # Start time for capturing frames
-        self._t = 0  # Internal time counter
-
-        self.dir_name = "animation"  # Directory for saving frames
-
-        self._frame_n = 0  # Frame counter
-
-        self.target_array = ""  # Name of the target array to capture
-
-        # Frame format: type (data type of saved frames), mult (scaling multiplier)
-        self.frame_format = {
-            "type": "float64",
-            "mult": 1
-        }
-
-        self._frame_format_type = ""  # Internal storage for frame format type
-        self._frame_format_mult = 1  # Internal storage for frame format multiplier
+        self.dir_name = "animation"   # Directory for saving frames
+        self.variable_name = "u"      # Name of the target array to capture
+        self.frame_type = "float64"   # Default frame format settings
+        self._frame_counter = 0       # Internal frame counter
+        self.overwrite = True         # Overwrite existing frames
+        self.file_name = "animation"  # Name of the animation file
 
     def initialize(self, model):
         """
-        Initializes the tracker with the simulation model and sets up directories for saving frames.
+        Initializes the tracker with the simulation model and sets up
+        directories for saving frames.
 
         Parameters
         ----------
@@ -76,43 +52,64 @@ class Animation2DTracker(Tracker):
             The cardiac tissue model object containing the data to be tracked.
         """
         self.model = model
+        self._frame_counter = 0  # Reset frame counter
 
-        self._t = 0  # Reset internal time counter
-        self._frame_n = 0  # Reset frame counter
-        self._dt = self.model.dt  # Time step size from the model
-        self._step = self.step - self._dt  # Adjusted step for saving frames
+        if not Path(self.path, self.dir_name).is_dir():
+            Path(self.path, self.dir_name).mkdir(parents=True)
 
-        # Create the directory for saving frames if it doesn't exist
-        if not os.path.exists(os.path.join(self.path, self.dir_name)):
-            os.makedirs(os.path.join(self.path, self.dir_name))
+        if self.overwrite:
+            for file in Path(self.path, self.dir_name).glob("*.npy"):
+                file.unlink()
 
-        # Store frame format settings
-        self._frame_format_type = self.frame_format["type"]
-        self._frame_format_mult = self.frame_format["mult"]
-
-    def track(self):
+    def _track(self):
         """
         Saves frames based on the specified step interval and target array.
 
         The frames are saved in the specified directory as NumPy files.
         """
-        # Only start tracking if the current model time is beyond the start time
-        if not self.model.t >= self.start:
-            return
+        frame = self.model.__dict__[self.variable_name]
+        dir_path = Path(self.path, self.dir_name)
 
-        # Save a frame if enough time has elapsed since the last frame
-        if self._t > self._step:
-            # Retrieve the target array from the model and scale it
-            frame = (self.model.__dict__[self.target_array] * self._frame_format_mult).astype(self._frame_format_type)
-            # Save the frame as a NumPy file
-            np.save(os.path.join(self.path, self.dir_name, str(self._frame_n)), frame)
-            self._frame_n += 1  # Increment frame counter
-            self._t = 0  # Reset internal time counter
-        else:
-            self._t += self._dt  # Increment internal time counter by the time step
+        np.save(dir_path.joinpath(str(self._frame_counter)
+                                  ).with_suffix(".npy"),
+                frame.astype(self.frame_type))
 
-    def write(self):
+        self._frame_counter += 1
+
+    def write(self, shape_scale=1, fps=12, cmap="coolwarm", clim=[0, 1],
+              clear=False, prog_bar=True):
         """
-        No operation for this tracker. Exists to fulfill the interface requirements.
+        Creates an animation from the saved frames using the Animation2DBuilder
+        class. Fibrosis and boundaries will be shown in black.
+
+        Parameters
+        ----------
+        shape_scale : int, optional
+            Scale factor for the frame size. The default is 5.
+        fps : int, optional
+            Frames per second for the animation. The default is 12.
+        cmap : str, optional
+            Color map for the animation. The default is 'coolwarm'.
+        clim : list, optional
+            Color limits for the animation. The default is [0, 1].
+        clear : bool, optional
+            Clear the snapshot folder after creating the animation.
+            The default is False.
+        prog_bar : bool, optional
+            Show a progress bar during the animation creation.
+            The default is True.
         """
-        pass
+        animation_builder = Animation2DBuilder()
+        path = Path(self.path, self.dir_name)
+        mask = self.model.cardiac_tissue.mesh != 1
+
+        animation_builder.write(path,
+                                animation_name=self.file_name,
+                                mask=mask,
+                                shape_scale=shape_scale,
+                                fps=fps,
+                                clim=clim,
+                                shape=mask.shape,
+                                cmap=cmap,
+                                clear=clear,
+                                prog_bar=prog_bar)

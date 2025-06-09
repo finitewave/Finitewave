@@ -1,1 +1,1 @@
-from finitewave.core.exception.exceptions import IncorrectWeightsShapeError
+from finitewave.core.exception.exceptions import IncorrectNumberOfWeights

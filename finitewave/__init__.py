@@ -1,9 +1,28 @@
+
+"""
+finitewave
+==========
+
+A Python package for simulating cardiac electrophysiology in 2D and 3D using
+the finite difference method.
+
+This package provides a set of tools for simulating cardiac electrophysiology
+in 2D and 3D using the finite difference method. The package includes classes
+for creating cardiac tissue models, tracking electrical activity, and
+visualizing simulation results. The package is designed to be flexible and
+extensible, allowing users to create custom models and trackers for their
+specific research needs.
+
+"""
+
 from finitewave.core import (
     Command,
     CommandSequence,
     FibrosisPattern,
     CardiacModel,
-    StateKeeper,
+    StateLoader,
+    StateSaver,
+    StateSaverCollection,
     Stencil,
     StimCurrent,
     StimSequence,
@@ -17,24 +36,19 @@ from finitewave.core import (
 from finitewave.cpuwave2D import (
     IncorrectWeightsModeError2D,
     Diffuse2DPattern,
-    ScarGauss2DPattern,
-    ScarRect2DPattern,
     Structural2DPattern,
-    diffuse_kernel_2d_iso,
-    diffuse_kernel_2d_aniso,
-    _parallel,
     AlievPanfilov2D,
-    AlievPanfilovKernels2D,
+    Barkley2D,
+    MitchellSchaeffer2D,
+    FentonKarma2D,
+    BuenoOrovio2D,
     LuoRudy912D,
-    LuoRudy91Kernels2D,
     TP062D,
-    TP06Kernels2D,
-    LuoRudy912D,
-    LuoRudy91Kernels2D,
-    TP062D,
-    TP06Kernels2D,
+    Courtemanche2D,
     AsymmetricStencil2D,
+    SymmetricStencil2D,
     IsotropicStencil2D,
+    StimCurrentArea2D,
     StimCurrentCoord2D,
     StimVoltageCoord2D,
     StimCurrentMatrix2D,
@@ -44,55 +58,52 @@ from finitewave.cpuwave2D import (
     ActivationTime2DTracker,
     Animation2DTracker,
     ECG2DTracker,
-    MultiActivationTime2DTracker,
+    LocalActivationTime2DTracker,
     MultiVariable2DTracker,
     Period2DTracker,
-    PeriodMap2DTracker,
-    Spiral2DTracker,
+    PeriodAnimation2DTracker,
+    SpiralWaveCore2DTracker,
     Variable2DTracker,
-    Velocity2DTracker
 )
+
 from finitewave.cpuwave3D import (
     Diffuse3DPattern,
     Structural3DPattern,
-    diffuse_kernel_3d_iso,
-    diffuse_kernel_3d_aniso,
-    _parallel,
     AlievPanfilov3D,
-    AlievPanfilovKernels3D,
+    Barkley3D,
+    MitchellSchaeffer3D,
+    FentonKarma3D,
+    BuenoOrovio3D,
     LuoRudy913D,
-    LuoRudy91Kernels3D,
     TP063D,
-    TP06Kernels3D,
-    LuoRudy913D,
-    LuoRudy91Kernels3D,
-    TP063D,
-    TP06Kernels3D,
+    Courtemanche3D,
     AsymmetricStencil3D,
     IsotropicStencil3D,
     StimCurrentCoord3D,
     StimVoltageCoord3D,
     StimCurrentMatrix3D,
     StimVoltageMatrix3D,
+    StimVoltageListMatrix3D,
+    StimCurrentArea3D,
     CardiacTissue3D,
     ActionPotential3DTracker,
     ActivationTime3DTracker,
+    LocalActivationTime3DTracker,
     AnimationSlice3DTracker,
     ECG3DTracker,
     Period3DTracker,
-    PeriodMap3DTracker,
-    Spiral3DTracker,
+    SpiralWaveCore3DTracker,
     Variable3DTracker,
-    Velocity3DTracker,
+    MultiVariable3DTracker,
     VTKFrame3DTracker,
-    Animation3DTracker
+    Animation3DTracker,
+    PeriodAnimation3DTracker
 )
 
 from finitewave.tools import (
-    AnimationBuilder,
-    DriftVelocityCalculation,
-    PotentialPeriodAnimationBuilder,
-    VTKMeshBuilder,
+    Animation2DBuilder,
+    Animation3DBuilder,
     VisMeshBuilder3D,
-    Animation3DBuilder
+    Velocity2DCalculation,
+    Velocity3DCalculation,
 )

@@ -1,30 +1,24 @@
-class Stim:
+from abc import ABC, abstractmethod
+
+
+class Stim(ABC):
     """Base class for stimulation in cardiac models.
 
-    The `Stim` class represents a general stimulation object used in cardiac simulations. It provides methods
-    to manage the timing and state of stimulation. Subclasses should implement specific stimulation behaviors.
+    The ``Stim`` class represents a general stimulation object used in cardiac
+    simulations. It provides methods to manage the timing and state of
+    stimulation. Subclasses should implement specific stimulation behaviors.
 
     Attributes
     ----------
     t : float
         The time at which the stimulation is to occur.
-
+    duration : float
+        The duration for which the stimulation will be applied.
     passed : bool
         A flag indicating whether the stimulation has been applied.
-
-    Methods
-    -------
-    stimulate(model)
-        Applies the stimulation to the provided model. This method should be implemented by subclasses.
-    
-    ready()
-        Prepares the stimulation for application. This method should be implemented by subclasses.
-
-    done()
-        Marks the stimulation as completed. This method should be implemented by subclasses.
     """
 
-    def __init__(self, time):
+    def __init__(self, time, duration=0.0):
         """
         Initializes the Stim object with the specified time.
 
@@ -32,44 +26,31 @@ class Stim:
         ----------
         time : float
             The time at which the stimulation is scheduled to occur.
+        duration : float, optional
+            The duration for which the stimulation will be applied. The default
+            value is 0.0, indicating that the stimulation will be applied
+            instantaneously.
         """
         self.t = time
+        self.duration = duration
         self.passed = False
 
+    @abstractmethod
     def stimulate(self, model):
         """
         Applies the stimulation to the provided model.
-
-        Parameters
-        ----------
-        model : CardiacModel
-            The simulation model to which the stimulation will be applied.
-
-        Notes
-        -----
-        This is an abstract method that should be implemented by subclasses to define specific
-        stimulation behaviors.
         """
         pass
 
-    def ready(self):
+    @abstractmethod
+    def initialize(self, model):
         """
         Prepares the stimulation for application.
-
-        Notes
-        -----
-        This is an abstract method that should be implemented by subclasses to define how
-        the stimulation is prepared before being applied.
         """
         pass
 
-    def done(self):
+    def update_status(self, model):
         """
         Marks the stimulation as completed.
-
-        Notes
-        -----
-        This is an abstract method that should be implemented by subclasses to define how
-        the stimulation state is updated after application.
         """
-        pass
+        self.passed = model.t >= (self.t + self.duration)

@@ -2,6 +2,7 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 from natsort import natsorted
+from tqdm import tqdm
 
 from finitewave.tools.vis_mesh_builder_3d import VisMeshBuilder3D
 
@@ -39,7 +40,8 @@ class Animation3DBuilder:
 
     def write(self, path, mask=None, path_save=None, window_size=(800, 800),
               clim=[0, 1], scalar_name="Scalar", animation_name="animation",
-              cmap="viridis", scalar_bar=False, format="mp4", **kwargs):
+              cmap="viridis", scalar_bar=False, format="mp4", prog_bar=True,
+              **kwargs):
         """Write the animation to a file.
 
         Args:
@@ -95,7 +97,8 @@ class Animation3DBuilder:
 
         pl.write_frame()
 
-        for filename in files[1:]:
+        for filename in tqdm(files[1:], disable=not prog_bar,
+                             desc="Building animation"):
             scalar = self.load_scalar(filename, mask)
             mesh_builder.add_scalar(scalar, scalar_name)
             pl.write_frame()

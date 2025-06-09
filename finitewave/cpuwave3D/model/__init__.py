@@ -1,10 +1,8 @@
-from finitewave.cpuwave3D.model.diffuse_kernels_3d import diffuse_kernel_3d_iso, diffuse_kernel_3d_aniso, _parallel
-
-from finitewave.cpuwave3D.model.aliev_panfilov_3d.aliev_panfilov_3d import AlievPanfilov3D
-from finitewave.cpuwave3D.model.aliev_panfilov_3d.aliev_panfilov_kernels_3d import AlievPanfilovKernels3D
-
-from finitewave.cpuwave3D.model.luo_rudy91_3d.luo_rudy91_3d import LuoRudy913D
-from finitewave.cpuwave3D.model.luo_rudy91_3d.luo_rudy91_kernels_3d import LuoRudy91Kernels3D
-
-from finitewave.cpuwave3D.model.tp06_3d.tp06_3d import TP063D
-from finitewave.cpuwave3D.model.tp06_3d.tp06_kernels_3d import TP06Kernels3D
+from .aliev_panfilov_3d import AlievPanfilov3D
+from .barkley_3d import Barkley3D
+from .mitchell_schaeffer_3d import MitchellSchaeffer3D
+from .fenton_karma_3d import FentonKarma3D
+from .bueno_orovio_3d import BuenoOrovio3D
+from .luo_rudy91_3d import LuoRudy913D
+from .tp06_3d import TP063D
+from .courtemanche_3d import Courtemanche3D

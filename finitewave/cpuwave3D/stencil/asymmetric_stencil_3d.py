@@ -8,6 +8,158 @@ from finitewave.cpuwave2D.stencil.asymmetric_stencil_2d import (
 )
 
 
+class AsymmetricStencil3D(AsymmetricStencil2D):
+    """
+    This class computes the weights for diffusion on a 3D using an asymmetric
+    stencil. The weights are calculated based on the diffusion coefficients
+    and the fibers orientations. The stencil includes 19 points: the central
+    point and the 18 neighbors. The boundary conditions are Neumann with first-
+    order approximation.
+
+    Notes
+    -----
+    The diffusion coefficients are general and should be adjusted according to
+    the specific model. The parameters ``D_ac``, ``D_al`` only set the ratios
+    between longitudinal and cross-sectional diffusion.
+
+    The method assumes weights being used in the following order:
+        ``w[i, j, k, 0] : (i-1, j-1, k)``,
+        ``w[i, j, k, 1] : (i-1, j, k)``,
+        ``w[i, j, k, 2] : (i-1, j+1, k)``,
+        ``w[i, j, k, 3] : (i, j-1, k)``,
+        ``w[i, j, k, 4] : (i, j, k)``,
+        ``w[i, j, k, 5] : (i, j+1, k)``,
+        ``w[i, j, k, 6] : (i+1, j-1, k)``,
+        ``w[i, j, k, 7] : (i+1, j, k)``,
+        ``w[i, j, k, 8] : (i+1, j+1, k)``,
+        ``w[i, j, k, 9] : (i, j-1, k-1)``,
+        ``w[i, j, k, 10] : (i, j-1, k+1)``,
+        ``w[i, j, k, 11] : (i, j, k-1)``,
+        ``w[i, j, k, 12] : (i, j, k+1)``,
+        ``w[i, j, k, 13] : (i, j+1, k-1)``,
+        ``w[i, j, k, 14] : (i, j+1, k+1)``,
+        ``w[i, j, k, 15] : (i-1, j, k-1)``,
+        ``w[i, j, k, 16] : (i+1, j, k-1)``,
+        ``w[i, j, k, 17] : (i-1, j, k+1)``,
+        ``w[i, j, k, 18] : (i+1, j, k+1)``.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def select_diffusion_kernel(self):
+        """
+        Selects the diffusion kernel for 3D diffusion.
+
+        Returns
+        -------
+        function
+            The diffusion kernel for 3D diffusion.
+        """
+        return diffusion_kernel_3d_aniso
+
+    def compute_weights(self, model, cardiac_tissue):
+        """
+        Computes the weights for diffusion on a 3D mesh using an asymmetric 
+        stencil.
+
+        Parameters
+        ----------
+        model : CardiacModel3D
+            A model object containing the simulation parameters.
+        cardiac_tissue : CardiacTissue3D
+            A 3D cardiac tissue object.
+
+        Returns
+        -------
+        np.ndarray
+            Array of weights for diffusion, with the shape of (*mesh.shape, 19)
+        """
+        mesh = cardiac_tissue.mesh.copy()
+        mesh[mesh != 1] = 0
+        conductivity = cardiac_tissue.conductivity
+        conductivity = conductivity * np.ones_like(mesh, dtype=model.npfloat)
+
+        fibers = cardiac_tissue.fibers
+
+        if fibers is None:
+            message = "Fibers must be provided for anisotropic diffusion."
+            raise ValueError(message)
+
+        d_xx, d_xy, d_xz = self.compute_half_step_diffusion(mesh, conductivity,
+                                                            fibers, 0,
+                                                            num_axes=3)
+        d_yx, d_yy, d_yz = self.compute_half_step_diffusion(mesh, conductivity,
+                                                            fibers, 1,
+                                                            num_axes=3)
+        d_zx, d_zy, d_zz = self.compute_half_step_diffusion(mesh, conductivity,
+                                                            fibers, 2,
+                                                            num_axes=3)
+
+        weights = np.zeros((*mesh.shape, 19), dtype=model.npfloat)
+        weights = compute_weights(weights, mesh, d_xx, d_xy, d_xz, d_yx, d_yy,
+                                  d_yz, d_zx, d_zy, d_zz)
+
+        weights = weights * model.D_model * model.dt / model.dr**2
+        weights[:, :, :, 4] += 1
+        return weights
+
+
+@njit(parallel=True)
+def diffusion_kernel_3d_aniso(u_new, u, w, indexes):
+    """
+    Performs anisotropic diffusion on a 3D grid.
+
+    Parameters
+    ----------
+    u_new : numpy.ndarray
+        A 3D array to store the updated potential values after diffusion.
+
+    u : numpy.ndarray
+        A 3D array representing the current potential values before diffusion.
+
+    w : numpy.ndarray
+        Array of weights for diffusion, with the shape of (*mesh.shape, 19).
+
+    mesh : numpy.ndarray
+        Array representing the mesh of the tissue.
+
+    Returns
+    -------
+    np.ndarray
+        The updated potential values after diffusion.
+    """
+    n_j = u.shape[1]
+    n_k = u.shape[2]
+
+    for ind in prange(len(indexes)):
+        ii = indexes[ind]
+        i = ii//(n_j*n_k)
+        j = (ii % (n_j*n_k))//n_k
+        k = (ii % (n_j*n_k)) % n_k
+
+        u_new[i, j, k] = (u[i-1, j-1, k] * w[i, j, k, 0] +
+                          u[i-1, j, k] * w[i, j, k, 1] +
+                          u[i-1, j+1, k] * w[i, j, k, 2] +
+                          u[i, j-1, k] * w[i, j, k, 3] +
+                          u[i, j, k] * w[i, j, k, 4] +
+                          u[i, j+1, k] * w[i, j, k, 5] +
+                          u[i+1, j-1, k] * w[i, j, k, 6] +
+                          u[i+1, j, k] * w[i, j, k, 7] +
+                          u[i+1, j+1, k] * w[i, j, k, 8] +
+                          u[i, j-1, k-1] * w[i, j, k, 9] +
+                          u[i, j-1, k+1] * w[i, j, k, 10] +
+                          u[i, j, k-1] * w[i, j, k, 11] +
+                          u[i, j, k+1] * w[i, j, k, 12] +
+                          u[i, j+1, k-1] * w[i, j, k, 13] +
+                          u[i, j+1, k+1] * w[i, j, k, 14] +
+                          u[i-1, j, k-1] * w[i, j, k, 15] +
+                          u[i+1, j, k-1] * w[i, j, k, 16] +
+                          u[i-1, j, k+1] * w[i, j, k, 17] +
+                          u[i+1, j, k+1] * w[i, j, k, 18])
+    return u_new
+
+
 @njit
 def compute_weights(w, m, d_xx, d_xy, d_xz, d_yx, d_yy, d_yz, d_zx, d_zy,
                     d_zz):
@@ -304,69 +456,3 @@ def compute_weights(w, m, d_xx, d_xy, d_xz, d_yx, d_yy, d_yz, d_zx, d_zy,
         w[i, j, k, 5] += qz1_zy_minor[5]
 
     return w
-
-
-class AsymmetricStencil3D(AsymmetricStencil2D):
-    """
-    A class to represent a 3D asymmetric stencil for diffusion processes.
-    """
-
-    def __init__(self):
-        """
-        Initializes the AsymmetricStencil3D with default settings.
-        """
-        super().__init__()
-
-    def get_weights(self, mesh, conductivity, fibers, D_al, D_ac, dt, dr):
-        """
-        Computes the weights for diffusion on a 3D mesh using an asymmetric stencil.
-
-        Parameters
-        ----------
-        mesh : np.ndarray
-            3D array representing the mesh grid of the tissue. Non-tissue areas are set to 0.
-        conductivity : float
-            Conductivity of the tissue, which scales the diffusion coefficient.
-        fibers : np.ndarray
-            Array representing fiber orientations. Used to compute directional diffusion coefficients.
-        D_al : float
-            Longitudinal diffusion coefficient.
-        D_ac : float
-            Cross-sectional diffusion coefficient.
-        dt : float
-            Temporal resolution.
-        dr : float
-            Spatial resolution.
-
-        Returns
-        -------
-        np.ndarray
-            4D array of weights for diffusion, with the shape of (mesh.shape[0], mesh.shape[1], 9).
-
-        Notes
-        -----
-        The method assumes asymmetric diffusion where different coefficients are used for different directions.
-        The weights are computed for eight surrounding directions and the central weight, based on the asymmetric stencil.
-        Heterogeneity in the diffusion coefficients is handled by adjusting the weights based on fiber orientations.
-        """
-        mesh = mesh.copy()
-        mesh[mesh != 1] = 0
-        weights = np.zeros((*mesh.shape, 19), dtype='float32')
-
-        d_xx, d_xy, d_xz = self.compute_half_step_diffusion(mesh, conductivity,
-                                                            fibers, D_al, D_ac,
-                                                            0, num_axes=3)
-        d_yx, d_yy, d_yz = self.compute_half_step_diffusion(mesh, conductivity,
-                                                            fibers, D_al, D_ac,
-                                                            1, num_axes=3)
-        d_zx, d_zy, d_zz = self.compute_half_step_diffusion(mesh, conductivity,
-                                                            fibers, D_al, D_ac,
-                                                            2, num_axes=3)
-
-        weights = compute_weights(weights, mesh, d_xx, d_xy, d_xz, d_yx, d_yy,
-                                  d_yz, d_zx, d_zy, d_zz)
-
-        weights *= dt/dr**2
-        weights[:, :, :, 4] += 1
-
-        return weights

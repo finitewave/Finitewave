@@ -1,4 +1,2 @@
-from finitewave.cpuwave2D.fibrosis.diffuse_2d_pattern import Diffuse2DPattern
-from finitewave.cpuwave2D.fibrosis.scar_gauss_2d_pattern import ScarGauss2DPattern
-from finitewave.cpuwave2D.fibrosis.scar_rect_2d_pattern import ScarRect2DPattern
-from finitewave.cpuwave2D.fibrosis.structural_2d_pattern import Structural2DPattern
+from .diffuse_2d_pattern import Diffuse2DPattern
+from .structural_2d_pattern import Structural2DPattern

@@ -1,31 +1,21 @@
 class TrackerSequence:
     """Manages a sequence of trackers for a simulation.
 
-    The `TrackerSequence` class allows for the management of multiple `Tracker` instances. It provides methods
-    to initialize trackers, add or remove trackers from the sequence, and iterate over the trackers to perform
+    The ``TrackerSequence`` class allows for the management of multiple
+    ``Tracker`` instances. It provides methods to initialize trackers, add or
+    remove trackers from the sequence, and iterate over the trackers to perform
     their tracking functions.
 
     Attributes
     ----------
     sequence : list of Tracker
-        List containing the trackers in the sequence. The trackers are executed in the order they are added.
-    
+        List containing the trackers in the sequence. The trackers are executed
+        in the order they are added.
+
     model : CardiacModel or None
-        The simulation model to which the trackers are attached. It is set during initialization.
+        The simulation model to which the trackers are attached. It is set
+        during initialization.
 
-    Methods
-    -------
-    initialize(model)
-        Initializes all trackers in the sequence with the provided simulation model.
-
-    add_tracker(tracker)
-        Adds a new tracker to the end of the sequence.
-
-    remove_trackers()
-        Removes all trackers from the sequence.
-
-    tracker_next()
-        Executes the `track` method of each tracker in the sequence.
     """
 
     def __init__(self):
@@ -37,7 +27,8 @@ class TrackerSequence:
 
     def initialize(self, model):
         """
-        Initializes all trackers in the sequence with the provided simulation model.
+        Initializes all trackers in the sequence with the provided simulation
+        model.
 
         Parameters
         ----------

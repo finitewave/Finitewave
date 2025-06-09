@@ -4,6 +4,203 @@ from numba import njit, prange
 from finitewave.core.stencil.stencil import Stencil
 
 
+class AsymmetricStencil2D(Stencil):
+    """
+    This class computes the weights for diffusion on a 2D using an asymmetric
+    stencil. The weights are calculated based on diffusion coefficients and
+    fiber orientations. The stencil includes 9 points: the central point and
+    8 surrounding points. The boundary conditions are Neumann with first-order
+    approximation.
+
+    Attributes
+    ----------
+    D_al : float
+        Longitudinal diffusion coefficient.
+    D_ac : float
+        Cross-sectional diffusion coefficient.
+
+    Notes
+    -----
+    The diffusion coefficients are general and should be adjusted according to
+    the specific model. These parameters only set the ratios between
+    longitudinal and cross-sectional diffusion.
+
+    The method assumes weights being used in the following order:
+
+    - ``w[i, j, 0] : (i-1, j-1)``,
+    - ``w[i, j, 1] : (i-1, j)``,
+    - ``w[i, j, 2] : (i-1, j+1)``,
+    - ``w[i, j, 3] : (i, j-1)``,
+    - ``w[i, j, 4] : (i, j)``,
+    - ``w[i, j, 5] : (i, j+1)``,
+    - ``w[i, j, 6] : (i+1, j-1)``,
+    - ``w[i, j, 7] : (i+1, j)``,
+    - ``w[i, j, 8] : (i+1, j+1)``.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.D_al = 1
+        self.D_ac = 1/9
+
+    def compute_weights(self, model, cardiac_tissue):
+        """
+        Computes the weights for diffusion on a 2D mesh using an asymmetric
+        stencil.
+
+        Parameters
+        ----------
+        model : CardiacModel2D
+            A model object containing the simulation parameters.
+        cardiac_tissue : CardiacTissue2D
+            A 2D cardiac tissue object.
+
+        Returns
+        -------
+        np.ndarray
+            Array of weights for diffusion with the shape of (*mesh.shape, 9).
+        """
+        # convert fibrotic areas to non-tissue
+        mesh = cardiac_tissue.mesh.copy()
+        mesh[mesh != 1] = 0
+        conductivity = cardiac_tissue.conductivity
+        conductivity = conductivity * np.ones_like(mesh, dtype=model.npfloat)
+
+        fibers = cardiac_tissue.fibers
+
+        if fibers is None:
+            message = "Fibers must be provided for anisotropic diffusion."
+            raise ValueError(message)
+
+        weights = np.zeros((*mesh.shape, 9))
+        d_xx, d_xy = self.compute_half_step_diffusion(mesh, conductivity,
+                                                      fibers, 0)
+        d_yx, d_yy = self.compute_half_step_diffusion(mesh, conductivity,
+                                                      fibers, 1)
+        weights = compute_weights(weights, mesh, d_xx, d_xy, d_yx, d_yy)
+        weights = weights * model.D_model * model.dt / model.dr**2
+        weights[:, :, 4] += 1
+
+        return weights
+
+    def select_diffusion_kernel(self):
+        """
+        Returns the diffusion kernel function for anisotropic diffusion in 2D.
+
+        Returns
+        -------
+        function
+            The diffusion kernel function for anisotropic diffusion in 2D.
+        """
+        return diffusion_kernel_2d_aniso
+
+    def compute_half_step_diffusion(self, mesh, conductivity, fibers, axis,
+                                    num_axes=2):
+        """
+        Computes the diffusion components for half-steps based on fiber
+        orientations.
+
+        Parameters
+        ----------
+        mesh : np.ndarray
+            Array representing the mesh grid of the tissue.
+        conductivity : np.ndarray
+            Array representing the conductivity of the tissue.
+        fibers : np.ndarray
+            Array representing fiber orientations with shape
+            ``(2, *mesh.shape)``.
+        axis : int
+            Axis index (0 for x, 1 for y).
+        num_axes : int
+            Number of axes.
+
+        Returns
+        -------
+        np.ndarray
+            Array of diffusion components for half-steps along the specified
+            axis.
+
+        Notes
+        -----
+        The index ``i`` in the returned array corresponds to ``i+1/2`` and
+        ``i-1`` corresponds to ``i-1/2``.
+        """
+        D = np.zeros((num_axes, *mesh.shape))
+        for i in range(num_axes):
+            D[i] = self.compute_diffusion_components(fibers, axis, i,
+                                                     self.D_al, self.D_ac)
+            D[i] = 0.5 * (D[i] * conductivity +
+                          np.roll(D[i], -1, axis=axis) *
+                          np.roll(conductivity, -1, axis=axis))
+
+        return D
+
+    def compute_diffusion_components(self, fibers, ind0, ind1, D_al, D_ac):
+        """
+        Computes the diffusion components based on fiber orientations.
+
+        Parameters
+        ----------
+        fibers : np.ndarray
+            Array representing fiber orientations.
+        ind0 : int
+            First axis index (0 for x, 1 for y).
+        ind1 : int
+            Second axis index (0 for x, 1 for y).
+        D_al : float
+            Longitudinal diffusion coefficient.
+        D_ac : float
+            Cross-sectional diffusion coefficient.
+
+        Returns
+        -------
+        np.ndarray
+            Array of diffusion components based on fiber orientations
+        """
+        return (D_ac * (ind0 == ind1) +
+                (D_al - D_ac) * fibers[..., ind0] * fibers[..., ind1])
+
+
+@njit(parallel=True)
+def diffusion_kernel_2d_aniso(u_new, u, w, indexes):
+    """
+    Performs anisotropic diffusion on a 2D grid.
+
+    Parameters
+    ----------
+    u_new : np.ndarray
+        Array to store the updated potential values after diffusion.
+    u : np.ndarray
+        Array representing the current potential values before diffusion.
+    w : np.ndarray
+        Array of weights used in the diffusion computation.
+    mesh : np.ndarray
+        Array representing the mesh of the tissue.
+
+    Returns
+    -------
+    np.ndarray
+        The updated potential values after diffusion.
+    """
+    n_i = u.shape[0]
+    n_j = u.shape[1]
+    for ind in prange(len(indexes)):
+        ii = indexes[ind]
+        i = int(ii / n_j)
+        j = ii % n_j
+
+        u_new[i, j] = (u[i-1, j-1] * w[i, j, 0] +
+                       u[i-1, j] * w[i, j, 1] +
+                       u[i-1, j+1] * w[i, j, 2] +
+                       u[i, j-1] * w[i, j, 3] +
+                       u[i, j] * w[i, j, 4] +
+                       u[i, j+1] * w[i, j, 5] +
+                       u[i+1, j-1] * w[i, j, 6] +
+                       u[i+1, j] * w[i, j, 7] +
+                       u[i+1, j+1] * w[i, j, 8])
+    return u_new
+
+
 @njit
 def minor_component(d, m0, m1, m2, m3, m4, m5):
     """
@@ -91,7 +288,7 @@ def major_component(d, m0):
     return d * m0
 
 
-@njit
+@njit(parallel=True)
 def compute_weights(w, m, d_xx, d_xy, d_yx, d_yy):
     """
     Computes the weights for diffusion on a 2D mesh based on the asymmetric
@@ -132,19 +329,6 @@ def compute_weights(w, m, d_xx, d_xy, d_yx, d_yy):
     -------
     np.ndarray
         3D array of weights for diffusion, with the shape of (*mesh.shape, 9).
-
-    Notes
-    -----
-    The method assumes weights being used in the following order:
-        ``w[0] : i-1, j-1``,
-        ``w[1] : i-1, j``,
-        ``w[2] : i-1, j+1``,
-        ``w[3] : i, j-1``,
-        ``w[4] : i, j``,
-        ``w[5] : i, j+1``,
-        ``w[6] : i+1, j-1``,
-        ``w[7] : i+1, j``,
-        ``w[8] : i+1, j+1``.
     """
     n_i = m.shape[0]
     n_j = m.shape[1]
@@ -247,135 +431,3 @@ def compute_weights(w, m, d_xx, d_xy, d_yx, d_yy):
         w[i, j, 5] += qx1_minor[5]
 
     return w
-
-
-class AsymmetricStencil2D(Stencil):
-    """
-    A class to represent a 2D asymmetric stencil for diffusion processes.
-    The asymmetric stencil is used to handle anisotropic diffusion in the
-    tissue.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def get_weights(self, mesh, conductivity, fibers, D_al, D_ac, dt, dr):
-        """
-        Computes the weights for diffusion on a 2D mesh using an asymmetric
-        stencil.
-
-        Parameters
-        ----------
-        mesh : np.ndarray
-            2D array representing the mesh grid of the tissue.
-        conductivity : float
-            Conductivity of the tissue, which scales the diffusion coefficient.
-        fibers : np.ndarray
-            Array representing fiber orientations. Used to compute directional
-            diffusion coefficients.
-        D_al : float
-            Longitudinal diffusion coefficient.
-        D_ac : float
-            Cross-sectional diffusion coefficient.
-        dt : float
-            Temporal resolution.
-        dr : float
-            Spatial resolution.
-
-        Returns
-        -------
-        np.ndarray
-            3D array of weights for diffusion, with the shape of (mesh.shape[0], mesh.shape[1], 9).
-
-        Notes
-        -----
-        The method assumes asymmetric diffusion where different coefficients are used for different directions.
-        The weights are computed for eight surrounding directions and the central weight, based on the asymmetric stencil.
-        Heterogeneity in the diffusion coefficients is handled by adjusting the weights based on fiber orientations.
-        """
-        mesh = mesh.copy()
-        mesh[mesh != 1] = 0
-        # fibers[np.where(mesh != 1)] = 0
-        weights = np.zeros((*mesh.shape, 9))
-
-        d_xx, d_xy = self.compute_half_step_diffusion(mesh, conductivity,
-                                                      fibers, D_al, D_ac, 0)
-        d_yx, d_yy = self.compute_half_step_diffusion(mesh, conductivity,
-                                                      fibers, D_al, D_ac, 1)
-        compute_weights(weights, mesh, d_xx, d_xy, d_yx, d_yy)
-        weights *= dt/dr**2
-        weights[:, :, 4] += 1
-
-        return weights
-
-    def compute_half_step_diffusion(self, mesh, conductivity, fibers, D_al,
-                                    D_ac, axis, num_axes=2):
-        """
-        Computes the diffusion components for half-steps based on fiber
-        orientations.
-
-        Parameters
-        ----------
-        mesh : np.ndarray
-            Array representing the mesh grid of the tissue.
-        conductivity : np.ndarray
-            Array representing the conductivity of the tissue.
-        fibers : np.ndarray
-            Array representing fiber orientations with shape
-            ``(2, *mesh.shape)``.
-        D_al : float
-            Longitudinal diffusion coefficient.
-        D_ac : float
-            Cross-sectional diffusion coefficient.
-        axis : int
-            Axis index (0 for x, 1 for y).
-        num_axes : int
-            Number of axes.
-
-        Returns
-        -------
-        np.ndarray
-            Array of diffusion components for half-steps along the specified
-            axis.
-
-        Notes
-        -----
-        The index ``i`` in the returned array corresponds to ``i+1/2`` and
-        ``i-1`` corresponds to ``i-1/2``.
-        """
-        if conductivity is None:
-            conductivity = 1
-
-        D = np.zeros((num_axes, *mesh.shape))
-        for i in range(num_axes):
-            D[i] = self.compute_diffusion_components(fibers, axis, i, D_al,
-                                                     D_ac)
-            D[i] *= conductivity
-            D[i] = 0.5 * (D[i] + np.roll(D[i], -1, axis=axis))
-
-        return D
-
-    def compute_diffusion_components(self, fibers, ind0, ind1, D_al, D_ac):
-        """
-        Computes the diffusion components based on fiber orientations.
-
-        Parameters
-        ----------
-        fibers : np.ndarray
-            Array representing fiber orientations.
-        ind0 : int
-            First axis index (0 for x, 1 for y).
-        ind1 : int
-            Second axis index (0 for x, 1 for y).
-        D_al : float
-            Longitudinal diffusion coefficient.
-        D_ac : float
-            Cross-sectional diffusion coefficient.
-
-        Returns
-        -------
-        np.ndarray
-            Array of diffusion components based on fiber orientations
-        """
-        return (D_ac * (ind0 == ind1) +
-                (D_al - D_ac) * fibers[..., ind0] * fibers[..., ind1])

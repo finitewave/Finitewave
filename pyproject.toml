@@ -1,19 +1,53 @@
 [build-system]
-requires = ["hatchling", "numpy", "numba", "scipy", "matplotlib", "tables", "tqdm", "natsort", "pyvista"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
 name = "finitewave"
-version = "0.8"
+version = "0.8.5"
+requires-python = ">=3.7"
 authors = [
   { name="Timur Nezlobinsky", email="nezlobinsky@gmail.com" },
   { name="Arstanbek Okenov", email="arstanbek.okenov@ugent.be" }
 ]
 description = "Simple package for a wide range of tasks in modeling cardiac electrophysiology using finite-difference methods."
-readme = "README.md"
-requires-python = ">=3.7"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: Other/Proprietary License",
-    "Operating System :: OS Independent",
+readme = "README.rst"
+license = "MIT"
+
+dependencies = [
+  "numpy>=1.26.4",
+  "numba>=0.60.0",
+  "scipy>=1.14.1",
+  "matplotlib>=3.9.2",
+  "tqdm>=4.66.5",
+  "natsort>=8.4.0",
+  "pyvista>=0.44.1",
+  "ffmpeg-python>=0.2.0",
+  "pandas>=2.2.3",
+  "scikit-image>=0.24.0",
 ]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov"
+]
+docs = [
+  "sphinx",
+  "sphinx-rtd-theme",
+  "pydata-sphinx-theme",
+  "sphinx-gallery",
+  "sphinx-copybutton",
+  "numpydoc",
+]
+
+# [tool.setuptools]
+# zip-safe = false
+# include-package-data = false
+# packages = [
+#    'finitewave',
+#    'finitewave.core',
+#    'finitewave.cpuwave2D',
+#    'finitewave.cpuwave3D',
+#    'finitewave.tools',
+# ]

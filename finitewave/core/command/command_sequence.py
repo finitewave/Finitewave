@@ -1,40 +1,26 @@
+
+
 class CommandSequence:
     """Manages a sequence of commands to be executed during a simulation.
 
     Attributes
     ----------
     sequence : list
-        A list of `Command` instances representing the sequence of commands to be executed.
-    
+        A list of ``Command`` instances representing the sequence of commands
+        to be executed.
+
     model : CardiacModel
         The cardiac model instance on which commands will be executed.
-
-    Methods
-    -------
-    initialize(model)
-        Initializes the sequence with the specified model and marks all commands as not passed.
-    
-    add_command(command)
-        Adds a `Command` instance to the sequence.
-    
-    remove_commands()
-        Clears the sequence of all commands.
-    
-    execute_next()
-        Executes commands whose time has arrived and which have not been executed yet.
     """
-    
+
     def __init__(self):
-        """
-        Initializes a CommandSequence instance with an empty sequence and no model.
-        """
         self.sequence = []
         self.model = None
 
     def initialize(self, model):
         """
-        Initializes the CommandSequence with the specified model and resets the execution status
-        of all commands.
+        Initializes the CommandSequence with the specified model and resets
+        the execution status of all commands.
 
         Parameters
         ----------
@@ -47,7 +33,7 @@ class CommandSequence:
 
     def add_command(self, command):
         """
-        Adds a `Command` instance to the sequence.
+        Adds a ``Command`` instance to the sequence.
 
         Parameters
         ----------
@@ -64,9 +50,10 @@ class CommandSequence:
 
     def execute_next(self):
         """
-        Executes commands whose time has arrived and which have not been executed yet.
+        Executes commands whose time has arrived and which have not been
+        executed yet.
         """
         for command in self.sequence:
-            if self.model.t >= command.t and not command.passed:
+            if not command.passed and command.update_status(self.model):
                 command.execute(self.model)
-                command.passed = True
+

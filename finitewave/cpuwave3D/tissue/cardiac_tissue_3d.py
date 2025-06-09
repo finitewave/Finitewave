@@ -1,60 +1,34 @@
 import numpy as np
 
 from finitewave.core.tissue.cardiac_tissue import CardiacTissue
-from finitewave.cpuwave3D.stencil.isotropic_stencil_3d import IsotropicStencil3D
 
 
 class CardiacTissue3D(CardiacTissue):
     """
-    A class to represent a 3D cardiac tissue model with isotropic or anisotropic properties.
-
-    Inherits from:
-    -----------
-    CardiacTissue
-        Base class for cardiac tissue models.
+    This class represents a 3D cardiac tissue.
 
     Attributes
     ----------
-    shape : tuple of int
-        Shape of the 3D grid for the cardiac tissue.
-    mesh : np.ndarray
-        Grid representing the tissue, with boundaries set to zero.
-    stencil : IsotropicStencil3D
-        Stencil for calculating weights in the 3D grid.
-    conductivity : float
-        Conductivity value for the tissue.
-    fibers : np.ndarray or None
-        Array representing fiber orientations. If None, isotropic weights are used.
     meta : dict
-        Metadata about the tissue, including dimensionality.
-    weights : np.ndarray
-        Weights used for diffusion calculations.
-
-    Methods
-    -------
-    __init__(shape):
-        Initializes the 3D cardiac tissue model with the given shape and mode.
-    add_boundaries():
-        Sets boundary values in the mesh to zero.
-    compute_weights(dr, dt):
-        Computes the weights for diffusion based on the stencil and mode.
+        A dictionary containing metadata about the tissue.
+    mesh : np.ndarray
+        A 3D numpy array representing the tissue mesh where each value
+        indicates the type of tissue at that location. Possible values are:
+        ``0`` for non-tissue, ``1`` for healthy tissue, and ``2`` for fibrotic
+        tissue.
+    conductivity : float or np.ndarray
+        The conductivity of the tissue used for reducing the diffusion
+        coefficients. The conductivity should be in the range [0, 1].
+    fibers : np.ndarray
+        Fibers orientation in the tissue. If None, the isotropic stencil is
+        used.
     """
     def __init__(self, shape):
-        """
-        Initializes the CardiacTissue3D model.
-
-        Parameters
-        ----------
-        shape : tuple of int
-            Shape of the 3D grid for the cardiac tissue.
-        """
-        CardiacTissue.__init__(self)
-        self.meta["Dim"] = 3
-        self.shape = shape
-        self.mesh = np.ones(shape)
-        self.add_boundaries()
-        self.stencil = IsotropicStencil3D()
-        self.conductivity = 1
+        super().__init__()
+        self.meta["dim"] = 3
+        self.meta["shape"] = shape
+        self.mesh = np.ones(shape, dtype=np.int8)
+        self.conductivity = 1.
         self.fibers = None
 
     def add_boundaries(self):
@@ -70,18 +44,3 @@ class CardiacTissue3D(CardiacTissue):
         self.mesh[-1, :, :] = 0
         self.mesh[:, -1, :] = 0
         self.mesh[:, :, -1] = 0
-
-    def compute_weights(self, dr, dt):
-        """
-        Computes the weights for diffusion using the stencil and given parameters.
-
-        Parameters
-        ----------
-        dr : float
-            Spatial resolution.
-        dt : float
-            Temporal resolution.
-        """
-        self.weights = self.stencil.get_weights(self.mesh, self.conductivity,
-                                                self.fibers, self.D_al,
-                                                self.D_ac, dt, dr)
