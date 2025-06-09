@@ -62,7 +62,7 @@ Requirements
 Finitewave requires the following dependencies:
 
 +-----------------+---------+--------------------------------------------------+
-| Dependency      | Version | Link                                             |
+| Dependency      | Version*| Link                                             |
 +=================+=========+==================================================+
 | ffmpeg-python   | 0.2.0   | https://pypi.org/project/ffmpeg-python/          |
 +-----------------+---------+--------------------------------------------------+
@@ -84,6 +84,8 @@ Finitewave requires the following dependencies:
 +-----------------+---------+--------------------------------------------------+
 | tqdm            | 4.66.5  | https://pypi.org/project/tqdm/                   |
 +-----------------+---------+--------------------------------------------------+
+
+*minimal version
 
 Quick start
 ===================
