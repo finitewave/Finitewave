@@ -14,6 +14,10 @@ authors:
     corresponding: true
   - name: Arstanbek Okenov
     affiliation: 1
+  - name: Nele Vandersickel
+    affiliation: 1
+  - name: Alexander V Panfilov
+    affiliation: 1
 affiliations:
  - name: Ghent University, Belgium
    index: 1
