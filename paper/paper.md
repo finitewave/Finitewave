@@ -1,5 +1,5 @@
 ---
-title: 'Finitewave: '
+title: 'Finitewave: a lightweight and accessible framework for cardiac electrophysiology simulations'
 tags:
   - Python
   - cardiac modeling
@@ -106,7 +106,7 @@ aliev_panfilov.stim_sequence = stim_sequence
 aliev_panfilov.run()
 ```
 
-Once the simulation is complete, we visualize the final voltage distribution using matplotlib (Figure 1):
+Once the simulation is complete, we visualize the final voltage distribution using matplotlib (\autoref{fig:spiral_wave}):
 
 ```
 plt.imshow(aliev_panfilov.u, cmap='Spectral_r')
@@ -151,6 +151,6 @@ plt.axis('off')
 plt.show()
 ```
 
-![Description. \label{fig:spiral_wave}](spiral_wave.png)
+![Spiral wave generated in 2D tissue using the Aliev-Panfilov model. \label{fig:spiral_wave}](spiral_wave.png)
 
 # References
