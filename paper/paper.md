@@ -24,14 +24,14 @@ bibliography: paper.bib
 
 # Summary
 The growing progress in cardiac and medical modeling opens broad opportunities for the development of tools and software packages that enable simulations
-for both research and clinical purposes. Mathematical modeling and numerical simulation have become essential for understanding cardiac arrhythmias, testing hypotheses in silico, and supporting the development of medical devices and therapies [@Jaffery_2024, @Trayanova_2024].
+for both research and clinical purposes. Mathematical modeling and numerical simulation have become essential for understanding cardiac arrhythmias, testing hypotheses in silico, and supporting the development of medical devices and therapies [@Jaffery_2024; @Trayanova_2024].
 
 We present **Finitewave**, a lightweight and extensible Python framework designed for fast, reproducible, and accessible simulations of cardiac electrical propagation using finite difference methods. Finitewave significantly lowers the entry barrier for students, researchers, and users without 
 a strong technical background. Its modular structure, fast numerical core, and seamless integration with Python's scientific ecosystem allow for both rapid prototyping and advanced analysis using standard tools for visualization and post-processing.
 
 
 # Statement of need
-Over the past decades, numerous tools have been developed to simulate normal and pathological cardiac activity, including electrical propagation, contraction, and anatomical features. As cardiac models have become more detailed and biophysically accurate, their computational cost and complexity have increased. Platforms like **OpenCARP**, **Chaste** or **Lifex-ep** [@Plank_openCARP, @Cooper_Chaste, @africa2022lifexcore] offer powerful capabilities but are often difficult to set up, tightly coupled to HPC environments, and challenging to use and modify - especially for users without a strong computational background. Other tools like **Myokit** [@Clerx2016Myokit] focus on single-cell simulations but may lack multi-dimensional support.
+Over the past decades, numerous tools have been developed to simulate normal and pathological cardiac activity, including electrical propagation, contraction, and anatomical features. As cardiac models have become more detailed and biophysically accurate, their computational cost and complexity have increased. Platforms like **OpenCARP**, **Chaste** or **Lifex-ep** [@Plank_openCARP; @Cooper_Chaste; @africa2022lifexcore] offer powerful capabilities but are often difficult to set up, tightly coupled to HPC environments, and challenging to use and modify - especially for users without a strong computational background. Other tools like **Myokit** [@Clerx2016Myokit] focus on single-cell simulations but may lack multi-dimensional support.
 
 **Finitewave** addresses this gap by offering a lightweight, transparent, and Python-native framework for cardiac modeling. It is designed to enable early user engagement in the modeling process, with a clear and modular structure that supports experimentation, learning, and customization. 
 Its Python foundation allows smooth integration with other libraries (e.g., NumPy, Matplotlib, SciPy, Jupyter) and makes it ideal for use in educational and research settings.
@@ -54,7 +54,7 @@ Advanced users can easily extend base scripts with custom metrics, animations, o
 
 The repository includes detailed examples, covering the main features of the framework, as well as tutorials demonstrating how Finitewave can be used  for different types of research tasks. Our goal is to make Finitewave not only convenient for experienced users but also an accessible and modern entry point into cardiac modeling for students and early-career researchers.
 
-Despite being a relatively new open-source project, Finitewave has already been used as the primary simulation tool in at least two peer-reviewed publications [@Nezlobinsky_multiparam, @Okenov_comp_based].
+Despite being a relatively new open-source project, Finitewave has already been used as the primary simulation tool in at least two peer-reviewed publications [@Nezlobinsky_multiparam; @Okenov_comp_based].
 
 # Usage example
 
@@ -69,7 +69,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 ```
 
-We first initialize the simulation domain by creating a 2D tissue grid of size 100×100:
+We first initialize the simulation domain by creating a 2D tissue grid of size 200×200:
 
 ```
 n = 200
