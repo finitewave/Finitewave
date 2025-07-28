@@ -37,10 +37,15 @@ Over the past decades, numerous tools have been developed to simulate normal and
 Its Python foundation allows smooth integration with other libraries (e.g., NumPy, Matplotlib, SciPy, Jupyter) and makes it ideal for use in educational and research settings.
 
 Finitewave is particularly suited for:
+
 - **Research**: Studying wave propagation, reentry, or arrhythmias under various physiological conditions (e.g., fibrosis).
+
 - **Hypothesis testing**: Rapid prototyping of ideas and simulation protocols.
+
 - **Education**: Teaching modeling concepts through its modular and readable design.
+
 - **Custom development**: Creating tailored solutions via native Python integration.
+
 - **Dataset generation**: Producing synthetic data for machine learning or statistical analysis.
 
 This positions Finitewave as a complementary and accessible alternative to existing platforms, offering a more flexible and user-friendly environment for cardiac modeling and experimentation.
