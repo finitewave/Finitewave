@@ -30,14 +30,14 @@ bibliography: paper.bib
 The growing progress in cardiac and medical modeling opens broad opportunities for the development of tools and software packages that enable simulations
 for both research and clinical purposes. Mathematical modeling and numerical simulation have become essential for understanding cardiac arrhythmias, testing hypotheses in silico, and supporting the development of medical devices and therapies [@Jaffery_2024; @Trayanova_2024].
 
-We present **Finitewave**, a lightweight and extensible Python framework designed for fast, reproducible, and accessible simulations of cardiac electrical propagation using finite difference methods. Finitewave significantly lowers the entry barrier for students, researchers, and users without 
+We present **Finitewave**, a lightweight and extensible Python framework designed for fast, reproducible, and accessible simulations of cardiac electrical propagation using finite difference methods. Finitewave significantly lowers the entry barrier for students, researchers, and users without
 a strong technical background. Its modular structure, fast numerical core, and seamless integration with Python's scientific ecosystem allow for both rapid prototyping and advanced analysis using standard tools for visualization and post-processing.
 
 
 # Statement of need
 Over the past decades, numerous tools have been developed to simulate normal and pathological cardiac activity, including electrical propagation, contraction, and anatomical features. As cardiac models have become more detailed and biophysically accurate, their computational cost and complexity have increased. Platforms like **OpenCARP**, **Chaste** or **Lifex-ep** [@Plank_openCARP; @Cooper_Chaste; @africa2022lifexcore] offer powerful capabilities but are often difficult to set up, tightly coupled to HPC environments, and challenging to use and modify - especially for users without a strong computational background. Other tools like **Myokit** [@Clerx2016Myokit] focus on single-cell simulations but may lack multi-dimensional support.
 
-**Finitewave** addresses this gap by offering a lightweight, transparent, and Python-native framework for cardiac modeling. It is designed to enable early user engagement in the modeling process, with a clear and modular structure that supports experimentation, learning, and customization. 
+**Finitewave** addresses this gap by offering a lightweight, transparent, and Python-native framework for cardiac modeling. It is designed to enable early user engagement in the modeling process, with a clear and modular structure that supports experimentation, learning, and customization.
 Its Python foundation allows smooth integration with other libraries (e.g., NumPy, Matplotlib, SciPy, Jupyter) and makes it ideal for use in educational and research settings.
 
 Finitewave is particularly suited for:
@@ -56,7 +56,7 @@ This positions Finitewave as a complementary and accessible alternative to exist
 
 # Usage philosophy
 
-Finitewave supports both 2D and 3D simulations, offering an open and interactive space for implementing a wide range of computational experiments. 
+Finitewave supports both 2D and 3D simulations, offering an open and interactive space for implementing a wide range of computational experiments.
 A minimal working script requires only a few lines of clearly structured code, making it easy to get started. For exploratory use, simulations can also be run inside Jupyter notebooks, enabling immediate visualization and interactive analysis.
 
 Advanced users can easily extend base scripts with custom metrics, animations, or protocol logic. This makes it possible to scale from simple demonstrations to complex simulations while retaining full transparency and control over each step.
@@ -67,7 +67,7 @@ Despite being a relatively new open-source project, Finitewave has already been 
 
 # Usage example
 
-To demonstrate the usage of Finitewave, we consider the initiation of a spiral wave - a well-known model representation of cardiac arrhythmia in cardiac tissue. For the electrophysiological model, we use the built-in Aliev-Panfilov model [@AP_1996], which captures the basic properties of cardiac tissue as an excitable medium.
+To demonstrate the usage of Finitewave, we consider the initiation of a spiral wave - a well-known model representation of cardiac arrhythmia in cardiac tissue \autoref{fig:spiral_wave}. For the electrophysiological model, we use the built-in Aliev-Panfilov model [@AP_1996], which captures the basic properties of cardiac tissue as an excitable medium.
 
 Importing the finitewave package gives access to the framework’s API:
 
