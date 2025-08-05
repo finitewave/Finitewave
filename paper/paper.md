@@ -21,7 +21,7 @@ authors:
 affiliations:
  - name: Ghent University, Belgium
    index: 1
-date: 4 August 2025
+date: 5 August 2025
 bibliography: paper.bib
 
 ---
@@ -67,7 +67,7 @@ Despite being a relatively new open-source project, Finitewave has already been 
 
 # Usage example
 
-To demonstrate the usage of Finitewave, we consider the initiation of a spiral wave - a well-known model representation of cardiac arrhythmia in cardiac tissue \autoref{fig:spiral_wave}. For the electrophysiological model, we use the built-in Aliev-Panfilov model [@AP_1996], which captures the basic properties of cardiac tissue as an excitable medium.
+To demonstrate the usage of Finitewave, we consider the initiation of a spiral wave - a well-known model representation of cardiac arrhythmia in cardiac tissue (\autoref{fig:spiral_wave}). For the electrophysiological model, we use the built-in Aliev-Panfilov model [@AP_1996], which captures the basic properties of cardiac tissue as an excitable medium.
 
 Importing the finitewave package gives access to the framework’s API:
 
