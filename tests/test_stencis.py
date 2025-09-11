@@ -68,7 +68,8 @@ def test_isotropic_stencil_3d():
 
     class DummyTissue:
         def __init__(self):
-            self.mesh = np.ones((5, 5, 5), dtype=np.int8)
+            self.mesh = np.zeros((5, 5, 5), dtype=np.int8)
+            self.mesh[1:-1, 1:-1, 1:-1] = 1
             self.conductivity = np.ones((5, 5, 5), dtype=np.float32)
     
     model = DummyModel()
