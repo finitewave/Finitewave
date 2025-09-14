@@ -107,3 +107,5 @@ from finitewave.tools import (
     Velocity2DCalculation,
     Velocity3DCalculation,
 )
+
+from .elementalwave import *
