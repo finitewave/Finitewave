@@ -32,7 +32,7 @@ stim_sequence.add_stim(fw.StimVoltageCoordElem(45, 1,
                                                -20, 20))
 
 # create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilovElem()
+aliev_panfilov = fw.AlievPanfilovElems()
 aliev_panfilov.dt = 0.01
 aliev_panfilov.t_max = 200
 # add the tissue and the stim parameters to the model object:
@@ -40,7 +40,7 @@ aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence
 
 # run the model:
-aliev_panfilov.run()
+aliev_panfilov.run(num_of_threads=1)
 
 u = aliev_panfilov.u
 

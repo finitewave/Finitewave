@@ -31,31 +31,23 @@ size = 50
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
 
 tissue = fw.CardiacTissueElem(coords, elems)
-tissue.mesh = np.random.random(coords.shape[0]) >= 0.3
-# tissue.mesh_elems = np.random.random(elems.shape[0]) >= 0.4
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1, 0, size, 0, 1))
-stim_sequence.add_stim(fw.StimVoltageCoordElem(45, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoordElem(180, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilovElems()
-aliev_panfilov.dt = 0.01
-aliev_panfilov.t_max = 200
+model = fw.LuoRudy91Elems()
+model.dt = 0.01
+model.t_max = 300
 # add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
+model.cardiac_tissue = tissue
+model.stim_sequence = stim_sequence
 
 # run the model:
-aliev_panfilov.run(num_of_threads=1)
+model.run(num_of_threads=None)
 
-u = aliev_panfilov.u
-
-# mask = np.zeros_like(u, dtype=bool)
-# mask[tissue.myo_indexes] = 1
-# u[~mask] = np.nan
-# u_elems = np.mean(u[tissue.elems], axis=1)
-# u_elems = np.ma.array(u_elems, mask=np.isnan(u_elems))
+u = model.u
 
 # show the potential map at the end of calculations:
 plt.figure()

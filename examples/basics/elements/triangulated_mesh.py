@@ -37,7 +37,7 @@ stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1, 0, size, 0, 1))
 stim_sequence.add_stim(fw.StimVoltageCoordElem(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilovElem()
+aliev_panfilov = fw.AlievPanfilovElems()
 aliev_panfilov.dt = 0.01
 aliev_panfilov.t_max = 200
 # add the tissue and the stim parameters to the model object:

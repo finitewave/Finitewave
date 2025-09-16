@@ -7,7 +7,7 @@ from finitewave.elementalwave.stencil.triangle_isotropic_stencil import (
 )
 
 
-class AlievPanfilovElem(CardiacModel):
+class AlievPanfilovElems(CardiacModel):
     def __init__(self):
         super().__init__()
         self.cardiac_tissue = None
@@ -16,6 +16,10 @@ class AlievPanfilovElem(CardiacModel):
         self._rhs = np.ndarray
         self._u = np.ndarray
         self._u_new = np.ndarray
+
+        self.state_vars = ["u", "v"]
+        self.npfloat = 'float64'
+
         self.a = 0.1
         self.k = 8.0
         self.eps = 0.01
