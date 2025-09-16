@@ -141,16 +141,7 @@ class CardiacModel(ABC):
         if initialize:
             self.initialize()
 
-        numba.set_num_threads(numba.config.NUMBA_NUM_THREADS)
-
-        if num_of_threads is not None:
-            if num_of_threads > numba.config.NUMBA_NUM_THREADS:
-                warnings.warn(
-                    f"Selected number of threads ({num_of_threads}) exceeds the available threads ({numba.config.NUMBA_NUM_THREADS}). "
-                    f"Using the maximum available threads instead."
-                )
-            num_of_theads = min(num_of_threads, numba.config.NUMBA_NUM_THREADS)
-            numba.set_num_threads(num_of_theads)
+        self.limit_num_of_threads(num_of_threads)
 
         if self.t_max < self.t:
             raise ValueError("t_max must be greater than current t.")
@@ -175,7 +166,7 @@ class CardiacModel(ABC):
 
             self.t += self.dt
             self.step += 1
-            self.u_new, self.u = self.u, self.u_new
+            self.swap_arrays()
 
             if self.command_sequence:
                 self.command_sequence.execute_next()
@@ -187,6 +178,21 @@ class CardiacModel(ABC):
                 if self.state_saver:
                     self.state_saver.save()
                 break
+
+    def swap_arrays(self):
+        self.u_new, self.u = self.u, self.u_new
+
+    def limit_num_of_threads(self, num_of_threads):
+        numba.set_num_threads(numba.config.NUMBA_NUM_THREADS)
+
+        if num_of_threads is not None:
+            if num_of_threads > numba.config.NUMBA_NUM_THREADS:
+                warnings.warn(
+                    f"Selected number of threads ({num_of_threads}) exceeds the available threads ({numba.config.NUMBA_NUM_THREADS}). "
+                    f"Using the maximum available threads instead."
+                )
+            num_of_theads = min(num_of_threads, numba.config.NUMBA_NUM_THREADS)
+            numba.set_num_threads(num_of_theads)
 
     def check_termination(self):
         """

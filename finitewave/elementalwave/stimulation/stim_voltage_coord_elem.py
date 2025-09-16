@@ -1,3 +1,4 @@
+import numpy as np
 from finitewave.core.stimulation.stim_voltage import StimVoltage
 
 
@@ -14,12 +15,13 @@ class StimVoltageCoordElem(StimVoltage):
     def stimulate(self, model):
 
         tissue = model.cardiac_tissue
-        mask = tissue.mesh == 1
+        mask = np.ones(tissue.coords.shape[0], dtype=bool)
         mask &= ((tissue.coords[:, 0] >= self.x1) &
                  (tissue.coords[:, 0] <= self.x2))
         mask &= ((tissue.coords[:, 1] >= self.y1) &
                  (tissue.coords[:, 1] <= self.y2))
         mask &= ((tissue.coords[:, 2] >= self.z1) &
                  (tissue.coords[:, 2] <= self.z2))
+        mask = mask[tissue.myo_indexes]
 
-        model.u[mask] = self.volt_value
+        model._u[mask] = self.volt_value

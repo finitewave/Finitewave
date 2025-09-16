@@ -11,7 +11,7 @@ coords = np.genfromtxt(path.joinpath("mesh.pts"),
                        usecols=[0, 1, 2])
 coords /= 1000
 
-print(coords.min(axis=0), coords.max(axis=0))
+# print(coords.min(axis=0), coords.max(axis=0))
 elems = np.genfromtxt(path.joinpath("mesh.elem"),
                       skip_header=1,
                       usecols=[1, 2, 3],

@@ -45,7 +45,7 @@ aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence
 
 # run the model:
-aliev_panfilov.run()
+aliev_panfilov.run(num_of_threads=1)
 
 u = aliev_panfilov.u
 

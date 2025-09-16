@@ -31,7 +31,7 @@ size = 50
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
 
 tissue = fw.CardiacTissueElem(coords, elems)
-tissue.mesh = np.random.random(coords.shape[0]) >= 0.2
+tissue.mesh = np.random.random(coords.shape[0]) >= 0.3
 # tissue.mesh_elems = np.random.random(elems.shape[0]) >= 0.4
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -47,7 +47,7 @@ aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence
 
 # run the model:
-aliev_panfilov.run()
+aliev_panfilov.run(num_of_threads=1)
 
 u = aliev_panfilov.u
 
@@ -60,7 +60,7 @@ u = aliev_panfilov.u
 # show the potential map at the end of calculations:
 plt.figure()
 plt.tricontourf(coords[:, 0], coords[:, 1], elems, u, levels=100,
-                shading="flat", cmap="RdBu_r")
+                cmap="RdBu_r")
 # plt.triplot(coords[:, 0], coords[:, 1], elems, lw=0.1)
 plt.colorbar(label='u')
 plt.title('u at final time')
