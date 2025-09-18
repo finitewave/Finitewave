@@ -4,20 +4,21 @@ from finitewave.elementalwave.solver.scipy.scipy_cg_solver import ScipyCGSolver
 from finitewave.core.stencil import Stencil
 
 
-class TriangleIsotropicStencil(Stencil):
+class TriangleStencil(Stencil):
     def __init__(self):
         super().__init__()
         self.solver = ScipyCGSolver()
+        self.D_ac = 1/9
+        self.D_al = 1
 
-    def compute_weights(self, model, cardiac_tissue):
-        coords = cardiac_tissue.myo_coords
-        elems = self.reindex_elems(cardiac_tissue.coords,
-                                   cardiac_tissue.myo_elems,
-                                   cardiac_tissue.myo_indexes)
+    def compute_weights(self, model, tissue):
+        coords = tissue.myo_coords
+        elems = self.reindex_elems(tissue.coords,
+                                   tissue.myo_elems,
+                                   tissue.myo_indexes)
 
-        diffusion = cardiac_tissue.conductivity
-        diffusion *= np.ones(len(elems), dtype=model.npfloat)
-        diffusion *= model.D_model
+        diffusion = self.compute_diffusion(model, tissue)
+        diffusion = diffusion[tissue.myo_elems_indexes]
 
         areas, grads = self.areas_and_grads(coords, elems)
         stiffness_matrix = self.assemble_stiffness_matrix(
@@ -26,6 +27,21 @@ class TriangleIsotropicStencil(Stencil):
         mass_matrix = self.assemble_mass_matrix(coords, elems, areas)
         a_matrix = self.solver.axpy(mass_matrix, stiffness_matrix, model.dt)
         return a_matrix, mass_matrix
+
+    def compute_diffusion(self, model, tissue):
+        diffusion = np.eye(3, dtype=model.npfloat)
+
+        if tissue.fibers is not None:
+            diffusion = (self.D_ac * np.eye(3)[np.newaxis, :, :] +
+                         ((self.D_al - self.D_ac) *
+                          tissue.fibers[:, :, np.newaxis] @
+                          tissue.fibers[:, np.newaxis, :]))
+
+        conductivity = (model.D_model * tissue.conductivity *
+                        np.ones(len(tissue.elems), dtype=model.npfloat))
+        diffusion = diffusion * conductivity[:, np.newaxis, np.newaxis]
+        diffusion *= model.D_model
+        return diffusion
 
     def select_diffusion_kernel(self):
         return self.solver.diffusion_kernel
@@ -64,8 +80,9 @@ class TriangleIsotropicStencil(Stencil):
                 for j in range(3):
                     rows.append(elems[e, i])
                     cols.append(elems[e, j])
-                    val = diffusion[e] * areas[e] * np.dot(grads[e, i, :],
-                                                           grads[e, j, :])
+                    val = areas[e] * (grads[e, i, :] @
+                                      diffusion[e] @
+                                      grads[e, j, :])
                     data.append(val)
 
         res = sparse.coo_matrix((data, (rows, cols)),

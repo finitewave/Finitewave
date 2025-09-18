@@ -1,1 +1,1 @@
-from .triangle_isotropic_stencil import TriangleIsotropicStencil
+from .triangle_stencil import TriangleStencil

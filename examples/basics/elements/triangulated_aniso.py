@@ -27,12 +27,15 @@ def build_triangular_mesh(n, m, x_range=(0, 1), y_range=(0, 1)):
 # create a tissue of size 400x400 with cardiomycytes:
 n = 200
 size = 50
+alpha = np.radians(45)
 
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
+fibers = np.zeros((len(elems), 3))
+fibers[:, 0] = np.cos(alpha)
+fibers[:, 1] = np.sin(alpha)
 
 tissue = fw.CardiacTissueElem(coords, elems)
-tissue.mesh = np.random.random(coords.shape[0]) >= 0.2
-# tissue.mesh_elems = np.random.random(elems.shape[0]) >= 0.4
+tissue.fibers = fibers
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1, 0, size, 0, 1))
@@ -51,17 +54,10 @@ aliev_panfilov.run(num_of_threads=1)
 
 u = aliev_panfilov.u
 
-# mask = np.zeros_like(u, dtype=bool)
-# mask[tissue.myo_indexes] = 1
-# u[~mask] = np.nan
-# u_elems = np.mean(u[tissue.elems], axis=1)
-# u_elems = np.ma.array(u_elems, mask=np.isnan(u_elems))
-
 # show the potential map at the end of calculations:
 plt.figure()
 plt.tricontourf(coords[:, 0], coords[:, 1], elems, u, levels=100,
                 cmap="RdBu_r")
-# plt.triplot(coords[:, 0], coords[:, 1], elems, lw=0.1)
 plt.colorbar(label='u')
 plt.title('u at final time')
 plt.gca().set_aspect('equal')

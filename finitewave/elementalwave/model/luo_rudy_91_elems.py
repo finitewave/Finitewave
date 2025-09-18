@@ -3,8 +3,8 @@ import math
 from numba import njit, prange
 
 from finitewave.core.model.cardiac_model import CardiacModel
-from finitewave.elementalwave.stencil.triangle_isotropic_stencil import (
-    TriangleIsotropicStencil
+from finitewave.elementalwave.stencil.triangle_stencil import (
+    TriangleStencil
 )
 
 
@@ -111,7 +111,7 @@ class LuoRudy91Elems(CardiacModel):
 
     def select_stencil(self, cardiac_tissue):
         if cardiac_tissue.elems.shape[1] == 3:
-            return TriangleIsotropicStencil()
+            return TriangleStencil()
         raise ValueError
 
 
