@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pyvista as pv
 import finitewave as fw
 
 
@@ -27,7 +27,12 @@ def build_triangular_mesh(n, m, x_range=(0, 1), y_range=(0, 1)):
 # create a tissue of size 400x400 with cardiomycytes:
 n = 200
 size = 50
-alpha = np.radians(45)
+x_min = size / 2 - 0.5
+x_max = size / 2 + 0.5
+y_min = x_min
+y_max = x_max
+
+alpha = np.radians(30)
 
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
 fibers = np.zeros((len(elems), 3))
@@ -38,13 +43,16 @@ tissue = fw.CardiacTissueElem(coords, elems)
 tissue.fibers = fibers
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1, 0, size, 0, 1))
-stim_sequence.add_stim(fw.StimVoltageCoordElem(45, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1,
+                                               x_min,
+                                               x_max,
+                                               y_min,
+                                               y_max))
 
 # create model object and set up parameters:
 aliev_panfilov = fw.AlievPanfilovElems()
 aliev_panfilov.dt = 0.01
-aliev_panfilov.t_max = 200
+aliev_panfilov.t_max = 17
 # add the tissue and the stim parameters to the model object:
 aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence
@@ -53,6 +61,12 @@ aliev_panfilov.stim_sequence = stim_sequence
 aliev_panfilov.run(num_of_threads=1)
 
 u = aliev_panfilov.u
+
+# faces = np.hstack([[3, *tri] for tri in elems])
+# mesh = pv.PolyData(coords, faces)
+# mesh.point_data["values"] = u
+# # plot
+# mesh.plot(cmap="RdBu_r")
 
 # show the potential map at the end of calculations:
 plt.figure()

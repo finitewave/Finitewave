@@ -29,7 +29,7 @@ class NumbaCGSolver:
         return u_new
 
 
-@njit
+# @njit
 def csr_matvec(data, indices, indptr, x, y):
     n = indptr.shape[0] - 1
     y = np.zeros(n, dtype=np.float64)
@@ -40,7 +40,7 @@ def csr_matvec(data, indices, indptr, x, y):
     return y
 
 
-@njit(parallel=True)
+# @njit(parallel=True)
 def cg_sparse(data, indices, indptr, b, tol=1e-8, maxiter=1000):
     n = len(b)
     x = np.zeros(n, dtype=np.float64)

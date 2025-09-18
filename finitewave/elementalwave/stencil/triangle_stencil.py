@@ -2,6 +2,8 @@ import numpy as np
 from scipy import sparse
 from finitewave.elementalwave.solver.scipy.scipy_cg_solver import ScipyCGSolver
 from finitewave.core.stencil import Stencil
+from numba import njit, prange
+from tqdm import tqdm
 
 
 class TriangleStencil(Stencil):
@@ -10,6 +12,7 @@ class TriangleStencil(Stencil):
         self.solver = ScipyCGSolver()
         self.D_ac = 1/9
         self.D_al = 1
+        self.mass_coef = 12.
 
     def compute_weights(self, model, tissue):
         coords = tissue.myo_coords
@@ -73,32 +76,56 @@ class TriangleStencil(Stencil):
         return areas, grads
 
     def assemble_stiffness_matrix(self, coords, elems, areas, grads, diffusion):
-        rows, cols, data = [], [], []
+        # rows, cols, data = [], [], []
 
-        for e in range(elems.shape[0]):
-            for i in range(3):
-                for j in range(3):
-                    rows.append(elems[e, i])
-                    cols.append(elems[e, j])
-                    val = areas[e] * (grads[e, i, :] @
-                                      diffusion[e] @
-                                      grads[e, j, :])
-                    data.append(val)
-
+        # for e in tqdm(range(elems.shape[0])):
+        #     for i in range(elems.shape[1]):
+        #         for j in range(elems.shape[1]):
+        #             rows.append(elems[e, i])
+        #             cols.append(elems[e, j])
+        #             val = areas[e] * (grads[e, i, :] @
+        #                               diffusion[e] @
+        #                               grads[e, j, :])
+        #             data.append(val)
+        rows, cols, data = assemble_stiffness_matrix(elems, areas, grads,
+                                                     diffusion)
         res = sparse.coo_matrix((data, (rows, cols)),
                                 shape=(coords.shape[0], coords.shape[0]))
         return res.tocsr()
 
     def assemble_mass_matrix(self, coords, elems, areas):
-        rows, cols, data = [], [], []
-        for e in range(elems.shape[0]):
-            Me = (areas[e] / 12.0) * (np.ones((3, 3)) + np.eye(3))
-            for i in range(3):
-                for j in range(3):
-                    rows.append(elems[e, i])
-                    cols.append(elems[e, j])
-                    data.append(Me[i, j])
+        # TODO: Lumped M
+        Me = (1 / self.mass_coef) * (np.ones((elems.shape[1],
+                                              elems.shape[1])) +
+                                     np.eye(elems.shape[1]))
+
+        Me = areas[:, None, None] * Me[None, :, :]
+
+        rows = np.repeat(elems, elems.shape[1], axis=1).reshape(-1)
+        cols = np.tile(elems, (1, elems.shape[1])).reshape(-1)
+        data = Me.reshape(-1)
 
         res = sparse.coo_matrix((data, (rows, cols)),
                                 shape=(coords.shape[0], coords.shape[0]))
         return res.tocsr()
+
+
+@njit(parallel=True)
+def assemble_stiffness_matrix(elems, areas, grads, diffusion):
+    n_elems, n_points = elems.shape
+    rows = np.zeros(n_elems * n_points ** 2, dtype=elems.dtype)
+    cols = np.zeros_like(rows)
+    data = np.zeros_like(rows, dtype=diffusion.dtype)
+
+    for e in prange(n_elems):
+        for i in range(n_points):
+            for j in range(n_points):
+                ind = n_points ** 2 * (e - 1) + n_points * (i - 1) + j
+                rows[ind] = elems[e, i]
+                cols[ind] = elems[e, j]
+                val = areas[e] * (grads[e, i, :] @
+                                  diffusion[e] @
+                                  grads[e, j, :])
+                data[ind] = val
+
+    return rows, cols, data

@@ -38,6 +38,7 @@ class CardiacTissueElem(CardiacTissue):
 
     @property
     def myo_elems_indexes(self):
+        # TODO: Remove element islands
         myo_elems_mask = self.mesh_elems == 1
         myo_vertex_mask = self.mesh == 1
         myo_elems_mask &= np.all(myo_vertex_mask[self.elems], axis=1)

@@ -20,7 +20,7 @@ class ScipyCGSolver:
     def diffusion_kernel(self, u_new, u, rhs, matrices):
         a_matrix = matrices[0]
         mass_matrix = matrices[1]
-        b = mass_matrix.dot(u + rhs)
+        b = mass_matrix @ (u + rhs)
         u_new, success = linalg.cg(a_matrix, b, x0=u, atol=self.atol,
                                    rtol=self.rtol, maxiter=self.maxiter,
                                    M=self.preconditioner)

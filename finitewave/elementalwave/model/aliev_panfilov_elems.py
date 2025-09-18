@@ -6,6 +6,10 @@ from finitewave.elementalwave.stencil.triangle_stencil import (
     TriangleStencil
 )
 
+from finitewave.elementalwave.stencil.tetrahedral_stencil import (
+    TetrahedralStencil
+)
+
 
 class AlievPanfilovElems(CardiacModel):
     def __init__(self):
@@ -61,6 +65,9 @@ class AlievPanfilovElems(CardiacModel):
     def select_stencil(self, cardiac_tissue):
         if cardiac_tissue.elems.shape[1] == 3:
             return TriangleStencil()
+
+        if cardiac_tissue.elems.shape[1] == 4:
+            return TetrahedralStencil()
         raise ValueError
 
 
