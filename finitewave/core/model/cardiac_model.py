@@ -157,7 +157,7 @@ class CardiacModel(ABC):
 
             if self.stim_sequence:
                 self.stim_sequence.stimulate_next()
-
+            
             self.run_diffusion_kernel()
             self.run_ionic_kernel()
 

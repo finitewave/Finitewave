@@ -1,6 +1,6 @@
 
 import numpy as np
-from finitewave.elementalwave.stencil.triangle_stencil import TriangleStencil
+from finitewave.femwave.stencil.triangle_stencil import TriangleStencil
 
 
 class TetrahedralStencil(TriangleStencil):

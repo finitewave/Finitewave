@@ -31,20 +31,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import finitewave as fw
 
-n = 100
-m = 5
+n = 200
+m = 200
 # create mesh
 tissue = fw.CardiacTissue2D((n, m))
 
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, 5))
+stim_sequence.add_stim(fw.StimVoltageCoord2D(180, 1, 0, n//2, 0, n))
 
 # create model object and set up parameters
 luo_rudy = fw.LuoRudy912D()
 luo_rudy.dt = 0.01
 luo_rudy.dr = 0.25
-luo_rudy.t_max = 500
+luo_rudy.t_max = 50
 
 # add the tissue and the stim parameters to the model object
 luo_rudy.cardiac_tissue = tissue
@@ -56,19 +57,24 @@ action_pot_tracker = fw.ActionPotential2DTracker()
 # eather list or list of lists can be used
 action_pot_tracker.cell_ind = [[50, 3]]
 action_pot_tracker.step = 1
-tracker_sequence.add_tracker(action_pot_tracker)
-luo_rudy.tracker_sequence = tracker_sequence
+# tracker_sequence.add_tracker(action_pot_tracker)
+# luo_rudy.tracker_sequence = tracker_sequence
 
 # run the model:
 luo_rudy.run()
 
-# plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * luo_rudy.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-plt.legend(title='Luo-Rudy 1991')
-plt.xlabel('Time (ms)')
-plt.ylabel('Voltage (mV)')
-plt.title('Action Potential')
-plt.grid()
+plt.imshow(luo_rudy.u, cmap='RdBu_r')
+plt.colorbar()
 plt.show()
+
+# # plot the action potential
+# plt.figure()
+# time = np.arange(len(action_pot_tracker.output)) * luo_rudy.dt
+# plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+# plt.legend(title='Luo-Rudy 1991')
+# plt.xlabel('Time (ms)')
+# plt.ylabel('Voltage (mV)')
+# plt.title('Action Potential')
+# plt.grid()
+# plt.show()

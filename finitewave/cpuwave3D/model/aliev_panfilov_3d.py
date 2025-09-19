@@ -69,17 +69,10 @@ def ionic_kernel_3d(u_new, u, v, indexes, dt, a, k, eap, mu_1, mu_2):
         Array of indices where the kernel should be computed (``mesh == 1``).
     """
 
-    n_j = u.shape[1]
-    n_k = u.shape[2]
-
     for ni in prange(len(indexes)):
         ii = indexes[ni]
-        i = ii//(n_j*n_k)
-        j = (ii % (n_j*n_k))//n_k
-        k_ = (ii % (n_j*n_k)) % n_k
         
-        v[i, j, k_] = calc_v(v[i, j, k_], u[i, j, k_], dt, a, k, eap, mu_1, mu_2)
+        v.flat[ii] = calc_v(v.flat[ii], u.flat[ii], dt, a, k, eap, mu_1, mu_2)
 
-        u_new[i, j, k_] += dt * (- k * u[i, j, k_] * (u[i, j, k_] - a) * (u[i, j, k_] - 1.) -
-                            u[i, j, k_] * v[i, j, k_])
-
+        u_new.flat[ii] += dt * (- k * u.flat[ii] * (u.flat[ii] - a) * (u.flat[ii] - 1.) -
+                            u.flat[ii] * v.flat[ii])

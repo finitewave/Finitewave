@@ -2,21 +2,12 @@ import numpy as np
 import math
 from numba import njit, prange
 
-from finitewave.core.model.cardiac_model import CardiacModel
-from finitewave.elementalwave.stencil.triangle_stencil import (
-    TriangleStencil
-)
+from .cardiac_model_elems import CardiacModelElems
 
 
-class LuoRudy91Elems(CardiacModel):
+class LuoRudy91Elems(CardiacModelElems):
     def __init__(self):
         super().__init__()
-        self.cardiac_tissue = None
-        self.stencil = None
-        self.stim_sequence = None
-        self._rhs = np.ndarray
-        self._u = np.ndarray
-        self._u_new = np.ndarray
         self.D_model = 0.1
 
         self.m = np.ndarray
@@ -67,12 +58,6 @@ class LuoRudy91Elems(CardiacModel):
 
     def initialize(self):
         super().initialize()
-        self.u[:] = self.init_u * np.ones_like(self.u)
-        self._u = self.u[self.cardiac_tissue.myo_indexes].copy()
-        self._rhs = np.zeros_like(self._u)
-        self._u_new = self._u.copy()
-        self.v = np.zeros_like(self.u)
-        self.u_new = self.u
 
         self.m = self.init_m * np.ones_like(self.u)
         self.h = self.init_h * np.ones_like(self.u)
@@ -81,21 +66,6 @@ class LuoRudy91Elems(CardiacModel):
         self.f = self.init_f * np.ones_like(self.u)
         self.x = self.init_x * np.ones_like(self.u)
         self.cai = self.init_cai * np.ones_like(self.u)
-
-    def run(self, initialize=True, num_of_threads=None):
-        super().run(initialize, num_of_threads)
-        self.u[self.cardiac_tissue.myo_indexes] = self._u
-
-    def swap_arrays(self):
-        self._u_new, self._u = self._u, self._u_new
-
-    def run_diffusion_kernel(self):
-        """
-        Executes the diffusion kernel computation using the current parameters
-        and tissue weights.
-        """
-        self._u_new = self.diffusion_kernel(self._u_new, self._u, self._rhs,
-                                            self.weights)
 
     def run_ionic_kernel(self):
         """
@@ -108,11 +78,6 @@ class LuoRudy91Elems(CardiacModel):
                            self.gb, self.ko, self.ki, self.nai, self.nao,
                            self.cao, self.R, self.T, self.F, self.PR_NaK,
                            self.E_Na, self.E_K1)
-
-    def select_stencil(self, cardiac_tissue):
-        if cardiac_tissue.elems.shape[1] == 3:
-            return TriangleStencil()
-        raise ValueError
 
 
 @njit(parallel=True)

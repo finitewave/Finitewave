@@ -63,12 +63,12 @@ def build_tet_mesh(nx, ny, nz, x_size, y_size, z_size):
 
 
 # create a tissue of size 400x400 with cardiomycytes:
-nx = 200
-ny = 200
+nx = 100
+ny = 100
 nz = 20
 size_x = (0, 50)
 size_y = (0, 50)
-size_z = (0, 5)
+size_z = (0, 10)
 
 coords, elems = build_tet_mesh(nx, ny, nz, size_x, size_y, size_z)
 

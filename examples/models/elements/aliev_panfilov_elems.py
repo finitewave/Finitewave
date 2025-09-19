@@ -34,26 +34,25 @@ tissue = fw.CardiacTissueElem(coords, elems)
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1, 0, size, 0, 1))
-stim_sequence.add_stim(fw.StimVoltageCoordElem(180, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoordElem(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-model = fw.LuoRudy91Elems()
-model.dt = 0.005
-model.t_max = 50
+aliev_panfilov = fw.AlievPanfilovElems()
+aliev_panfilov.dt = 0.01
+aliev_panfilov.t_max = 200
 # add the tissue and the stim parameters to the model object:
-model.cardiac_tissue = tissue
-model.stim_sequence = stim_sequence
+aliev_panfilov.cardiac_tissue = tissue
+aliev_panfilov.stim_sequence = stim_sequence
 
 # run the model:
-model.run(num_of_threads=None)
+aliev_panfilov.run(num_of_threads=1)
 
-u = model.u
+u = aliev_panfilov.u
 
 # show the potential map at the end of calculations:
 plt.figure()
 plt.tricontourf(coords[:, 0], coords[:, 1], elems, u, levels=100,
                 cmap="RdBu_r")
-# plt.triplot(coords[:, 0], coords[:, 1], elems, lw=0.1)
 plt.colorbar(label='u')
 plt.title('u at final time')
 plt.gca().set_aspect('equal')

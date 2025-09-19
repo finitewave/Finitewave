@@ -1,3 +1,4 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -37,9 +38,9 @@ stim_sequence.add_stim(fw.StimVoltageCoordElem(0, 1, 0, size, 0, 1))
 stim_sequence.add_stim(fw.StimVoltageCoordElem(180, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-model = fw.LuoRudy91Elems()
-model.dt = 0.005
-model.t_max = 50
+model = fw.CourtemancheElems()
+model.dt = 0.01
+model.t_max = 200
 # add the tissue and the stim parameters to the model object:
 model.cardiac_tissue = tissue
 model.stim_sequence = stim_sequence

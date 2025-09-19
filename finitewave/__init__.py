@@ -108,4 +108,5 @@ from finitewave.tools import (
     Velocity3DCalculation,
 )
 
-from .elementalwave import *
+from .femwave import *
+from .fdmwave import *
