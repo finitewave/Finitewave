@@ -100,13 +100,6 @@ from finitewave.cpuwave3D import (
     PeriodAnimation3DTracker
 )
 
-from finitewave.tools import (
-    Animation2DBuilder,
-    Animation3DBuilder,
-    VisMeshBuilder3D,
-    Velocity2DCalculation,
-    Velocity3DCalculation,
-)
-
+from .tools import *
 from .femwave import *
 from .fdmwave import *

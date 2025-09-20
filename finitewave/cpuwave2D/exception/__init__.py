@@ -1,1 +1,0 @@
-from finitewave.cpuwave2D.exception.exceptions_2d import IncorrectWeightsModeError2D

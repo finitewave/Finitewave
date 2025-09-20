@@ -1,2 +1,0 @@
-from finitewave.cpuwave3D.stencil.asymmetric_stencil_3d import AsymmetricStencil3D
-from finitewave.cpuwave3D.stencil.isotropic_stencil_3d import IsotropicStencil3D

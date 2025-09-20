@@ -1,2 +1,0 @@
-from .diffuse_2d_pattern import Diffuse2DPattern
-from .structural_2d_pattern import Structural2DPattern

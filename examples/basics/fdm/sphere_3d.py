@@ -65,31 +65,35 @@ def create_sphere_mask(shape, radius, center):
     mask = distance <= radius
     return mask
 
+def create_sphere(shape, radius, center):
+    mesh = np.zeros(shape)
+    mesh[create_sphere_mask(mesh.shape, radius, center)] = 1
+    mesh[create_sphere_mask(mesh.shape, radius-5, center)] = 0
+    mesh = mesh[:shape[0] - n//4, :, :]
+    return mesh
+
 
 # set up the cardiac tissue:
 n = 200
 shape = (n, n, n)
-tissue = fw.CardiacTissueFDM((n, n, n))
-tissue.mesh = np.zeros((n, n, n))
-tissue.mesh[create_sphere_mask(tissue.mesh.shape,
-                               n//2-5,
-                               (n//2, n//2, n//2))] = 1
-tissue.mesh[create_sphere_mask(tissue.mesh.shape,
-                               n//2-10,
-                               (n//2, n//2, n//2))] = 0
+mesh = create_sphere(shape, n//2-5, (n//2, n//2, n//2))
+n, m, k = mesh.shape
+
+tissue = fw.CardiacTissueFDM((n, m, k))
+tissue.mesh = mesh
 
 # set up stimulation parameters:
-min_x = np.where(tissue.mesh)[0].min()
+min_z = np.where(tissue.mesh)[2].min()
 
 stim1 = fw.StimVoltageCoordFDM(0, 1,
-                               min_x, min_x + 3,
                                0, n,
-                               0, n)
+                               0, m,
+                               min_z, min_z + 3)
 
 stim2 = fw.StimVoltageCoordFDM(50, 1,
                                0, n,
-                               0, n//2,
-                               0, n)
+                               0, m//2,
+                               0, k)
 
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(stim1)
@@ -99,7 +103,7 @@ aliev_panfilov = fw.AlievPanfilovFDM()
 # set up numerical parameters:
 aliev_panfilov.dt = 0.01
 aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 100
+aliev_panfilov.t_max = 150
 # add the tissue and the stim parameters to the model object:
 aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence
@@ -111,6 +115,6 @@ vis_mesh = tissue.mesh.copy()
 # vis_mesh[n//2:, n//2:, n//2:] = 0
 
 mesh_builder = fw.VisMeshBuilder3D()
-grid = mesh_builder.build_mesh(vis_mesh)
+grid = mesh_builder.build_mesh(vis_mesh, as_surface=True)
 grid = mesh_builder.add_scalar(aliev_panfilov.u, 'u')
 grid.plot(clim=[0, 1], cmap='RdBu_r')

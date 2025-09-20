@@ -1,2 +1,0 @@
-from finitewave.cpuwave3D.fibrosis.diffuse_3d_pattern import Diffuse3DPattern
-from finitewave.cpuwave3D.fibrosis.structural_3d_pattern import Structural3DPattern

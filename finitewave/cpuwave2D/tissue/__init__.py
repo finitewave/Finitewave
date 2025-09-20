@@ -1,1 +1,0 @@
-from finitewave.cpuwave2D.tissue.cardiac_tissue_2d import CardiacTissue2D

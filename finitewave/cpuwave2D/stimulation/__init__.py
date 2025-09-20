@@ -1,5 +1,0 @@
-from .stim_current_area_2d import StimCurrentArea2D
-from .stim_current_coord_2d import StimCurrentCoord2D
-from .stim_current_matrix_2d import StimCurrentMatrix2D
-from .stim_voltage_coord_2d import StimVoltageCoord2D
-from .stim_voltage_matrix_2d import StimVoltageMatrix2D

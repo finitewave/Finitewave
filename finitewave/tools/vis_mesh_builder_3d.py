@@ -17,7 +17,7 @@ class VisMeshBuilder3D:
         self.grid = None
         self.full_grid = None
 
-    def build_mesh(self, mesh):
+    def build_mesh(self, mesh, as_surface=False):
         """Build a Unstructured Grid from 3D mesh where mesh > 0.
 
         Parameters:
@@ -25,6 +25,9 @@ class VisMeshBuilder3D:
         mesh : np.array
             3D mesh with cardiomyocytes (elems = 1), empty space (elems = 0),
             and fibrosis (elems = 2).
+
+        as_surface : bool, optional
+            If True, build a surface mesh. Default is False.
 
         Returns:
         ------------
@@ -35,11 +38,20 @@ class VisMeshBuilder3D:
         grid.dimensions = np.array(mesh.shape) + 1
         grid.spacing = (1, 1, 1)
         grid.cell_data['mesh'] = mesh.astype(float).flatten(order='F')
+        grid.cell_data['idx'] = np.arange(mesh.size)
 
         self.full_grid = grid
         # Threshold the mesh to remove empty space
         self.grid = grid.threshold(0.5)
+
+        if as_surface:
+            self.grid = self.grid.extract_surface()
+
+        self.indices = np.unravel_index(self.grid.cell_data['idx'],
+                                        mesh.shape, order='F')
         self._mesh = mesh
+        self._scalars = np.zeros_like(self._mesh, dtype=float)
+
         return self.grid
 
     def add_scalar(self, scalars, name='Scalars'):
@@ -63,19 +75,23 @@ class VisMeshBuilder3D:
         if scalars.shape != self._mesh.shape:
             raise ValueError("Scalars must have the same shape asthe mesh.")
 
-        scalars_flat = scalars.T[self._mesh.T > 0].flatten(order='F')
-        self.grid.cell_data[name] = scalars_flat
+        self.grid.cell_data[name] = scalars[self.indices]
         self.grid.set_active_scalars(name)
         return self.grid
 
-    def flatten_scalars(self, scalars):
+    def add_masked_scalar(self, scalars, name='Scalars'):
         """
-        """
-        if scalars.shape != self._mesh.shape:
-            raise ValueError("Scalars must have the same shape asthe mesh.")
+        Add scalars to the mesh, where mesh > 0.
 
-        scalars_flat = scalars.T[self._mesh.T > 0].flatten(order='F')
-        return scalars_flat
+        Parameters
+        ----------
+        scalars : np.array
+            3D scalar field.
+        name : str, optional
+            Name of the scalar. Default is 'Scalars'.
+        """
+        self._scalars[self._mesh > 0] = scalars
+        return self.add_scalar(self._scalars, name)
 
     def add_vector(self, vectors, name='Vectors'):
         """
@@ -98,14 +114,6 @@ class VisMeshBuilder3D:
         if vectors.shape != self._mesh.shape + (3,):
             raise ValueError("Vectors must have the same shape as the mesh.")
 
-        vectors_list = []
-        for i in range(3):
-            x = vectors[:, :, :, i].T
-            x_flat = x[self._mesh.T > 0].flatten(order='F')
-            vectors_list.append(x_flat)
-
-        vectors_flat = np.column_stack(vectors_list)
-
-        self.grid.cell_data[name] = vectors_flat
+        self.grid.cell_data[name] = vectors[self.indices[0], self.indices[1], self.indices[2], :]
         self.grid.set_active_vectors(name)
         return self.grid

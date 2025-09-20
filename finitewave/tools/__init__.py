@@ -3,3 +3,4 @@ from .animation_3d_builder import Animation3DBuilder
 from .velocity_2d_calculation import Velocity2DCalculation
 from .velocity_3d_calculation import Velocity3DCalculation
 from .vis_mesh_builder_3d import VisMeshBuilder3D
+from .vis_mesh_surface_3d_builder import VisMeshSurface3DBuilder

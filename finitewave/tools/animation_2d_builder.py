@@ -9,20 +9,48 @@ from tqdm import tqdm
 
 class Animation2DBuilder:
     def __init__(self):
-        pass
+        self.path = None
+        self.path_save = None
+        self.scalar_mask = None
+        self.prog_bar = False
 
-    def write(
-            self,
-            path,
-            path_save=None,
-            animation_name='animation',
-            mask=None,
-            shape_scale=1,
-            fps=12,
-            clim=[0, 1],
-            shape=(100, 100),
-            cmap="coolwarm",
-            prog_bar=False):
+    def load_scalar(self, path, mask=None):
+        """Load the scalar field from a file.
+
+        Args:
+            path (str): Path to the snapshot folder.
+            mask (np.array, optional): Mask to apply to the scalar field.
+
+        Returns:
+            np.array: Scalar field.
+        """
+
+        scalar = np.load(path).astype(float)
+
+        if mask is None:
+            return scalar
+
+        if mask.shape == scalar.shape:
+            return scalar
+
+        if mask[mask > 0].shape == scalar.shape:
+            scalar_mesh = np.zeros_like(mask, dtype=float)
+            scalar_mesh[mask > 0] = scalar
+            return scalar_mesh
+
+        raise ValueError("Mask and scalar must have the same shape, or scalar"
+                         + " must have the same shape as mask[mask > 0]")
+
+    def collect_frames(self, path):
+        files = natsorted(Path(path).glob("*.npy"))
+
+        if len(files) == 0:
+            raise ValueError("No files found")
+
+        return files
+
+    def write(self, animation_name='animation', mask=None, shape_scale=1,
+              fps=12, clim=[0, 1], cmap="RdBu_r"):
         """
         Write an animation from a folder with snapshots.
 
@@ -50,16 +78,18 @@ class Animation2DBuilder:
         prog_bar : bool
             Show progress bar.
         """
-        path = Path(path)
+        path = Path(self.path)
+        files = self.collect_frames(path)
+
+        path_save = self.path_save
 
         if path_save is None:
             path_save = path.parent
 
         path_save = Path(path_save).joinpath(f"{animation_name}.mp4")
 
-        files = natsorted(path.glob("*.npy"))
-
-        height, width = np.array(shape) * shape_scale
+        image = self.load_scalar(files[0], self.scalar_mask)
+        height, width = np.array(image.shape) * shape_scale
         cmap = plt.get_cmap(cmap)
 
         with (
@@ -68,12 +98,12 @@ class Animation2DBuilder:
                    s=f'{width}x{height}', framerate=fps)
             .output(path_save.as_posix(), pix_fmt='yuv420p')
             .overwrite_output()
-            .run_async(pipe_stdin=True, quiet=True)
+            .run_async(pipe_stdin=True, quiet=False)
         ) as process:
             # Write frames to FFmpeg process
             for file in tqdm(files, desc='Building animation',
-                             disable=not prog_bar):
-                frame = np.load(file.with_suffix(".npy"))
+                             disable=not self.prog_bar):
+                frame = self.load_scalar(file, self.scalar_mask)
                 # Normalize the frame data to the colormap
                 mask_ = (frame < clim[0]) | (frame > clim[1])
 
@@ -81,6 +111,7 @@ class Animation2DBuilder:
                     mask_ |= mask
 
                 frame = (frame - clim[0]) / (clim[1] - clim[0])
+
                 frame[mask_] = np.nan
 
                 frame = (cmap(frame, bytes=True)[:, :, :3]).astype("uint8")
