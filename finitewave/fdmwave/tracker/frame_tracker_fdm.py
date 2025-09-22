@@ -33,7 +33,7 @@ class FrameTrackerFDM(Tracker):
         Initializes the FrameTrackerFDM with default parameters.
         """
         Tracker.__init__(self)
-        self.dir_name = "animation"   # Directory for saving frames
+        self.dir_name = "snapshots"   # Directory for saving frames
         self.var_name = "u"           # Name of the target array to capture
         self.frame_type = "float64"   # Default frame format settings
         self._frame_counter = 0       # Internal frame counter
@@ -59,7 +59,7 @@ class FrameTrackerFDM(Tracker):
         if self.overwrite:
             for file in Path(self.path, self.dir_name).glob("*.npy"):
                 file.unlink()
-            
+
         if self.mask_output:
             self.mask = self.model.cardiac_tissue.mesh > 0
 

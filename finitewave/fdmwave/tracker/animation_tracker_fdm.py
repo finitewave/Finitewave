@@ -2,7 +2,8 @@ from pathlib import Path
 import numpy as np
 
 from .frame_tracker_fdm import FrameTrackerFDM
-from finitewave.tools import Animation2DBuilder
+from finitewave.tools.animation_2d_builder import Animation2DBuilder
+from finitewave.tools.animation_3d_builder import Animation3DBuilder
 
 
 class AnimationTrackerFDM(FrameTrackerFDM):
@@ -31,133 +32,71 @@ class AnimationTrackerFDM(FrameTrackerFDM):
         Initializes the AnimationTrackerFDM with default parameters.
         """
         super().__init__()
+        self.animation_name = "animation"
+        self.animation_builder = None
 
-    def write(self,
-              path_save=None,
-              animation_name="animation",
-              shape_scale=1,
-              fps=12,
-              cmap="RdBu_r",
-              clim=[0, 1],
-              clear=False,
-              prog_bar=True):
-        """
-        Creates an animation from the saved frames using the Animation2DBuilder
-        class. Fibrosis and boundaries will be shown in black.
-
-        Parameters
-        ----------
-        path_save : str or Path, optional
-            Path to save the animation file. If None, it will be saved in the
-            `self.path`.
-        animation_name : str, optional
-            Name of the animation file. Defaults to the directory name.
-        shape_scale : int, optional
-            Scale factor for the frame size. The default is 5.
-        fps : int, optional
-            Frames per second for the animation. The default is 12.
-        cmap : str, optional
-            Color map for the animation. The default is 'coolwarm'.
-        clim : list, optional
-            Color limits for the animation. The default is [0, 1].
-        clear : bool, optional
-            Clear the snapshot folder after creating the animation.
-            The default is False.
-        prog_bar : bool, optional
-            Show a progress bar during the animation creation.
-            The default is True.
-        """
+    def initialize(self, model):
+        super().initialize(model)
         if self.model.cardiac_tissue.mesh.ndim == 2:
-            self.write_2d(path_save=path_save,
-                          animation_name=animation_name,
-                          shape_scale=shape_scale,
-                          fps=fps,
-                          cmap=cmap,
-                          clim=clim,
-                          clear=clear,
-                          prog_bar=prog_bar)
+            self.animation_builder = Animation2DBuilder()
+        elif self.model.cardiac_tissue.mesh.ndim == 3:
+            self.animation_builder = Animation3DBuilder()
 
-        if self.model.cardiac_tissue.mesh.ndim == 3:
-            self.write_3d(path_save=path_save,
-                          animation_name=animation_name,
-                          shape_scale=shape_scale,
-                          fps=fps,
-                          cmap=cmap,
-                          clim=clim,
-                          clear=clear,
-                          prog_bar=prog_bar)
-
-    def write_3d(self,
-                 path_save=None,
-                 animation_name=None,
-                 shape_scale=1,
-                 fps=12,
-                 cmap="RdBu_r",
-                 clim=[0, 1],
-                 clear=False,
-                 prog_bar=True):
-        pass
-
-    def write_2d(
-            self,
-            path_save=None,
-            animation_name=None,
-            shape_scale=1,
-            fps=12,
-            cmap="RdBu_r",
-            clim=[0, 1],
-            clear=False,
-            prog_bar=True):
-        """
-        Creates an animation from the saved frames using the Animation2DBuilder
-        class. Fibrosis and boundaries will be shown in black.
-
-        Parameters
-        ----------
-        path_save : str or Path, optional
-            Path to save the animation file. If None, it will be saved in the
-            `self.path`.
-        animation_name : str, optional
-            Name of the animation file. Defaults to the directory name.
-        shape_scale : int, optional
-            Scale factor for the frame size. The default is 5.
-        fps : int, optional
-            Frames per second for the animation. The default is 12.
-        cmap : str, optional
-            Color map for the animation. The default is 'coolwarm'.
-        clim : list, optional
-            Color limits for the animation. The default is [0, 1].
-        clear : bool, optional
-            Clear the snapshot folder after creating the animation.
-            The default is False.
-        prog_bar : bool, optional
-            Show a progress bar during the animation creation.
-            The default is True.
-        """
-        animation_builder = Animation2DBuilder()
-        animation_builder.path = Path(self.path, self.dir_name)
-        animation_builder.prog_bar = prog_bar
-
-        if path_save is None:
-            path_save = self.path
-
-        animation_builder.path_save = Path(path_save).resolve()
+        self.animation_builder.path = Path(self.path, self.dir_name)
+        self.animation_builder.prog_bar = model.prog_bar
+        self.animation_builder.animation_name = self.animation_name
 
         if self.mask_output:
-            animation_builder.scalar_mask = self.model.cardiac_tissue.mesh == 1
+            scalar_mask = self.model.cardiac_tissue.mesh == 1
+            self.animation_builder.scalar_mask = scalar_mask
 
-        if animation_name is None:
-            animation_name = self.dir_name
+    @property
+    def animation_name(self):
+        return self.dir_name
 
-        animation_builder.write(
-            animation_name=animation_name,
+    @animation_name.setter
+    def animation_name(self, animation_name):
+        self.dir_name = animation_name
+
+    def write(self, path_save=None, cmap="RdBu_r", clim=[0, 1], clear=False,
+              **kwargs):
+        """
+        Creates an animation from the saved frames using the Animation2DBuilder
+        class. Fibrosis and boundaries will be shown in black.
+
+        Parameters
+        ----------
+        path_save : str or Path, optional
+            Path to save the animation file. If None, it will be saved in the
+            `self.path`.
+        shape_scale : int, optional
+            Scale factor for the frame size. The default is 5.
+        fps : int, optional
+            Frames per second for the animation. The default is 12.
+        cmap : str, optional
+            Color map for the animation. The default is 'coolwarm'.
+        clim : list, optional
+            Color limits for the animation. The default is [0, 1].
+        clear : bool, optional
+            Clear the snapshot folder after creating the animation.
+            The default is False.
+        prog_bar : bool, optional
+            Show a progress bar during the animation creation.
+            The default is True.
+        """
+        self.animation_builder.path_save = path_save
+        self.animation_builder.write(
             mask=self.model.cardiac_tissue.mesh != 1,
-            shape_scale=shape_scale,
-            fps=fps,
-            clim=clim,
             cmap=cmap,
+            clim=clim,
+            **kwargs
         )
 
-        if clear:
-            import shutil
-            shutil.rmtree(Path(self.path, self.dir_name))
+        self.remove_dir(clear)
+
+    def remove_dir(self, clear=True):
+        if not clear:
+            return
+
+        import shutil
+        shutil.rmtree(Path(self.path, self.dir_name))

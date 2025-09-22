@@ -41,7 +41,7 @@ class VisMeshBuilder3D:
         grid.cell_data['idx'] = np.arange(mesh.size)
 
         self.full_grid = grid
-        # Threshold the mesh to remove empty space
+        # Threshold the mesh to remove empty cells
         self.grid = grid.threshold(0.5)
 
         if as_surface:
@@ -114,6 +114,7 @@ class VisMeshBuilder3D:
         if vectors.shape != self._mesh.shape + (3,):
             raise ValueError("Vectors must have the same shape as the mesh.")
 
-        self.grid.cell_data[name] = vectors[self.indices[0], self.indices[1], self.indices[2], :]
+        self.grid.cell_data[name] = vectors[self.indices[0], self.indices[1],
+                                            self.indices[2], :]
         self.grid.set_active_vectors(name)
         return self.grid

@@ -65,6 +65,7 @@ def create_sphere_mask(shape, radius, center):
     mask = distance <= radius
     return mask
 
+
 def create_sphere(shape, radius, center):
     mesh = np.zeros(shape)
     mesh[create_sphere_mask(mesh.shape, radius, center)] = 1

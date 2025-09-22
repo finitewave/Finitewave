@@ -56,10 +56,11 @@ stim_sequence.add_stim(fw.StimVoltageCoordFDM(31, 1, 0, n//2, 0, n, 0, nk))
 
 # set up tracker parameters:
 tracker_sequence = fw.TrackerSequence()
-animation_tracker = fw.AnimationFDMTracker()
+animation_tracker = fw.AnimationTrackerFDM()
 animation_tracker.variable_name = "u"  # Specify the variable to track
-animation_tracker.dir_name = "anim_data"
-animation_tracker.step = 10
+animation_tracker.path = "."
+animation_tracker.animation_name = "anim_data"
+animation_tracker.step = 100
 animation_tracker.overwrite = True  # Remove existing files in dir_name
 tracker_sequence.add_tracker(animation_tracker)
 

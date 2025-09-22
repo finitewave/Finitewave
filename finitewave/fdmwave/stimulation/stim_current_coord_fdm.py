@@ -27,7 +27,8 @@ class StimCurrentCoordFDM(StimCurrent):
         The maximum value of the membrane potential. Default is None.
     """
 
-    def __init__(self, time, curr_value, duration, x1, x2, y1, y2, z1=None, z2=None, u_max=None):
+    def __init__(self, time, curr_value, duration, x1, x2, y1, y2, z1=None,
+                 z2=None, u_max=None):
         """
         Initializes the StimCurrentCoord2D instance.
 
@@ -61,12 +62,13 @@ class StimCurrentCoordFDM(StimCurrent):
 
     def initialize(self, model):
         super().initialize(model)
-        if (self.z1 is None or self.z2 is None) and model.cardiac_tissue.mesh.ndim == 3:
+        if ((self.z1 is None or self.z2 is None) and
+                (model.cardiac_tissue.mesh.ndim == 3)):
             raise ValueError("z1 and z2 must be specified for 3D stimulation")
-        
+
         self.slices = (slice(self.x1, self.x2),
                        slice(self.y1, self.y2))
-        
+
         if model.cardiac_tissue.mesh.ndim == 3:
             self.slices += (slice(self.z1, self.z2),)
 
@@ -83,7 +85,6 @@ class StimCurrentCoordFDM(StimCurrent):
         model : CardiacModel
             The 2D cardiac tissue model.
         """
-
 
         roi_mesh = model.cardiac_tissue.mesh[self.slices]
         mask = (roi_mesh == 1)

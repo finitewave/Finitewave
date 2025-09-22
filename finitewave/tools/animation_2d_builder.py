@@ -13,6 +13,7 @@ class Animation2DBuilder:
         self.path_save = None
         self.scalar_mask = None
         self.prog_bar = False
+        self.animation_name = 'animation'
 
     def load_scalar(self, path, mask=None):
         """Load the scalar field from a file.
@@ -49,20 +50,13 @@ class Animation2DBuilder:
 
         return files
 
-    def write(self, animation_name='animation', mask=None, shape_scale=1,
-              fps=12, clim=[0, 1], cmap="RdBu_r"):
+    def write(self, mask=None, shape_scale=1, fps=12, clim=[0, 1],
+              cmap="RdBu_r", **kwargs):
         """
         Write an animation from a folder with snapshots.
 
         Parameters
         ----------
-        path : str or Path
-            Path to the folder with snapshots.
-        path_save : str or Path, optional
-            Path to save the animation file. If None, it will be saved in the
-            parent directory of `path`.
-        animation_name : str
-            Name of the animation file.
         mask : ndarray
             Mask to apply to the frames.
         shape_scale : int
@@ -71,12 +65,8 @@ class Animation2DBuilder:
             Frames per second.
         clim : list
             Color limits for the colormap.
-        shape : tuple
-            Shape of the frames.
         cmap : str
             Matplotlib colormap to use.
-        prog_bar : bool
-            Show progress bar.
         """
         path = Path(self.path)
         files = self.collect_frames(path)
@@ -86,7 +76,7 @@ class Animation2DBuilder:
         if path_save is None:
             path_save = path.parent
 
-        path_save = Path(path_save).joinpath(f"{animation_name}.mp4")
+        path_save = Path(path_save).joinpath(f"{self.animation_name}.mp4")
 
         image = self.load_scalar(files[0], self.scalar_mask)
         height, width = np.array(image.shape) * shape_scale
@@ -98,7 +88,7 @@ class Animation2DBuilder:
                    s=f'{width}x{height}', framerate=fps)
             .output(path_save.as_posix(), pix_fmt='yuv420p')
             .overwrite_output()
-            .run_async(pipe_stdin=True, quiet=False)
+            .run_async(pipe_stdin=True, quiet=True)
         ) as process:
             # Write frames to FFmpeg process
             for file in tqdm(files, desc='Building animation',
