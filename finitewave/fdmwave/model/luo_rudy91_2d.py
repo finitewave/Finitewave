@@ -134,7 +134,7 @@ class LuoRudy912D(CardiacModel):
                         self.gna, self.gsi, self.gk, self.gk1, self.gkp, self.gb, 
                         self.ko, self.ki, self.nai, self.nao, self.cao, self.R, self.T, self.F, self.PR_NaK)
 
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil

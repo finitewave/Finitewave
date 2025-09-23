@@ -119,7 +119,7 @@ class FentonKarma2D(CardiacModel):
                         self.tau_v_m, self.tau_v_p, self.tau_w_m, self.tau_w_p,
                         self.k, self.u_c, self.uc_si)
 
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil

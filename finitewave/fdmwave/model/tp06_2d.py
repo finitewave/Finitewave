@@ -217,7 +217,7 @@ class TP062D(CardiacModel):
                         self.gkr, self.pKNa, self.gk1, self.gna, self.gbna, self.KmK, self.KmNa, self.knak, self.gcal, self.gbca,
                         self.knaca, self.KmNai, self.KmCa, self.ksat, self.n_, self.gpca, self.KpCa, self.gpk, self.gto, self.gks)
 
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil

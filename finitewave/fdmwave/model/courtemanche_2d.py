@@ -156,7 +156,7 @@ class Courtemanche2D(CardiacModel):
                         self.cmdnmax, self.csqnmax, self.inacamax, self.inakmax,
                         self.ipcamax, self.krel, self.iupmax, self.kq10)
 
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil

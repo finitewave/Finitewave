@@ -159,7 +159,7 @@ class BuenoOrovio2D(CardiacModel):
                         self.tau_s1, self.tau_s2, self.k_s, self.u_s,
                         self.tau_si, self.tau_w_inf, self.w_inf_)
 
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil

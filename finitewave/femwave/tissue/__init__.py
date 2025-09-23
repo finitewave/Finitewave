@@ -1,1 +1,1 @@
-from .cardiac_tissue_elem import CardiacTissueElem
+from .cardiac_tissue_fem import CardiacTissueFEM

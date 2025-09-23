@@ -123,7 +123,7 @@ class CardiacModel(ABC):
         self.cardiac_tissue.compute_myo_indexes()
 
         if self.stencil is None:
-            self.stencil = self.select_stencil(self.cardiac_tissue)
+            self.stencil = self.default_stencil(self.cardiac_tissue)
 
         self.weights = self.stencil.compute_weights(self, self.cardiac_tissue)
 
@@ -157,7 +157,7 @@ class CardiacModel(ABC):
 
             if self.stim_sequence:
                 self.stim_sequence.stimulate_next()
-            
+
             self.run_diffusion_kernel()
             self.run_ionic_kernel()
 
@@ -181,6 +181,18 @@ class CardiacModel(ABC):
 
     def swap_arrays(self):
         self.u_new, self.u = self.u, self.u_new
+
+    def update_state(self):
+        """
+        Updates the state of the model.
+        """
+        pass
+
+    def update_output(self):
+        """
+        Updates the output of the model.
+        """
+        pass
 
     def limit_num_of_threads(self, num_of_threads):
         max_num_of_threads = numba.config.NUMBA_NUM_THREADS
@@ -220,7 +232,7 @@ class CardiacModel(ABC):
                               self.cardiac_tissue.myo_indexes)
 
     @abstractmethod
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil based on the cardiac tissue properties.
 

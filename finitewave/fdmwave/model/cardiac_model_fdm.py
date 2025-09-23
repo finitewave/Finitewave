@@ -18,7 +18,7 @@ class CardiacModelFDM(CardiacModel):
         """
         super().__init__()
 
-    def select_stencil(self, tissue):
+    def default_stencil(self, tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil
@@ -44,11 +44,5 @@ class CardiacModelFDM(CardiacModel):
             return IsotropicStencil2DFDM()
         elif tissue.mesh.ndim == 3:
             return IsotropicStencil3DFDM()
-        
+
         raise ValueError("Unsupported mesh dimension: " + str(tissue.mesh.ndim))
-
-
-
-
-
-

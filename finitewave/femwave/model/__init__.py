@@ -1,3 +1,3 @@
-from .aliev_panfilov_elems import AlievPanfilovElems
-from .luo_rudy_91_elems import LuoRudy91Elems
-from .courtemanche_elems import CourtemancheElems
+from .aliev_panfilov_fem import AlievPanfilovFEM
+from .luo_rudy_91_fem import LuoRudy91FEM
+from .courtemanche_fem import CourtemancheFEM

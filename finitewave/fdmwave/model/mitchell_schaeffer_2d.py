@@ -78,7 +78,7 @@ class MitchellSchaeffer2D(CardiacModel):
         ionic_kernel_2d(self.u_new, self.u, self.h, self.cardiac_tissue.myo_indexes, self.dt, 
                         self.tau_close, self.tau_open, self.tau_in, self.tau_out, self.u_gate)
 
-    def select_stencil(self, cardiac_tissue):
+    def default_stencil(self, cardiac_tissue):
         """
         Selects the appropriate stencil for diffusion based on the tissue
         properties. If the tissue has fiber directions, an asymmetric stencil
