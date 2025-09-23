@@ -104,7 +104,7 @@ aliev_panfilov = fw.AlievPanfilovFDM()
 # set up numerical parameters:
 aliev_panfilov.dt = 0.01
 aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 150
+aliev_panfilov.t_max = 10
 # add the tissue and the stim parameters to the model object:
 aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence

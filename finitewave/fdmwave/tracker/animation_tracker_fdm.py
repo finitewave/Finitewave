@@ -80,9 +80,6 @@ class AnimationTrackerFDM(FrameTrackerFDM):
         clear : bool, optional
             Clear the snapshot folder after creating the animation.
             The default is False.
-        prog_bar : bool, optional
-            Show a progress bar during the animation creation.
-            The default is True.
         """
         self.animation_builder.path_save = path_save
         self.animation_builder.write(

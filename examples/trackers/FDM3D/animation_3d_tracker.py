@@ -77,8 +77,14 @@ aliev_panfilov.tracker_sequence = tracker_sequence
 # run the model:
 aliev_panfilov.run()
 
+# # set custom camera position
+# camera_position = [(0, n//2, 200),
+#                    (n//2, n//2, nk//2),
+#                    (0.0, 0.0, 1.0)]
+camera_position = "iso"
+
 # write animation and clear the snapshot folder
 # !Note: for ionic models use clim=[-90, 40] or similar to show the activity
 # !correctly
-animation_tracker.write(format='mp4', framerate=10, quality=9,
-                        clear=True, clim=[0, 1])
+animation_tracker.write(clear=True, clim=[0, 1], format='mp4', framerate=10,
+                        quality=9, camera_position=camera_position)
