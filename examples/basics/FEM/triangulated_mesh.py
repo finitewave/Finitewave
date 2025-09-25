@@ -36,6 +36,9 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoordFEM(0, 1, 0, size, 0, 1))
 stim_sequence.add_stim(fw.StimVoltageCoordFEM(45, 1, 0, size//2, 0, size))
 
+stencil = fw.TriangleStencil()
+stencil.solver = fw.CrankNicolsonCGSolver()
+
 # create model object and set up parameters:
 aliev_panfilov = fw.AlievPanfilovFEM()
 aliev_panfilov.dt = 0.01
@@ -43,6 +46,7 @@ aliev_panfilov.t_max = 200
 # add the tissue and the stim parameters to the model object:
 aliev_panfilov.cardiac_tissue = tissue
 aliev_panfilov.stim_sequence = stim_sequence
+# aliev_panfilov.stencil = stencil
 
 # run the model:
 aliev_panfilov.run(num_of_threads=1)
@@ -53,7 +57,6 @@ u = aliev_panfilov.u
 plt.figure()
 plt.tricontourf(coords[:, 0], coords[:, 1], elems, u, levels=100,
                 cmap="RdBu_r")
-plt.triplot(coords[:, 0], coords[:, 1], elems, lw=0.1)
 plt.colorbar(label='u')
 plt.title('u at final time')
 plt.gca().set_aspect('equal')

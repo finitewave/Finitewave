@@ -30,3 +30,4 @@ from .variable_tracker_fdm import VariableTrackerFDM
 from .period_tracker_fdm import PeriodTrackerFDM
 from .spiral_wave_core_tracker_fdm import SpiralWaveCoreTrackerFDM
 from .animation_tracker_fdm import AnimationTrackerFDM
+from .prepacing_tracker_fdm import PrepacingTrackerFDM

@@ -1,16 +1,10 @@
 import numpy as np
 from numba import njit, prange
 
-from finitewave.core.model.cardiac_model import CardiacModel
-from finitewave.cpuwave2D.stencil.asymmetric_stencil_2d import (
-    AsymmetricStencil2D
-)
-from finitewave.cpuwave2D.stencil.isotropic_stencil_2d import (
-    IsotropicStencil2D
-)
+from .cardiac_model_fdm import CardiacModelFDM
 
 
-class Courtemanche2D(CardiacModel):
+class CourtemancheFDM(CardiacModelFDM):
     """
     A class to represent the Courtemanche cardiac model in 2D.
 
@@ -156,26 +150,6 @@ class Courtemanche2D(CardiacModel):
                         self.cmdnmax, self.csqnmax, self.inacamax, self.inakmax,
                         self.ipcamax, self.krel, self.iupmax, self.kq10)
 
-    def default_stencil(self, cardiac_tissue):
-        """
-        Selects the appropriate stencil for diffusion based on the tissue
-        properties. If the tissue has fiber directions, an asymmetric stencil
-        is used; otherwise, an isotropic stencil is used.
-
-        Parameters
-        ----------
-        cardiac_tissue : CardiacTissue2D
-            A tissue object representing the cardiac tissue.
-
-        Returns
-        -------
-        Stencil
-            The stencil object to use for diffusion computations.
-        """
-        if cardiac_tissue.fibers is None:
-            return IsotropicStencil2D()
-
-        return AsymmetricStencil2D()
 
 @njit
 def safe_exp(x):
@@ -588,54 +562,49 @@ def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
         Time step for the simulation.
     """
                     
-    n_i = u.shape[0]
-    n_j = u.shape[1]
+    for i in prange(indexes.shape[0]):
+        ind = indexes[i]
 
-    for ind in prange(indexes.shape[0]):
-        ii = indexes[ind]
-        i = int(ii/n_j)
-        j = ii % n_j
+        ena, ek, eca = calc_equilibrum_potentials(nai.flat[ind], nao, ki.flat[ind], ko, cai.flat[ind], cao, R, T, F)
 
-        ena, ek, eca = calc_equilibrum_potentials(nai[i, j], nao, ki[i, j], ko, cai[i, j], cao, R, T, F)
+        m.flat[ind] = calc_gating_m(m.flat[ind], u.flat[ind], dt)
+        h.flat[ind] = calc_gating_h(h.flat[ind], u.flat[ind], dt)
+        j_.flat[ind] = calc_gating_j(j_.flat[ind], u.flat[ind], dt)
 
-        m[i, j] = calc_gating_m(m[i, j], u[i, j], dt)
-        h[i, j] = calc_gating_h(h[i, j], u[i, j], dt)
-        j_[i, j] = calc_gating_j(j_[i, j], u[i, j], dt)
+        ina = calc_ina(u.flat[ind], m.flat[ind], h.flat[ind], j_.flat[ind], gna, ena)
 
-        ina = calc_ina(u[i, j], m[i, j], h[i, j], j_[i, j], gna, ena)
+        ik1 = calc_ik1(u.flat[ind], gk1, ek)
 
-        ik1 = calc_ik1(u[i, j], gk1, ek)
+        ito, oa.flat[ind], oi.flat[ind] = calc_ito(u.flat[ind], dt, kq10, oa.flat[ind], oi.flat[ind], gto, ek)
 
-        ito, oa[i, j], oi[i, j] = calc_ito(u[i, j], dt, kq10, oa[i, j], oi[i, j], gto, ek)
+        ikur, ua.flat[ind], ui.flat[ind] = calc_ikur(u.flat[ind], dt, kq10, ua.flat[ind], ui.flat[ind], ek, gkur_coeff)
 
-        ikur, ua[i, j], ui[i, j] = calc_ikur(u[i, j], dt, kq10, ua[i, j], ui[i, j], ek, gkur_coeff)
+        ikr, xr.flat[ind] = calc_ikr(u.flat[ind], dt, xr.flat[ind], gkr, ek)
 
-        ikr, xr[i, j] = calc_ikr(u[i, j], dt, xr[i, j], gkr, ek)
+        iks, xs.flat[ind] = calc_iks(u.flat[ind], dt, xs.flat[ind], gks, ek)
 
-        iks, xs[i, j] = calc_iks(u[i, j], dt, xs[i, j], gks, ek)
+        ical, d.flat[ind], f.flat[ind], fca.flat[ind] = calc_ical(u.flat[ind], dt, d.flat[ind], f.flat[ind], cai.flat[ind], gcal, fca.flat[ind], eca)
 
-        ical, d[i, j], f[i, j], fca[i, j] = calc_ical(u[i, j], dt, d[i, j], f[i, j], cai[i, j], gcal, fca[i, j], eca)
+        inak = calc_inak(inakmax, nai.flat[ind], nao, ko, kmnai, kmko, F, u.flat[ind], R, T)
+        inaca = calc_inaca(inacamax, nai.flat[ind], nao, cai.flat[ind], cao, kmnancx, kmcancx, ksatncx, F, u.flat[ind], R, T)
 
-        inak = calc_inak(inakmax, nai[i, j], nao, ko, kmnai, kmko, F, u[i, j], R, T)
-        inaca = calc_inaca(inacamax, nai[i, j], nao, cai[i, j], cao, kmnancx, kmcancx, ksatncx, F, u[i, j], R, T)
+        ibca = calc_ibca(gcab, eca, u.flat[ind])
 
-        ibca = calc_ibca(gcab, eca, u[i, j])
+        ibna = calc_ibna(gnab, ena, u.flat[ind])
 
-        ibna = calc_ibna(gnab, ena, u[i, j])
+        ipca = calc_ipca(ipcamax, cai.flat[ind])
 
-        ipca = calc_ipca(ipcamax, cai[i, j])
+        irel.flat[ind], urel.flat[ind], vrel.flat[ind], wrel.flat[ind] = calc_irel(dt, urel.flat[ind], vrel.flat[ind], irel.flat[ind], wrel.flat[ind], ical, inaca, krel, carel.flat[ind], cai.flat[ind], u.flat[ind], F, Vrel)
+        itr = calc_itr(caup.flat[ind], carel.flat[ind])
+        iup = calc_iup(iupmax, cai.flat[ind], kup)
+        iupleak = calc_iupleak(caup.flat[ind], caupmax, iupmax) 
 
-        irel[i, j], urel[i, j], vrel[i, j], wrel[i, j] = calc_irel(dt, urel[i, j], vrel[i, j], irel[i, j], wrel[i, j], ical, inaca, krel, carel[i, j], cai[i, j], u[i, j], F, Vrel)
-        itr = calc_itr(caup[i, j], carel[i, j])
-        iup = calc_iup(iupmax, cai[i, j], kup)
-        iupleak = calc_iupleak(caup[i, j], caupmax, iupmax) 
+        caup.flat[ind] = calc_caup(caup.flat[ind], dt, iup, iupleak, itr, Vrel, Vup)
+        nai.flat[ind] = calc_nai(nai.flat[ind], dt, inak, inaca, ibna, ina, F, Vj)
 
-        caup[i, j] = calc_caup(caup[i, j], dt, iup, iupleak, itr, Vrel, Vup)
-        nai[i, j] = calc_nai(nai[i, j], dt, inak, inaca, ibna, ina, F, Vj)
+        ki.flat[ind] = calc_ki(ki.flat[ind], dt, inak, ik1, ito, ikur, ikr, iks, ibk, F, Vj)
+        cai.flat[ind] = calc_cai(cai.flat[ind], dt, inaca, ipca, ical, ibca, iup, iupleak, irel.flat[ind], Vrel, Vup, trpnmax, kmtrpn, cmdnmax, kmcmdn, F, Vj)
 
-        ki[i, j] = calc_ki(ki[i, j], dt, inak, ik1, ito, ikur, ikr, iks, ibk, F, Vj)
-        cai[i, j] = calc_cai(cai[i, j], dt, inaca, ipca, ical, ibca, iup, iupleak, irel[i, j], Vrel, Vup, trpnmax, kmtrpn, cmdnmax, kmcmdn, F, Vj)
+        carel.flat[ind] = calc_carel(carel.flat[ind], dt, itr, irel.flat[ind], csqnmax, kmcsqn)
 
-        carel[i, j] = calc_carel(carel[i, j], dt, itr, irel[i, j], csqnmax, kmcsqn)
-
-        u_new[i, j] -= dt * (ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)
+        u_new.flat[ind] -= dt * (ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)

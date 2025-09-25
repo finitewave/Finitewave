@@ -17,9 +17,11 @@ class StateSaver:
         The model instance for which the state will be saved or saved.
     time : float
         The time at which to save the state of the simulation.
+    cell_ind : int
+        The index of the cell to save.
     """
 
-    def __init__(self, path=".", time=-1):
+    def __init__(self, path=".", time=-1, cell_ind=None):
         """
         Initializes the state keeper with the given path.
 
@@ -31,11 +33,15 @@ class StateSaver:
         time : float, optional
             The time at which to save the state of the simulation.
             The default is -1 (save at the end of the simulation).
+        cell_ind : int, optional
+            The index of the cell to save.
+            The default is None (save all cells).
         """
         self.path = path
         self.passed = False
         self.model = None
         self.time = time
+        self.cell_ind = cell_ind
 
     def initialize(self, model):
         """
@@ -90,6 +96,9 @@ class StateSaver:
         var : numpy.ndarray
             The variable to be saved.
         """
+        if self.cell_ind is not None:
+            var = var[self.cell_ind]
+
         np.save(var_path, var)
 
 

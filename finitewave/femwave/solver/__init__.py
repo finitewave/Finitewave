@@ -1,1 +1,1 @@
-from .scipy.scipy_cg_solver import ScipyCGSolver
+from .scipy import *

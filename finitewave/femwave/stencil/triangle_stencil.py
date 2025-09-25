@@ -1,15 +1,16 @@
 import numpy as np
 from scipy import sparse
-from finitewave.femwave.solver.scipy.scipy_cg_solver import ScipyCGSolver
+from finitewave.femwave.solver.scipy.implicit_euler_cg_solver import (
+    ImplicitEulerCGSolver
+)
 from finitewave.core.stencil import Stencil
 from numba import njit, prange
-from tqdm import tqdm
 
 
 class TriangleStencil(Stencil):
     def __init__(self):
         super().__init__()
-        self.solver = ScipyCGSolver()
+        self.solver = ImplicitEulerCGSolver()
         self.D_ac = 1/9
         self.D_al = 1
         self.mass_coef = 12.
@@ -27,8 +28,8 @@ class TriangleStencil(Stencil):
         stiffness_matrix, mass_matrix = self.stiffness_and_mass_matrix(
             coords, elems, areas, grads, diffusion, self.mass_coef
         )
-        a_matrix = self.solver.axpy(mass_matrix, stiffness_matrix, model.dt)
-        return a_matrix, mass_matrix
+        return self.solver.assemble_matrices(stiffness_matrix, mass_matrix,
+                                             model.dt)
 
     def compute_diffusion(self, model, tissue):
         diffusion = np.eye(3, dtype=model.npfloat)
