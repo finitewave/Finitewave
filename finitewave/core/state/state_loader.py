@@ -14,8 +14,6 @@ class StateLoader:
         Whether the state has been loaded.
     model : CardiacModel
         The model instance for which the state will be saved or loaded.
-    single_value : bool
-        Whether the state variables are single values.
     """
 
     def __init__(self, path=""):
@@ -30,7 +28,6 @@ class StateLoader:
         self.path = path
         self.passed = True
         self.model = None
-        self.single_value = False
 
     def initialize(self, model):
         """
@@ -60,14 +57,14 @@ class StateLoader:
         if self.passed:
             return
 
-        for var in self.model.state_vars:
-            val = self._load_variable(Path(self.path).joinpath(var + ".npy"))
-            setattr(self.model, var, val)
+        for var in self.model.cell_model.state_vars:
+            val = self._load_variable(Path(self.path), var)
+            setattr(self.model.cell_model, var, val)
 
         self.model.update_state()
         self.passed = True
 
-    def _load_variable(self, var_path):
+    def _load_variable(self, var_path, var_name):
         """
         Loads a state variable from a numpy file.
 
@@ -81,8 +78,15 @@ class StateLoader:
         numpy.ndarray
             The variable loaded from the file.
         """
-        if self.single_value:
-            val = np.load(var_path)
-            return (np.ones_like(self.model.u) *
-                    val).astype(self.model.npfloat)
-        return np.load(var_path)
+        val = np.load(var_path.joinpath(var_name + ".npy"))
+
+        if val.shape == self.model.u.shape:
+            return val
+
+        if val.size == 1:
+            val_arr = np.zeros_like(self.model.u)
+            val_arr.flat[:] = val
+            return val_arr
+
+        msg = "Loaded variable shape does not match model variable shape."
+        raise ValueError(msg)

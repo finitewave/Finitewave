@@ -11,6 +11,7 @@ class CardiacTissueFEM(CardiacTissue):
         self.mesh_elems = np.ones(self.elems.shape[0])
         self.conductivity = 1.
         self.fibers = None
+        self.myo_indexes = None
 
     @property
     def coords(self):

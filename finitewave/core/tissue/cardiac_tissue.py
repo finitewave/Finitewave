@@ -22,6 +22,8 @@ class CardiacTissue(ABC):
     def __init__(self):
         self.meta = {}
         self.special_boundaries = None
+        self.D_ac = 1/9
+        self.D_al = 1
 
     @property
     def mesh(self):

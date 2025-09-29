@@ -36,9 +36,6 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoordFEM(0, 1, 0, size, 0, 1))
 stim_sequence.add_stim(fw.StimVoltageCoordFEM(45, 1, 0, size//2, 0, size))
 
-stencil = fw.TriangleStencil()
-stencil.solver = fw.CrankNicolsonCGSolver()
-
 # create model object and set up parameters:
 aliev_panfilov = fw.AlievPanfilovFEM()
 aliev_panfilov.dt = 0.01

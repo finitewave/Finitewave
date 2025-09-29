@@ -1,2 +1,0 @@
-from .triangle_stencil import TriangleStencil
-from .tetrahedral_stencil import TetrahedralStencil

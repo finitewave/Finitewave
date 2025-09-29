@@ -24,4 +24,4 @@ class StimVoltageCoordFEM(StimVoltage):
                  (tissue.coords[:, 2] <= self.z2))
         mask = mask[tissue.myo_indexes]
 
-        model._u[mask] = self.volt_value
+        model.diffusion_model.u[mask] = self.volt_value

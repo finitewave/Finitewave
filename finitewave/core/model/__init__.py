@@ -1,1 +1,1 @@
-from finitewave.core.model.cardiac_model import CardiacModel
+from .cardiac_model import CardiacModel

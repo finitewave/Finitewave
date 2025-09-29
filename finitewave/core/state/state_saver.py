@@ -73,7 +73,7 @@ class StateSaver:
         if self.time >= 0 and self.model.t < self.time:
             return
 
-        self.model.update_output()
+        self.model.diffusion_model.update_output()
 
         if not Path(self.path).exists():
             Path(self.path).mkdir(parents=True, exist_ok=True)

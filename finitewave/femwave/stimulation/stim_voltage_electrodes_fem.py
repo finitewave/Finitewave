@@ -14,7 +14,7 @@ class StimVoltageElectrodesFEM(StimVoltage):
         super().initialize(model)
 
     def stimulate(self, model):
-        model._u[self.stim_mask] = self.volt_value
+        model.diffusion_model.u[self.stim_mask] = self.volt_value
 
     def locate_electrodes(self, cardiac_tissue):
         tissue_coords = cardiac_tissue.myo_coords

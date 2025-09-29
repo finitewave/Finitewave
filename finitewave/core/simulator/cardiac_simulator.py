@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 import copy
 import warnings
 from tqdm import tqdm
@@ -6,7 +5,7 @@ import numpy as np
 import numba
 
 
-class CardiacModel(ABC):
+class CardiacSimulator:
     """
     Base class for electrophysiological models.
 
@@ -61,13 +60,8 @@ class CardiacModel(ABC):
         self.command_sequence = None
         self.state_loader = None
         self.state_saver = None
-        self.stencil = None
-
+        self.cardiac_model = None
         self.diffusion_model = None
-
-        self.u = np.ndarray
-        self.rhs = np.ndarray
-        self.weights = np.ndarray
 
         self.dt = 0.
         self.dr = 0.
@@ -84,11 +78,11 @@ class CardiacModel(ABC):
         Initializes the model for simulation. Sets up arrays, computes weights,
         and initializes stimuli, trackers, and commands.
         """
-        self.u = np.zeros_like(self.cardiac_tissue.mesh, dtype=self.npfloat)
         self.step = 0
         self.t = 0
 
         self.diffusion_model.initialize(self)
+        self.cardiac_model.initialize(self)
 
         if self.stim_sequence:
             self.stim_sequence.initialize(self)
@@ -139,7 +133,7 @@ class CardiacModel(ABC):
             if self.tracker_sequence:
                 self.tracker_sequence.tracker_next()
 
-            self.run_ionic_kernel()
+            self.cardiac_model.run()
             self.diffusion_model.run()
 
             self.t += self.dt

@@ -35,28 +35,33 @@ import finitewave as fw
 n = 100
 m = 5
 # create mesh
-tissue = fw.CardiacTissue2D((n, m))
+tissue = fw.CardiacTissueFDM((n, m))
 
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
+
+for stim_time in np.arange(10) * 300:
+    stim_sequence.add_stim(fw.StimVoltageCoordFDM(stim_time, 1, 0, 5, 0, m))
 
 # create model object and set up parameters
-courtemanche = fw.Courtemanche2D()
+courtemanche = fw.CourtemancheFDM()
 courtemanche.dt = 0.01
 courtemanche.dr = 0.25
-courtemanche.t_max = 500
+courtemanche.t_max = stim_time + 300
 
 # Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
 # with a visible plateau and realistic repolarization.
-courtemanche.gkur_coeff *= 3
+# courtemanche.gkur_coeff *= 3
+courtemanche.gkur_coeff *= 0.5
+courtemanche.gto *= 0.5
+courtemanche.gcal *= 0.3
 
 # add the tissue and the stim parameters to the model object
 courtemanche.cardiac_tissue = tissue
 courtemanche.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotential2DTracker()
+action_pot_tracker = fw.ActionPotentialTrackerFDM()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
 action_pot_tracker.cell_ind = [[50, 3]]
