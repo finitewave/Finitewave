@@ -11,7 +11,7 @@ class Stencil(ABC):
     it handles the boundary conditions for the numerical scheme.
     """
     @abstractmethod
-    def compute_weights(self, model, cardiac_tissue):
+    def compute_weights(self, simulation):
         """
         Computes the stencil weights based on the provided parameters.
 
@@ -22,10 +22,8 @@ class Stencil(ABC):
 
         Parameters
         ----------
-        model : CardiacModel
-            A model object containing the simulation parameters.
-        cardiac_tissue : CardiacTissue
-            A tissue object representing the cardiac tissue.
+        simulation : simulation
+            A simulation object containing the simulation parameters.
 
         Returns
         -------

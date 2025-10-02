@@ -11,26 +11,21 @@ class DiffusionModel(ABC):
 
     Attributes
     ----------
-    u : np.ndarray
-        Array representing the action potential (mV) across the tissue.
-        It can deviate from the model.u array.
-    rhs : np.ndarray
-        Array representing the right-hand side of the diffusion equation
-        (dt * I).
+    simulation : simulation
+        The simulation object to which the model is attached.
     """
     def __init__(self):
-        self.u = None
-        self.rhs = None
+        self.simulation = None
 
     @abstractmethod
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
-        Initializes the model with the given model.
+        Initializes the model with the given simulation.
 
         Parameters
         ----------
-        model : CardiacModel
-            The model object to initialize.
+        simulation : simulation
+            The simulation object to which the model is attached.
         """
         pass
 

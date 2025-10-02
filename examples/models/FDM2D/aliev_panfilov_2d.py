@@ -36,18 +36,12 @@ n = 100
 m = 5
 tissue = fw.CardiacTissue2D([n, m])
 
+cardiac_model = fw.AlievPanfilov2D()
+diffusion_model = fw.DiffusionModel2D()
+
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
-
-# create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilov2D()
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 50
-# add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
 action_pot_tracker = fw.ActionPotential2DTracker()
@@ -56,14 +50,24 @@ action_pot_tracker = fw.ActionPotential2DTracker()
 action_pot_tracker.cell_ind = [[50, 3]]
 action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
-aliev_panfilov.tracker_sequence = tracker_sequence
+
+simulation = fw.CardiacSimulation()
+simulation.dt = 0.01
+simulation.dr = 0.25
+simulation.t_max = 50
+# add the tissue and the stim parameters to the model object:
+simulation.cardiac_tissue = tissue
+simulation.cardiac_model = cardiac_model
+simulation.diffusion_model = diffusion_model
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
 # run the model:
-aliev_panfilov.run()
+simulation.run()
 
 # plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * aliev_panfilov.dt
+time = np.arange(len(action_pot_tracker.output)) * simulation.dt
 plt.plot(time, action_pot_tracker.output, label="cell_50_3")
 plt.legend(title='Aliev-Panfilov')
 plt.title('Action Potential')

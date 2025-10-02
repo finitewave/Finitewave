@@ -6,3 +6,4 @@ from finitewave.core.diffusion import DiffusionModel
 from finitewave.core.stimulation import StimCurrent, StimSequence, StimVoltage, Stim
 from finitewave.core.tissue import CardiacTissue
 from finitewave.core.tracker import Tracker, TrackerSequence
+from finitewave.core.simulation import CardiacSimulation

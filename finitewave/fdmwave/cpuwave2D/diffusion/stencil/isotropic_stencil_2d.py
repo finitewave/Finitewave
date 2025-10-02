@@ -38,32 +38,35 @@ class IsotropicStencil2D(Stencil):
         """
         return diffusion_kernel(u_new, u, rhs, weights, indexes)
 
-    def compute_weights(self, model, cardiac_tissue):
+    def compute_weights(self, simulation):
         """
         Computes the weights for isotropic diffusion in 2D.
 
         Parameters
         ----------
-        model : CardiacModel2D
-            A model object containing the simulation parameters.
-        cardiac_tissue : CardiacTissue2D
-            A 2D cardiac tissue object.
+        simulation : simulation
+            A simulation object containing the simulation parameters.
 
         Returns
         -------
         numpy.ndarray
             The weights for isotropic diffusion in 2D.
         """
+        d_model = simulation.cardiac_model.D_model
+        dt = simulation.dt
+        cardiac_tissue = simulation.cardiac_tissue
         mesh = cardiac_tissue.mesh.copy()
         mesh[mesh != 1] = 0
         # make sure the conductivity is a array
         conductivity = cardiac_tissue.conductivity
-        conductivity = conductivity * np.ones_like(mesh, dtype=model.npfloat)
+        conductivity = conductivity * np.ones_like(mesh,
+                                                   dtype=simulation.npfloat)
         d_xx, d_yy = self.compute_half_step_diffusion(mesh, conductivity)
 
-        weights = np.zeros((*mesh.shape, 5), dtype=model.npfloat)
-        weights = compute_weights(weights, mesh, d_xx, d_yy, cardiac_tissue.myo_indexes)
-        weights = weights * model.D_model * model.dt / model.dr**2
+        weights = np.zeros((*mesh.shape, 5), dtype=simulation.npfloat)
+        weights = compute_weights(weights, mesh, d_xx, d_yy,
+                                  cardiac_tissue.myo_indexes)
+        weights = weights * d_model * dt / simulation.dr**2
         weights[:, :, 2] += 1
 
         return weights

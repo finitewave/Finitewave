@@ -1,9 +1,5 @@
 from abc import ABC, abstractmethod
 import copy
-import warnings
-from tqdm import tqdm
-import numpy as np
-import numba
 
 
 class CardiacModel(ABC):
@@ -16,176 +12,30 @@ class CardiacModel(ABC):
 
     Attributes
     ----------
-    cardiac_tissue : CardiacTissue
-        The tissue object that represents the cardiac tissue in the simulation.
-    stim_sequence : StimSequence
-        The sequence of stimuli applied to the cardiac tissue.
-    tracker_sequence : TrackerSequence
-        The sequence of trackers used to monitor the simulation.
-    command_sequence : CommandSequence
-        The sequence of commands to execute during the simulation.
-    state_loader : StateLoader
-        The object responsible for loading the state of the simulation.
-    state_saver : StateSaver
-        The object responsible for saving the state of the simulation.
-    stencil : Stencil
-        The stencil used for numerical computations.
     u : ndarray
         Array representing the action potential (mV) across the tissue.
-    u_new : ndarray
-        Array for storing the updated action potential values.
-    dt : float
-        Time step for the simulation.
-    dr : float
-        Spatial step for the simulation.
-    t_max : float
-        Maximum time for the simulation (model units).
-    t : float
-        Current time in the simulation (model units).
-    step : int
-        Current step or iteration in the simulation.
+    rhs : ndarray
+        Array representing the sum of the ionic currents.
     D_model : float
         Model-specific diffusion coefficient.
-    prog_bar : bool
-        Whether to display a progress bar during simulation.
-    npfloat : type
-        The floating-point type used for numerical computations.
     state_vars : list
         List of state variables to save and load during simulation.
     """
     def __init__(self):
-        self.meta = {}
-        self.cardiac_tissue = None
-        self.stim_sequence = None
-        self.tracker_sequence = None
-        self.command_sequence = None
-        self.state_loader = None
-        self.state_saver = None
-        self.stencil = None
+        self.u = None
+        self.rhs = None
+        self.D_model = None
 
-        self.diffusion_model = None
-
-        self.u = np.ndarray
-        self.rhs = np.ndarray
-        self.weights = np.ndarray
-
-        self.dt = 0.
-        self.dr = 0.
-        self.t_max = 0.
-        self.t = 0
-        self.step = 0
-
-        self.prog_bar = True
-        self.npfloat = np.float64
         self.state_vars = []
+        self.simulation = None
 
-    def initialize(self):
-        """
-        Initializes the model for simulation. Sets up arrays, computes weights,
-        and initializes stimuli, trackers, and commands.
-        """
-        self.u = np.zeros_like(self.cardiac_tissue.mesh, dtype=self.npfloat)
-        self.step = 0
-        self.t = 0
+    @abstractmethod
+    def initialize(self, simulation):
+        pass
 
-        self.diffusion_model.initialize(self)
-
-        if self.stim_sequence:
-            self.stim_sequence.initialize(self)
-
-        if self.tracker_sequence:
-            self.tracker_sequence.initialize(self)
-
-        if self.command_sequence:
-            self.command_sequence.initialize(self)
-
-        if self.state_loader:
-            self.state_loader.initialize(self)
-
-        if self.state_saver:
-            self.state_saver.initialize(self)
-
-    def run(self, initialize=True, num_of_threads=None):
-        """
-        Runs the simulation loop. Handles stimuli, diffusion, ionic kernel
-        updates, and tracking.
-
-        Parameters
-        ----------
-        initialize : bool, optional
-            Whether to (re)initialize the model before running the simulation.
-            Default is True.
-        """
-        if initialize:
-            self.initialize()
-
-        self.limit_num_of_threads(num_of_threads)
-
-        if self.t_max < self.t:
-            raise ValueError("t_max must be greater than current t.")
-
-        if self.state_loader:
-            self.state_loader.load()
-
-        iters = int(np.ceil((self.t_max - self.t) / self.dt))
-        bar_desc = f"Running {self.__class__.__name__}"
-
-        for _ in tqdm(range(iters), total=iters, desc=bar_desc,
-                      disable=not self.prog_bar):
-
-            if self.stim_sequence:
-                self.stim_sequence.stimulate_next()
-
-            if self.tracker_sequence:
-                self.tracker_sequence.tracker_next()
-
-            self.run_ionic_kernel()
-            self.diffusion_model.run()
-
-            self.t += self.dt
-            self.step += 1
-
-            if self.command_sequence:
-                self.command_sequence.execute_next()
-
-            if self.state_saver:
-                self.state_saver.save()
-
-            if self.check_termination():
-                if self.state_saver:
-                    self.state_saver.save()
-                break
-
-        self.diffusion_model.update_output()
-
-    def limit_num_of_threads(self, num_of_threads):
-        max_num_of_threads = numba.config.NUMBA_NUM_THREADS
-
-        if num_of_threads is None:
-            num_of_threads = max(1, max_num_of_threads - 1)
-
-        if num_of_threads > max_num_of_threads:
-            warnings.warn(
-                f"Selected number of threads ({num_of_threads}) exceeds the available threads ({max_num_of_threads}). "
-                f"Using the maximum available threads instead."
-            )
-            num_of_threads = min(num_of_threads, max_num_of_threads)
-
-        numba.set_num_threads(num_of_threads)
-
-    def check_termination(self):
-        """
-        Checks whether the simulation should terminate based on the current
-        time. The ``CommandSequence`` may change the ``t_max`` value during
-        execution to control the simulation duration.
-
-        Returns
-        -------
-        bool
-            True if the simulation should terminate, False otherwise.
-        """
-        max_iters = int(np.ceil(self.t_max / self.dt))
-        return (self.t > self.t_max) or (self.step > max_iters)
+    @abstractmethod
+    def run(self):
+        pass
 
     def clone(self):
         """

@@ -1,10 +1,10 @@
 from pathlib import Path
 import numpy as np
 
-from .variable_tracker_fdm import VariableTrackerFDM
+from .variable_tracker_2d import VariableTracker2D
 
 
-class ActionPotentialTrackerFDM(VariableTrackerFDM):
+class ActionPotential2DTracker(VariableTracker2D):
     """
     A class to track and record the action potential of a specific cell in
     a 2D cardiac tissue model.
@@ -24,7 +24,7 @@ class ActionPotentialTrackerFDM(VariableTrackerFDM):
 
     def __init__(self):
         """
-        Initializes the ActionPotentialTrackerFDM with default parameters.
+        Initializes the ActionPotentialTracker2D with default parameters.
         """
         super().__init__()
         self.var_name = "u"
@@ -33,7 +33,7 @@ class ActionPotentialTrackerFDM(VariableTrackerFDM):
     @property
     def act_pot(self):
         return self.output
-    
+
     def write(self):
         """
         Saves the tracked variables to disk as NumPy files.

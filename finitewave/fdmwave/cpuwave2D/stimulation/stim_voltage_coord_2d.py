@@ -1,7 +1,7 @@
 from finitewave.core.stimulation.stim_voltage import StimVoltage
 
 
-class StimVoltageCoord(StimVoltage):
+class StimVoltageCoord2D(StimVoltage):
     """
     A class that applies a voltage stimulus to a 2D cardiac tissue model
     within a specified region of interest.
@@ -23,7 +23,7 @@ class StimVoltageCoord(StimVoltage):
     """
     def __init__(self, time, volt_value, x1, x2, y1, y2):
         """
-        Initializes the StimVoltageCoord instance.
+        Initializes the StimVoltageCoord2D instance.
 
         Parameters
         ----------
@@ -67,4 +67,4 @@ class StimVoltageCoord(StimVoltage):
         roi_mesh = model.cardiac_tissue.mesh[self.slices]
         mask = (roi_mesh == 1)
 
-        model.u[self.slices][mask] = self.volt_value
+        model.cardiac_model.u[self.slices][mask] = self.volt_value

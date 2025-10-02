@@ -39,7 +39,7 @@ class CardiacTissue2D(CardiacTissue):
         The boundaries are defined as the edges of the grid, and this method
         updates these edges in the mesh array.
         """
-        self._mesh[0, ...] = 0
-        self._mesh[-1, ...] = 0
-        self._mesh[:, 0, ...] = 0
-        self._mesh[:, -1, ...] = 0
+        self.mesh[0, ...] = 0
+        self.mesh[-1, ...] = 0
+        self.mesh[:, 0, ...] = 0
+        self.mesh[:, -1, ...] = 0

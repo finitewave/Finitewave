@@ -1,10 +1,10 @@
 from pathlib import Path
 import numpy as np
 
-from .multi_variable_tracker_fdm import MultiVariableTrackerFDM
+from .multi_variable_tracker_2d import MultiVariableTracker2D
 
 
-class VariableTrackerFDM(MultiVariableTrackerFDM):
+class VariableTracker2D(MultiVariableTracker2D):
     """
     A tracker that records the values of specified variables from a 2D model 
     over time at a given grid point.

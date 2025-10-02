@@ -4,7 +4,7 @@ import numpy as np
 from finitewave.core.tracker.tracker import Tracker
 
 
-class MultiVariableTrackerFDM(Tracker):
+class MultiVariableTracker2D(Tracker):
     """
     A class to track multiple variables at a specific cell in a 2D cardiac
     tissue model simulation.
@@ -29,25 +29,27 @@ class MultiVariableTrackerFDM(Tracker):
 
     def __init__(self):
         """
-        Initializes the MultiVariableTrackerFDM with default parameters.
+        Initializes the MultiVariableTracker2D with default parameters.
         """
         Tracker.__init__(self)
         self.var_list = []  # List of variables to be tracked
         self.cell_ind = None
         self.vars = {}  # Dictionary to store tracked variables
 
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Initializes the tracker with the simulation model and precomputes
         necessary values for each variable.
 
         Parameters
         ----------
-        model : object
-            The cardiac tissue model object containing the data to be tracked.
+        simulation : object
+            The simulation object containing the cardiac tissue model object
+            containing the data to be tracked.
         """
         self.vars = {}
-        self.model = model
+        self.simulation = simulation
+        self.model = simulation.cardiac_model
         # Initialize storage for each variable to be tracked
         for var_ in self.var_list:
             if var_ not in self.model.__dict__:
@@ -55,7 +57,7 @@ class MultiVariableTrackerFDM(Tracker):
             self.vars[var_] = []
 
         if self.cell_ind is None:
-            self._meausure_mask = model.cardiac_tissue.mesh == 1
+            self._meausure_mask = simulation.cardiac_tissue.mesh == 1
         else:
             self._meausure_mask = tuple(np.atleast_2d(self.cell_ind).T)
 

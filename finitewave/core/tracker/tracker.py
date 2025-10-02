@@ -74,10 +74,10 @@ class Tracker(ABC):
         This method calls the ``_track`` method at the specified tracking
         frequency and within the specified time range.
         """
-        if self.start_time > self.model.t or self.model.t > self.end_time:
+        if self.start_time > self.simulation.t or self.simulation.t > self.end_time:
             return
         # Check if the current time step is within the tracking frequency
-        if self.model.step % self.step != 0:
+        if self.simulation.step % self.step != 0:
             return
 
         self._track()

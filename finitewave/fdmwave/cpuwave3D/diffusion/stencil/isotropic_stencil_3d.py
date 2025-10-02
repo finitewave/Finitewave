@@ -1,13 +1,13 @@
 import numpy as np
 from numba import njit, prange
 
-from finitewave.fdmwave.stencil.stencil2D.isotropic_stencil_2d_fdm import (
-    IsotropicStencil2DFDM,
+from finitewave.fdmwave.stencil.stencil2D.isotropic_stencil_2d import (
+    IsotropicStencil2D,
     compute_component
 )
 
 
-class IsotropicStencil3DFDM(IsotropicStencil2DFDM):
+class IsotropicStencil3D(IsotropicStencil2D):
     """
     This class computes the weights for diffusion on a 3D using an isotropic
     stencil. The stencil includes 7 points: the central point and the six

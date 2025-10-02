@@ -5,7 +5,7 @@ import numpy as np
 import numba
 
 
-class CardiacSimulator:
+class CardiacSimulation:
     """
     Base class for electrophysiological models.
 
@@ -27,12 +27,6 @@ class CardiacSimulator:
         The object responsible for loading the state of the simulation.
     state_saver : StateSaver
         The object responsible for saving the state of the simulation.
-    stencil : Stencil
-        The stencil used for numerical computations.
-    u : ndarray
-        Array representing the action potential (mV) across the tissue.
-    u_new : ndarray
-        Array for storing the updated action potential values.
     dt : float
         Time step for the simulation.
     dr : float
@@ -43,14 +37,10 @@ class CardiacSimulator:
         Current time in the simulation (model units).
     step : int
         Current step or iteration in the simulation.
-    D_model : float
-        Model-specific diffusion coefficient.
     prog_bar : bool
         Whether to display a progress bar during simulation.
     npfloat : type
         The floating-point type used for numerical computations.
-    state_vars : list
-        List of state variables to save and load during simulation.
     """
     def __init__(self):
         self.meta = {}
@@ -60,8 +50,9 @@ class CardiacSimulator:
         self.command_sequence = None
         self.state_loader = None
         self.state_saver = None
-        self.cardiac_model = None
+
         self.diffusion_model = None
+        self.cardiac_model = None
 
         self.dt = 0.
         self.dr = 0.
@@ -81,8 +72,8 @@ class CardiacSimulator:
         self.step = 0
         self.t = 0
 
-        self.diffusion_model.initialize(self)
         self.cardiac_model.initialize(self)
+        self.diffusion_model.initialize(self)
 
         if self.stim_sequence:
             self.stim_sequence.initialize(self)

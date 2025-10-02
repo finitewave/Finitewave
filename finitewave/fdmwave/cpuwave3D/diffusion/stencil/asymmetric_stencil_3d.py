@@ -1,14 +1,14 @@
 import numpy as np
 from numba import njit, prange
 
-from finitewave.fdmwave.stencil.stencil2D.asymmetric_stencil_2d_fdm import (
-    AsymmetricStencil2DFDM,
+from finitewave.fdmwave.stencil.stencil2D.asymmetric_stencil_2d import (
+    AsymmetricStencil2D,
     major_component,
     minor_component
 )
 
 
-class AsymmetricStencil3DFDM(AsymmetricStencil2DFDM):
+class AsymmetricStencil3D(AsymmetricStencil2D):
     """
     This class computes the weights for diffusion on a 3D using an asymmetric
     stencil. The weights are calculated based on the diffusion coefficients

@@ -21,7 +21,7 @@ Each tracker class has basic attributes such as ``start_time``, ``end_time``,
     and the ``step`` is the number of time steps between recordings.
 """
 
-from .action_potential_tracker_fdm import ActionPotentialTrackerFDM
+from .action_potential_2d_tracker import ActionPotential2DTracker
 from .activation_time_tracker_fdm import ActivationTimeTrackerFDM
 from .local_activation_time_tracker_fdm import LocalActivationTimeTrackerFDM
 from .ecg_tracker_fdm import ECGTrackerFDM

@@ -87,26 +87,33 @@ class AlievPanfilov2D(CardiacModel):
         self.init_u = 0.0
         self.init_v = 0.0
 
-    def initialize(self):
+    def initialize(self, simulation):
         """
         Initializes the model for simulation.
         """
-        super().initialize()
-        self.u = self.init_u * np.ones_like(self.u)
-        self.v = self.init_v * np.ones_like(self.u)
+        self.simulation = simulation
+        mesh = self.simulation.cardiac_tissue.mesh
+        self.u = self.init_u * np.ones(mesh.shape, dtype=simulation.npfloat)
+        self.rhs = np.zeros_like(self.u)
+        self.init_state_vars()
 
-    def run_ionic_kernel(self):
+    def init_state_vars(self):
+        for var in self.state_vars:
+            val = getattr(self, "init_" + var)
+            setattr(self, var, val * np.ones_like(self.u))
+
+    def run(self):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
-        ionic_kernel(self.u, self.diffusion_model.rhs,
-                     self.cardiac_tissue.myo_indexes, self.dt, self.v, self.a,
-                     self.k, self.eap, self.mu_1, self.mu_2)
+        ionic_kernel(self.u, self.rhs,
+                     self.simulation.cardiac_tissue.myo_indexes,
+                     self.simulation.dt,
+                     self.v, self.a, self.k, self.eap, self.mu_1, self.mu_2)
 
 
 @njit(parallel=True)
-def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2,
-                 continuous_indexing=False):
+def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2, c_indexes=None):
     """
     Computes the ionic kernel for the Aliev-Panfilov 2D model.
 
@@ -132,12 +139,10 @@ def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2,
         Recovery rate coefficient (scales v feedback).
     mu_2 : float
         Recovery rate offset (modulates u-dependence of recovery).
-    continuous_indexing : bool
-        Whether to use continuous indexing for ``u`` and ``rhs`` arrays.
+    c_indexes : np.ndarray
+        Array of continuous indices where the kernel should be computed.
     """
-    if continuous_indexing:
-        c_indexes = np.arange(len(indexes))
-    else:
+    if c_indexes is None:
         c_indexes = indexes
 
     for i in prange(len(c_indexes)):
