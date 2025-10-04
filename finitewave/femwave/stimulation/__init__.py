@@ -1,2 +1,0 @@
-from .stim_voltage_coord_fem import StimVoltageCoordFEM
-from .stim_voltage_electrodes_fem import StimVoltageElectrodesFEM

@@ -62,7 +62,6 @@ class CardiacSimulation:
 
         self.prog_bar = True
         self.npfloat = np.float64
-        self.state_vars = []
 
     def initialize(self):
         """
@@ -90,73 +89,12 @@ class CardiacSimulation:
         if self.state_saver:
             self.state_saver.initialize(self)
 
-    def run(self, initialize=True, num_of_threads=None):
+    def run(self):
         """
         Runs the simulation loop. Handles stimuli, diffusion, ionic kernel
         updates, and tracking.
-
-        Parameters
-        ----------
-        initialize : bool, optional
-            Whether to (re)initialize the model before running the simulation.
-            Default is True.
         """
-        if initialize:
-            self.initialize()
-
-        self.limit_num_of_threads(num_of_threads)
-
-        if self.t_max < self.t:
-            raise ValueError("t_max must be greater than current t.")
-
-        if self.state_loader:
-            self.state_loader.load()
-
-        iters = int(np.ceil((self.t_max - self.t) / self.dt))
-        bar_desc = f"Running {self.__class__.__name__}"
-
-        for _ in tqdm(range(iters), total=iters, desc=bar_desc,
-                      disable=not self.prog_bar):
-
-            if self.stim_sequence:
-                self.stim_sequence.stimulate_next()
-
-            if self.tracker_sequence:
-                self.tracker_sequence.tracker_next()
-
-            self.cardiac_model.run()
-            self.diffusion_model.run()
-
-            self.t += self.dt
-            self.step += 1
-
-            if self.command_sequence:
-                self.command_sequence.execute_next()
-
-            if self.state_saver:
-                self.state_saver.save()
-
-            if self.check_termination():
-                if self.state_saver:
-                    self.state_saver.save()
-                break
-
-        self.diffusion_model.update_output()
-
-    def limit_num_of_threads(self, num_of_threads):
-        max_num_of_threads = numba.config.NUMBA_NUM_THREADS
-
-        if num_of_threads is None:
-            num_of_threads = max(1, max_num_of_threads - 1)
-
-        if num_of_threads > max_num_of_threads:
-            warnings.warn(
-                f"Selected number of threads ({num_of_threads}) exceeds the available threads ({max_num_of_threads}). "
-                f"Using the maximum available threads instead."
-            )
-            num_of_threads = min(num_of_threads, max_num_of_threads)
-
-        numba.set_num_threads(num_of_threads)
+        raise NotImplementedError
 
     def check_termination(self):
         """

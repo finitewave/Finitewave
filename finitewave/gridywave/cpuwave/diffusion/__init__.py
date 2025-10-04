@@ -1,0 +1,6 @@
+from .diffusion_grid_model import DiffusionGridModel
+from .stencil2D.isotropic_stencil_2d import IsotropicStencil2D
+from .stencil2D.asymmetric_stencil_2d import AsymmetricStencil2D
+from .stencil2D.symmetric_stencil_2d import SymmetricStencil2D
+from .stencil3D.isotropic_stencil_3d import IsotropicStencil3D
+from .stencil3D.asymmetric_stencil_3d import AsymmetricStencil3D

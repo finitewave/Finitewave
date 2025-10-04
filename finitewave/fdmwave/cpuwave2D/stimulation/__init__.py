@@ -1,1 +1,0 @@
-from .stim_voltage_coord_2d import StimVoltageCoord2D

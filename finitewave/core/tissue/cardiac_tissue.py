@@ -17,7 +17,6 @@ class CardiacTissue(ABC):
     """
     def __init__(self):
         self.meta = {}
-        self.special_boundaries = None
         self.D_ac = 1/9
         self.D_al = 1
 
@@ -48,12 +47,6 @@ class CardiacTissue(ABC):
 
         self._mesh = mesh
         self.add_boundaries()
-
-    def compute_myo_indexes(self):
-        """
-        Computes flat indices of the myocytes in the tissue mesh.
-        """
-        self.myo_indexes = np.flatnonzero(self.mesh == 1)
 
     @abstractmethod
     def add_boundaries(self):

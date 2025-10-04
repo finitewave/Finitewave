@@ -1,1 +1,0 @@
-from .aliev_panfilov_fem import AlievPanfilovFEM

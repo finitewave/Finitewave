@@ -1,0 +1,101 @@
+"""
+3D Cube with Anisotropic Medium
+================================
+
+This example demonstrates how to anisotropic affect on the wave propagation 
+in a 3D cube.
+
+A central stimulus initiates activation, and the resulting wave propagation
+
+Fiber Setup:
+------------
+- Domain size: 200×200×200 (i, j, k)
+- Fiber rotation:
+    • phi = -pi/4
+    • theta = pi/3
+
+Model & Stimulation:
+--------------------
+- Model: Aliev-Panfilov 3D
+- Time: 15 time units total
+- Stimulus:
+    • Applied at the center of the cube
+    • Time: t = 0
+    • Strength: 1 (voltage)
+
+Numerical Setup:
+----------------
+- Time step (dt): 0.01
+- Space step (dr): 0.25
+
+Visualization:
+--------------
+- The cube is rendered using `VisMeshBuilder3D` with opacity 0.3
+- The front of the wave (``u > 0.95``) is shown.
+
+Applications:
+-------------
+- Studying anisotropic conduction in 3D
+"""
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pyvista as pv
+
+import finitewave.gridywave as fw
+
+
+# number of nodes on the side
+n_i = 200
+n_j = 200
+n_k = 200
+
+phi = - np.pi / 4
+theta = np.pi / 3
+
+# set up the cardiac tissue:
+tissue = fw.CardiacTissueGrid((n_i, n_j, n_k))
+
+# add fibers orientation vectors with rotation angle phi and theta
+tissue.fibers = np.zeros((n_i, n_j, n_k, 3))
+tissue.fibers[:, :, :, 0] = np.cos(phi) * np.cos(theta)
+tissue.fibers[:, :, :, 1] = np.sin(phi) * np.cos(theta)
+tissue.fibers[:, :, :, 2] = np.sin(theta)
+
+# set up stimulation parameters:
+stim_sequence = fw.StimSequence()
+stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1,
+                                               n_i // 2 - 5, n_i // 2 + 5,
+                                               n_j // 2 - 5, n_j // 2 + 5,
+                                               n_k // 2 - 5, n_k // 2 + 5))
+# create model object:
+simulation = fw.CardiacGridSimulation()
+# set up numerical parameters:
+simulation.dt = 0.01
+simulation.dr = 0.25
+simulation.t_max = 15
+# add the tissue and the stim parameters to the model object:
+simulation.cardiac_tissue = tissue
+simulation.cardiac_model = fw.AlievPanfilov()
+simulation.stim_sequence = stim_sequence
+# initialize model: compute weights, add stimuls, trackers etc.
+simulation.run()
+
+u = simulation.cardiac_model.u
+
+# visualize the potential map in 3D
+vis_mesh = u > 0.95
+# vis_mesh[n_i//2:, n_j//2:, :] = 0
+
+mesh_builder = fw.VisMeshBuilder3D()
+grid = mesh_builder.build_mesh(vis_mesh)
+grid = mesh_builder.add_scalar(u, 'u')
+
+full_mesh_builder = fw.VisMeshBuilder3D()
+full_grid = full_mesh_builder.build_mesh(tissue.mesh)
+full_grid = full_mesh_builder.add_scalar(u, 'u')
+
+pl = pv.Plotter()
+pl.add_mesh(grid, scalars='u', cmap='RdBu_r')
+pl.add_mesh(full_grid, scalars='u', cmap='RdBu_r', opacity=0.3)
+pl.show()
