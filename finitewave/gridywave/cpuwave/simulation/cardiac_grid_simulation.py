@@ -75,7 +75,7 @@ class CardiacGridSimulation(CardiacSimulation):
 
         iters = int(np.ceil((self.t_max - self.t) / self.dt))
         bar_desc = (f"Running {self.cardiac_model.__class__.__name__}" +
-                    f" on {self.cardiac_tissue.meta['shape']} mesh")
+                    f" on grid {self.cardiac_tissue.meta['shape']}")
 
         for _ in tqdm(range(iters), total=iters, desc=bar_desc,
                       disable=not self.prog_bar):

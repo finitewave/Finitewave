@@ -29,36 +29,32 @@ Execution:
 import numpy as np
 import matplotlib.pyplot as plt
 
-import finitewave as fw
+import finitewave.gridywave as fw
 
 # create a tissue:
 n = 100
 m = 5
-tissue = fw.CardiacTissue2D([n, m])
-
-cardiac_model = fw.AlievPanfilov2D()
-diffusion_model = fw.DiffusionModel2D()
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1, 0, 5, 0, m))
 
-tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotential2DTracker()
+action_pot_tracker = fw.ActionPotentialGridTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
 action_pot_tracker.cell_ind = [[50, 3]]
 action_pot_tracker.step = 1
+
+tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
-simulation = fw.CardiacSimulation()
+simulation = fw.CardiacGridSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
 simulation.t_max = 50
 # add the tissue and the stim parameters to the model object:
-simulation.cardiac_tissue = tissue
-simulation.cardiac_model = cardiac_model
-simulation.diffusion_model = diffusion_model
+simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m])
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 simulation.tracker_sequence = tracker_sequence
 

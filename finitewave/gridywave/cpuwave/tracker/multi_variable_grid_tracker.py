@@ -4,7 +4,7 @@ import numpy as np
 from finitewave.core.tracker.tracker import Tracker
 
 
-class MultiVariableTracker2D(Tracker):
+class MultiVariableGridTracker(Tracker):
     """
     A class to track multiple variables at a specific cell in a 2D cardiac
     tissue model simulation.
@@ -29,7 +29,7 @@ class MultiVariableTracker2D(Tracker):
 
     def __init__(self):
         """
-        Initializes the MultiVariableTracker2D with default parameters.
+        Initializes the MultiVariableGridTracker with default parameters.
         """
         Tracker.__init__(self)
         self.var_list = []  # List of variables to be tracked

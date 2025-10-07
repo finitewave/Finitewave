@@ -1,10 +1,10 @@
 from pathlib import Path
 import numpy as np
 
-from .multi_variable_tracker_2d import MultiVariableTracker2D
+from .multi_variable_grid_tracker import MultiVariableGridTracker
 
 
-class VariableTracker2D(MultiVariableTracker2D):
+class VariableGridTracker(MultiVariableGridTracker):
     """
     A tracker that records the values of specified variables from a 2D model 
     over time at a given grid point.

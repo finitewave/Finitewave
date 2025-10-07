@@ -1,1 +1,0 @@
-from .cardiac_tissue_3d import CardiacTissue3D

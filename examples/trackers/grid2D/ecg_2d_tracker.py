@@ -57,49 +57,59 @@ into an observable ECG trace.
 import matplotlib.pyplot as plt
 import numpy as np
 
-import finitewave as fw
+import finitewave.gridywave as fw
 
 # set up the tissue:
-n = 200
+n = 100
 
-tissue = fw.CardiacTissueFDM([n, n])
-# create a mesh of cardiomyocytes (elems = 1):
-
-# create model object:
-aliev_panfilov = fw.AlievPanfilovFDM()
-aliev_panfilov.dt = 0.0015
-aliev_panfilov.dr = 0.1
-aliev_panfilov.t_max = 50
+# 
+cardiac_model = fw.Courtemanche()
+cardiac_model.gkur_coeff *= 0.5
+cardiac_model.gto *= 0.5
+cardiac_model.gcal *= 0.3
 
 # induce the spiral wave:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoordFDM(0, 1,
-                                             0, n,
-                                             0, 5))
+
+for i in range(10):
+    stim_time = i * 300
+    stim_sequence.add_stim(fw.StimVoltageGridCoord(stim_time, 1,
+                                                   0, n,
+                                                   0, 5))
 
 tracker_sequence = fw.TrackerSequence()
 # create an ECG tracker:
-ecg_tracker = fw.ECGTrackerFDM()
-ecg_tracker.start_time = 0
+ecg_tracker = fw.ECGGridTracker()
+ecg_tracker.start_time = 5
 ecg_tracker.step = 100
-ecg_tracker.measure_coords = np.array([[n//2, n//2, 10],
-                                       [n//4, n//2, 10],
-                                       [3*n//4, 3*n//4, 10]])
+ecg_tracker.measure_coords = np.array([[n//2, n//2, 20],
+                                       [10, n//2, 20],
+                                       [n//2, 3*n//4, 20],])
 
 tracker_sequence.add_tracker(ecg_tracker)
 
+simulation = fw.CardiacGridSimulation()
+simulation.dt = 0.01
+simulation.dr = 0.25
+simulation.t_max = 1000
 # add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
-aliev_panfilov.tracker_sequence = tracker_sequence
+simulation.cardiac_tissue = fw.CardiacTissueGrid([n, n])
+simulation.cardiac_model = cardiac_model
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
-aliev_panfilov.run()
+simulation.run()
 
 colors = ['tab:blue', 'tab:orange', 'tab:green']
-plt.figure()
-for i, y in enumerate(ecg_tracker.output.T):
-    x = np.arange(len(y)) * aliev_panfilov.dt * ecg_tracker.step
-    plt.plot(x, y, '-o', color=colors[i], label=f'{ecg_tracker.measure_coords[i]}')
 
-plt.legend(title='Electrodes')
+fig, axs = plt.subplots(ncols=2)
+axs[0].imshow(simulation.diffusion_model.u)
+for i, y in enumerate(ecg_tracker.output.T):
+    coord = ecg_tracker.measure_coords[i]
+    axs[0].scatter(coord[1], coord[0], color=colors[i])
+    x = (ecg_tracker.start_time +
+         np.arange(len(y)) * simulation.dt * ecg_tracker.step)
+    axs[1].plot(x, y, '-o', color=colors[i], label=f'{coord}')
+
+axs[1].legend(title='Electrodes')
 plt.show()

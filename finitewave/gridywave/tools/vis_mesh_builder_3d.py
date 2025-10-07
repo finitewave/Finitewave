@@ -111,7 +111,7 @@ class VisMeshBuilder3D:
             Grid with the vector field added.
         """
 
-        if vectors.shape != self._mesh.shape + (3,):
+        if vectors.shape[:3] != self._mesh.shape:
             raise ValueError("Vectors must have the same shape as the mesh.")
 
         self.grid.cell_data[name] = vectors[self.indices[0], self.indices[1],

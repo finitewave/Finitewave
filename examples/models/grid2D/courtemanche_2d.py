@@ -30,25 +30,13 @@ Execution:
 
 import numpy as np
 import matplotlib.pyplot as plt
-import finitewave as fw
+import finitewave.gridywave as fw
 
 n = 100
 m = 5
-# create mesh
-tissue = fw.CardiacTissueFDM((n, m))
-
-# set up stimulation parameters
-stim_sequence = fw.StimSequence()
-
-for stim_time in np.arange(10) * 300:
-    stim_sequence.add_stim(fw.StimVoltageCoordFDM(stim_time, 1, 0, 5, 0, m))
 
 # create model object and set up parameters
-courtemanche = fw.CourtemancheFDM()
-courtemanche.dt = 0.01
-courtemanche.dr = 0.25
-courtemanche.t_max = stim_time + 300
-
+courtemanche = fw.Courtemanche()
 # Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
 # with a visible plateau and realistic repolarization.
 # courtemanche.gkur_coeff *= 3
@@ -56,25 +44,35 @@ courtemanche.gkur_coeff *= 0.5
 courtemanche.gto *= 0.5
 courtemanche.gcal *= 0.3
 
-# add the tissue and the stim parameters to the model object
-courtemanche.cardiac_tissue = tissue
-courtemanche.stim_sequence = stim_sequence
+# set up stimulation parameters
+stim_sequence = fw.StimSequence()
+stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1, 0, 5, 0, m))
 
-tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotentialTrackerFDM()
+action_pot_tracker = fw.ActionPotentialGridTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
 action_pot_tracker.cell_ind = [[50, 3]]
 action_pot_tracker.step = 1
+
+tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
-courtemanche.tracker_sequence = tracker_sequence
+
+simulation = fw.CardiacGridSimulation()
+simulation.dt = 0.01
+simulation.dr = 0.25
+simulation.t_max = 500
+# add the tissue and the stim parameters to the model object:
+simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m])
+simulation.cardiac_model = courtemanche
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
 # run the model:
-courtemanche.run()
+simulation.run()
 
 # plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * courtemanche.dt
+time = np.arange(len(action_pot_tracker.output)) * simulation.dt
 plt.plot(time, action_pot_tracker.output, label="cell_50_3")
 plt.legend(title='Courtemanche')
 plt.xlabel('Time (ms)')

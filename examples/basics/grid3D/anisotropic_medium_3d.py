@@ -84,11 +84,9 @@ simulation.run()
 u = simulation.cardiac_model.u
 
 # visualize the potential map in 3D
-vis_mesh = u > 0.95
-# vis_mesh[n_i//2:, n_j//2:, :] = 0
 
 mesh_builder = fw.VisMeshBuilder3D()
-grid = mesh_builder.build_mesh(vis_mesh)
+grid = mesh_builder.build_mesh(u > 0.95)
 grid = mesh_builder.add_scalar(u, 'u')
 
 full_mesh_builder = fw.VisMeshBuilder3D()

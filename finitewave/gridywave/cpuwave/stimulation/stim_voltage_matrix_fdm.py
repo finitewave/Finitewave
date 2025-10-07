@@ -23,7 +23,12 @@ class StimVoltageMatrixFDM(StimVoltage):
         super().__init__(time, volt_value)
         self.matrix = matrix
 
-    def stimulate(self, model):
+    def initialize(self, simulation):
+        super().initialize(simulation)
+        self.simulation = simulation
+        self.mask = (self.matrix > 0) & (simulation.cardiac_tissue.mesh == 1)
+
+    def stimulate(self, simulation):
         """
         Applies the voltage stimulus to the cardiac tissue model based on the
         specified matrix.
@@ -42,5 +47,4 @@ class StimVoltageMatrixFDM(StimVoltage):
         where the corresponding value in ``matrix`` is greater than 0,
         and the ``model.cardiac_tissue.mesh`` value is 1.
         """
-        mask = (self.matrix > 0) & (model.cardiac_tissue.mesh == 1)
-        model.u[mask] = self.volt_value
+        simulation.diffusion_model.u[self.mask] = self.volt_value

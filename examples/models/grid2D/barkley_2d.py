@@ -29,7 +29,7 @@ Execution:
 import numpy as np
 import matplotlib.pyplot as plt
 
-import finitewave as fw
+import finitewave.gridywave as fw
 
 # create a tissue:
 n = 100
@@ -57,6 +57,9 @@ multivariable_tracker.cell_ind = [50, 3]
 multivariable_tracker.var_list = ["u", "v"]
 tracker_sequence.add_tracker(multivariable_tracker)
 barkley.tracker_sequence = tracker_sequence
+
+
+simulation = fw.CardiacGridSimulation()
 
 # run the model:
 barkley.run()
