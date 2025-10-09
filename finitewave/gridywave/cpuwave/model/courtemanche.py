@@ -181,9 +181,12 @@ def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt,
                                                   ki.flat[r_i], ko,
                                                   cai.flat[r_i], cao, R, T, F)
 
-        m.flat[r_i] = calc_gating_m(m.flat[r_i], u.flat[d_i], dt)
-        h.flat[r_i] = calc_gating_h(h.flat[r_i], u.flat[d_i], dt)
-        j_.flat[r_i] = calc_gating_j(j_.flat[r_i], u.flat[d_i], dt)
+        m.flat[r_i] = calc_gating_m(m.flat[r_i], u.flat[d_i], dt,
+                                    where=calc_where)
+        h.flat[r_i] = calc_gating_h(h.flat[r_i], u.flat[d_i], dt,
+                                    where=calc_where)
+        j_.flat[r_i] = calc_gating_j(j_.flat[r_i], u.flat[d_i], dt,
+                                     where=calc_where)
 
         ina = calc_ina(u.flat[d_i], m.flat[r_i], h.flat[r_i], j_.flat[r_i],
                        gna, ena)
@@ -234,3 +237,11 @@ def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt,
 
         rhs.flat[d_i] = dt*(-calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical,
                                       ipca, inak, inaca, ibna, ibca))
+
+
+@njit
+def calc_where(cond, x, y):
+    # return cond * x + (1 - cond) * y
+    if cond:
+        return x
+    return y

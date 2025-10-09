@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import finitewave.gridywave as fw
 
 n = 100
-m = 5
+m = 100
 
 # create model object and set up parameters
 courtemanche = fw.Courtemanche()
