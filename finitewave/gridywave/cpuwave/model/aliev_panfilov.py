@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit, prange
+import jax
 
 from .cardiac_grid_model import CardiacGridModel
 from ._registry import load_ops
@@ -93,17 +93,21 @@ class AlievPanfilov(CardiacGridModel):
         for var, val in variables.items():
             setattr(self, "init_" + var, val)
 
-    def run(self, u, rhs, indexes, dt):
+        self.rhs = np.zeros_like(self.u)
+
+    def run(self, dt):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
-        ionic_kernel(u, rhs, indexes, self.myo_indexes, dt, self.v, self.a,
-                     self.k, self.eps, self.mu1, self.mu2)
+        res = ionic_kernel(self.u, self.myo_indexes, dt, self.v,
+                           self.a, self.k, self.eps, self.mu1, self.mu2)
+        self.v = res[0]
+        self.rhs = np.array(res[1])
+        return self.u, self.rhs
 
 
-@njit(parallel=True)
-def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt, v, a, k, eps,
-                 mu1, mu2):
+@jax.jit
+def ionic_kernel(u, indexes, dt, v, a, k, eps, mu1, mu2):
     """
     Computes the ionic kernel for the Aliev-Panfilov 2D model.
 
@@ -111,14 +115,8 @@ def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt, v, a, k, eps,
     ----------
     u : np.ndarray
         Current action potential array.
-    rhs : np.ndarray
-        Array to store the updated action potential values.
-    diffusion_indexes : np.ndarray
-        Array of myocyte indices corresponding to diffusion model arrays
-        (``u``, ``rhs``).
-    reaction_indexes : np.ndarray
-        Array of myocyte indices corresponding to cardiac model arrays
-        (``v``).
+    indexes : np.ndarray
+        Array of myocyte indexes corresponding to cardiac model arrays
     dt : float
         Time step for the simulation.
     v : np.ndarray
@@ -134,9 +132,6 @@ def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt, v, a, k, eps,
     mu2 : float
         Recovery rate offset (modulates u-dependence of recovery).
     """
-    for i in prange(len(diffusion_indexes)):
-        d_i = diffusion_indexes[i]
-        r_i = reaction_indexes[i]
-        v.flat[r_i] += dt * calc_dv(v.flat[r_i], u.flat[d_i], a, k, eps, mu1,
-                                    mu2)
-        rhs.flat[d_i] = dt * calc_rhs(u.flat[d_i], v.flat[r_i], a, k)
+    v += dt * calc_dv(v, u, a, k, eps, mu1, mu2)
+    rhs = dt * calc_rhs(u, v, a, k)
+    return v, rhs

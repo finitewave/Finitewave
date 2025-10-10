@@ -82,4 +82,4 @@ class StimVoltageGridCoord(StimVoltage):
         roi_mesh = simulation.cardiac_tissue.mesh[self.slices]
         mask = (roi_mesh == 1)
 
-        simulation.diffusion_model.u[self.slices][mask] = self.volt_value
+        simulation.cardiac_model.u[self.slices][mask] = self.volt_value

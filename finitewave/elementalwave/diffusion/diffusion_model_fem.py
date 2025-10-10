@@ -66,14 +66,6 @@ class DiffusionModelFEM(DiffusionModel):
         self.matrices = self.solver.assemble_system(stiff, mass,
                                                     self.simulation.dt)
         self.myo_indexes = np.arange(len(self.u))
-    #     self.compute_preconditioner()
-
-    # def compute_preconditioner(self):
-    #     A = self.matrices[0]
-    #     ilu = spla.spilu(A)  # ILU decomposition
-    #     M = spla.LinearOperator(A.shape, ilu.solve)  # Preconditioner operator
-    #     # self.solver.preconditioner = M
-        # self.solver.maxiter = 1000
 
     def run(self):
         """

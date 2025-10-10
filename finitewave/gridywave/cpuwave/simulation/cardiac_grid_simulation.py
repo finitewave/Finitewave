@@ -86,11 +86,8 @@ class CardiacGridSimulation(CardiacSimulation):
             if self.tracker_sequence:
                 self.tracker_sequence.tracker_next()
 
-            self.cardiac_model.run(self.diffusion_model.u,
-                                   self.diffusion_model.rhs,
-                                   self.diffusion_model.myo_indexes,
-                                   self.dt)
-            self.diffusion_model.run()
+            u, rhs = self.cardiac_model.run(self.dt)
+            self.diffusion_model.run(u, rhs, self.cardiac_model.myo_indexes)
 
             self.t += self.dt
             self.step += 1
@@ -106,8 +103,6 @@ class CardiacGridSimulation(CardiacSimulation):
                     self.state_saver.save()
                 break
 
-        self.sync_cardiac_model()
-
     def limit_num_of_threads(self, num_of_threads):
         max_num_of_threads = numba.config.NUMBA_NUM_THREADS
 
@@ -122,29 +117,3 @@ class CardiacGridSimulation(CardiacSimulation):
             num_of_threads = min(num_of_threads, max_num_of_threads)
 
         numba.set_num_threads(num_of_threads)
-
-    def sync_cardiac_model(self):
-        """
-        Syncs the cardiac model with the diffusion model.
-
-        Notes
-        -----
-        If the cardiac model is using memory saving, the cardiac model
-        will be updated with the diffusion model values at the tissue indexes.
-        Otherwise, the cardiac model will be updated with the diffusion model
-        values.
-        """
-        if self.cardiac_model.memory_save:
-            indexes = self.cardiac_model.tissue_indexes
-            self.cardiac_model.u[:] = self.diffusion_model.u.flat[indexes]
-            return
-
-        self.cardiac_model.u = self.diffusion_model.u
-
-    def sync_diffusion_model(self):
-        if self.cardiac_model.memory_save:
-            indexes = self.cardiac_model.tissue_indexes
-            self.diffusion_model.u.flat[indexes] = self.cardiac_model.u
-            return
-
-        self.diffusion_model.u = self.cardiac_model.u

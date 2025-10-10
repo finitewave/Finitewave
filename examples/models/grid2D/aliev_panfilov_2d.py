@@ -32,8 +32,8 @@ import matplotlib.pyplot as plt
 import finitewave.gridywave as fw
 
 # create a tissue:
-n = 100
-m = 5
+n = 400
+m = 400
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -51,7 +51,7 @@ tracker_sequence.add_tracker(action_pot_tracker)
 simulation = fw.CardiacGridSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 50
+simulation.t_max = 500
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m])
 simulation.cardiac_model = fw.AlievPanfilov()
