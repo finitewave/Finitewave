@@ -1,5 +1,6 @@
 import numpy as np
 import jax
+from numba import njit, prange
 
 from .cardiac_grid_model import CardiacGridModel
 from ._registry import load_ops
@@ -93,21 +94,27 @@ class AlievPanfilov(CardiacGridModel):
         for var, val in variables.items():
             setattr(self, "init_" + var, val)
 
+    def initialize(self, simulation):
+        shape = simulation.cardiac_tissue.mesh.shape
+
+        if self.memory_save:
+            shape = (len(simulation.cardiac_tissue.tissue_indexes), )
+
+        self.u = self.init_u * np.ones(shape, dtype=simulation.npfloat)
+        self.v = self.init_v * np.ones(shape, dtype=simulation.npfloat)
         self.rhs = np.zeros_like(self.u)
+        self.compute_indexes(simulation.cardiac_tissue)
 
     def run(self, dt):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
-        res = ionic_kernel(self.u, self.myo_indexes, dt, self.v,
-                           self.a, self.k, self.eps, self.mu1, self.mu2)
-        self.v = res[0]
-        self.rhs = np.array(res[1])
-        return self.u, self.rhs
+        ionic_kernel(self.u, self.rhs, self.myo_indexes, dt, self.v, self.a,
+                     self.k, self.eps, self.mu1, self.mu2)
 
 
-@jax.jit
-def ionic_kernel(u, indexes, dt, v, a, k, eps, mu1, mu2):
+@njit(parallel=True)
+def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2):
     """
     Computes the ionic kernel for the Aliev-Panfilov 2D model.
 
@@ -115,8 +122,14 @@ def ionic_kernel(u, indexes, dt, v, a, k, eps, mu1, mu2):
     ----------
     u : np.ndarray
         Current action potential array.
-    indexes : np.ndarray
-        Array of myocyte indexes corresponding to cardiac model arrays
+    rhs : np.ndarray
+        Array to store the updated action potential values.
+    diffusion_indexes : np.ndarray
+        Array of myocyte indices corresponding to diffusion model arrays
+        (``u``, ``rhs``).
+    reaction_indexes : np.ndarray
+        Array of myocyte indices corresponding to cardiac model arrays
+        (``v``).
     dt : float
         Time step for the simulation.
     v : np.ndarray
@@ -132,6 +145,38 @@ def ionic_kernel(u, indexes, dt, v, a, k, eps, mu1, mu2):
     mu2 : float
         Recovery rate offset (modulates u-dependence of recovery).
     """
-    v += dt * calc_dv(v, u, a, k, eps, mu1, mu2)
-    rhs = dt * calc_rhs(u, v, a, k)
-    return v, rhs
+    for i in prange(len(indexes)):
+        ii = indexes[i]
+        v.flat[ii] += dt * calc_dv(v.flat[ii], u.flat[ii], a, k, eps, mu1, mu2)
+        rhs.flat[ii] = dt * calc_rhs(u.flat[ii], v.flat[ii], a, k)
+
+
+# @jax.jit
+# def ionic_kernel(u, indexes, dt, v, a, k, eps, mu1, mu2):
+#     """
+#     Computes the ionic kernel for the Aliev-Panfilov 2D model.
+
+#     Parameters
+#     ----------
+#     u : np.ndarray
+#         Current action potential array.
+#     indexes : np.ndarray
+#         Array of myocyte indexes corresponding to cardiac model arrays
+#     dt : float
+#         Time step for the simulation.
+#     v : np.ndarray
+#         Recovery variable array.
+#     a : float
+#         Excitability threshold parameter.
+#     k : float
+#         Strength of the nonlinear source term (governs spike shape).
+#     eps : float
+#         Baseline recovery rate.
+#     mu1 : float
+#         Recovery rate coefficient (scales v feedback).
+#     mu2 : float
+#         Recovery rate offset (modulates u-dependence of recovery).
+#     """
+#     v += dt * calc_dv(v, u, a, k, eps, mu1, mu2)
+#     rhs = dt * calc_rhs(u, v, a, k)
+#     return v, rhs

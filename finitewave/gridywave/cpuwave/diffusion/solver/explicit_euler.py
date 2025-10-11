@@ -7,15 +7,15 @@ class ExplicitEuler:
 
     def assemble_system(self, stiffness_matrix, mass_matrix, dt):
         a_matrix = mass_matrix + dt * stiffness_matrix
-        return [a_matrix, mass_matrix]
+        return [a_matrix]
 
-    def solve(self, u_new, u, rhs, matrices, indexes):
-        A, M = matrices
-        return diffusion_kernel(u_new, u, rhs, indexes, A.indptr, A.indices,
-                                A.data)
+    def solve(self, u_new, u, rhs, indexes, matrices):
+        A = matrices[0]
+        return diffusion_kernel(u_new, u, rhs, indexes, A.indptr,
+                                A.indices, A.data)
 
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True, fastmath=True, cache=True)
 def diffusion_kernel(u_new, u, rhs, indexes, indptr, indices, data):
     n_rows = indptr.size - 1
 

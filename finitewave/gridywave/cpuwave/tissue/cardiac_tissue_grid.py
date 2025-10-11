@@ -78,11 +78,12 @@ class CardiacTissueGrid(CardiacTissue):
         The boundaries are defined as the edges of the grid, and this method
         updates these edges in the mesh array.
         """
-        self.mesh[0, ...] = 0
-        self.mesh[-1, ...] = 0
-        self.mesh[:, 0, ...] = 0
-        self.mesh[:, -1, ...] = 0
+        pass
+        # self.mesh[0, ...] = 0
+        # self.mesh[-1, ...] = 0
+        # self.mesh[:, 0, ...] = 0
+        # self.mesh[:, -1, ...] = 0
 
-        if self.mesh.ndim == 3:
-            self.mesh[:, :, 0] = 0
-            self.mesh[:, :, -1] = 0
+        # if self.mesh.ndim == 3:
+        #     self.mesh[:, :, 0] = 0
+        #     self.mesh[:, :, -1] = 0

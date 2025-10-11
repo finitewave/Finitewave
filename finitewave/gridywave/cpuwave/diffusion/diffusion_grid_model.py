@@ -24,18 +24,19 @@ class DiffusionGridModel(DiffusionModel):
 
     def init_variables(self):
         self.u_new = self.simulation.cardiac_model.u.copy()
+        self.u = self.simulation.cardiac_model.u
+        self.rhs = self.simulation.cardiac_model.rhs
+        self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
     def compute_matrices(self):
-        self.u_new = self.simulation.cardiac_model.u.copy()
-
         stiff, mass = self.stencil.assemble_matrices(self.simulation)
         self.matrices = self.solver.assemble_system(stiff, mass,
                                                     self.simulation.dt)
 
-    def run(self, u, rhs, indexes):
-        self.solver.solve(self.u_new, u, rhs, self.matrices, indexes)
-        u, self.u_new = self.u_new, u
-        return u
+    def run(self):
+        self.solver.solve(self.u_new, self.u, self.rhs, self.myo_indexes,
+                          self.matrices)
+        self.u, self.u_new = self.u_new, self.u
 
     def default_stencil(self):
         if self.simulation.cardiac_tissue.fibers is None:

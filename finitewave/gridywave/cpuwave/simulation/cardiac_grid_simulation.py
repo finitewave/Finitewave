@@ -86,8 +86,8 @@ class CardiacGridSimulation(CardiacSimulation):
             if self.tracker_sequence:
                 self.tracker_sequence.tracker_next()
 
-            u, rhs = self.cardiac_model.run(self.dt)
-            self.diffusion_model.run(u, rhs, self.cardiac_model.myo_indexes)
+            self.cardiac_model.run(self.dt)
+            self.diffusion_model.run()
 
             self.t += self.dt
             self.step += 1

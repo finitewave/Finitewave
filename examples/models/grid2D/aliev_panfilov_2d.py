@@ -35,6 +35,9 @@ import finitewave.gridywave as fw
 n = 400
 m = 400
 
+tissue = fw.CardiacTissueGrid([n, m])
+tissue.mesh[np.random.rand(n, m) < 0.3] = 2  # introduce some inexcitable regions
+
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1, 0, 5, 0, m))
@@ -51,9 +54,9 @@ tracker_sequence.add_tracker(action_pot_tracker)
 simulation = fw.CardiacGridSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 500
+simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
-simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m])
+simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 simulation.tracker_sequence = tracker_sequence
@@ -61,11 +64,19 @@ simulation.tracker_sequence = tracker_sequence
 # run the model:
 simulation.run()
 
-# plot the action potential
-plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-plt.legend(title='Aliev-Panfilov')
-plt.title('Action Potential')
-plt.grid()
+# visualize the results:
+plt.imshow(simulation.cardiac_model.u, cmap='jet', origin='lower')
+plt.colorbar(label='Transmembrane Potential (u)')
+plt.title('Aliev-Panfilov Model - Transmembrane Potential')
+plt.xlabel('X-axis')
+plt.ylabel('Y-axis')
 plt.show()
+
+# plot the action potential
+# plt.figure()
+# time = np.arange(len(action_pot_tracker.output)) * simulation.dt
+# plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+# plt.legend(title='Aliev-Panfilov')
+# plt.title('Action Potential')
+# plt.grid()
+# plt.show()
