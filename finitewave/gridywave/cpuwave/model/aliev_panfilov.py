@@ -94,17 +94,6 @@ class AlievPanfilov(CardiacGridModel):
         for var, val in variables.items():
             setattr(self, "init_" + var, val)
 
-    def initialize(self, simulation):
-        shape = simulation.cardiac_tissue.mesh.shape
-
-        if self.memory_save:
-            shape = (len(simulation.cardiac_tissue.tissue_indexes), )
-
-        self.u = self.init_u * np.ones(shape, dtype=simulation.npfloat)
-        self.v = self.init_v * np.ones(shape, dtype=simulation.npfloat)
-        self.rhs = np.zeros_like(self.u)
-        self.compute_indexes(simulation.cardiac_tissue)
-
     def run(self, dt):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.

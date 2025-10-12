@@ -36,7 +36,7 @@ n = 400
 m = 400
 
 tissue = fw.CardiacTissueGrid([n, m])
-tissue.mesh[np.random.rand(n, m) < 0.3] = 2  # introduce some inexcitable regions
+# tissue.mesh[np.random.rand(n, m) < 0.3] = 2  # introduce some inexcitable regions
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()

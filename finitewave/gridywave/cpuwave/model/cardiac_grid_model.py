@@ -44,8 +44,7 @@ class CardiacGridModel(CardiacModel):
         if self.memory_save:
             shape = (len(simulation.cardiac_tissue.tissue_indexes), )
 
-        self.u = self.init_u * np.ones(shape, dtype=simulation.npfloat)
-        self.v = self.init_v * np.ones(shape, dtype=simulation.npfloat)
+        self.init_state_vars(shape, simulation.npfloat)
         self.rhs = np.zeros_like(self.u)
         self.compute_indexes(simulation.cardiac_tissue)
 

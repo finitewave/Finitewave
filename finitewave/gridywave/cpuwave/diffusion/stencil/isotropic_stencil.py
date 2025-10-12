@@ -56,7 +56,7 @@ class IsotropicStencil(Stencil):
         return stiff, mass
 
     def compute_weights_sparse(self, mesh, diffusion, indexes):
-        rows, cols, weights = self.boundary.compute(mesh, indexes)
+        rows, cols, weights = self.boundary.compute_weights(mesh, indexes)
         weights = weights.astype(diffusion.dtype)
         weights *= 0.5 * (diffusion.flat[cols] + diffusion.flat[rows])
 
@@ -79,7 +79,7 @@ class IsotropicFirstOrderBoundary:
     def __init__(self):
         pass
 
-    def compute(self, mesh, indexes):
+    def compute_weights(self, mesh, indexes):
         ijk = np.array(np.unravel_index(indexes, mesh.shape))
         rows = []
         cols = []
@@ -91,9 +91,9 @@ class IsotropicFirstOrderBoundary:
             neighbors_left[i_axis] -= 1
             neighbors_right[i_axis] += 1
 
-            left = self.empty_neighbors(neighbors_left, mesh, i_axis)
-            right = self.empty_neighbors(neighbors_right, mesh, i_axis)
-            left, right = self.treat_boundary(left, right)
+            left = self.is_valid_neighbor(neighbors_left, mesh, i_axis)
+            right = self.is_valid_neighbor(neighbors_right, mesh, i_axis)
+            left, right = self.apply_boundary_rule(left, right)
             
             rows.append(indexes[left > 0])
             cols.append(np.ravel_multi_index(neighbors_left[:, left > 0],
@@ -110,13 +110,13 @@ class IsotropicFirstOrderBoundary:
         weights = np.concatenate(weights)
         return rows, cols, weights
 
-    def empty_neighbors(self, neighbors, mesh, i_axis):
+    def is_valid_neighbor(self, neighbors, mesh, i_axis):
         mask = ((neighbors[i_axis] >= 0) &
                 (neighbors[i_axis] < mesh.shape[i_axis]))
         mask[mask] = mesh[tuple(neighbors[:, mask])] > 0
         return mask.astype(np.int64)
 
-    def treat_boundary(self, left, right):
+    def apply_boundary_rule(self, left, right):
         return left, right
 
 
@@ -124,7 +124,7 @@ class IsotropicSecondOrderBoundary(IsotropicFirstOrderBoundary):
     def __init__(self):
         super().__init__()
 
-    def treat_boundary(self, left, right):
+    def apply_boundary_rule(self, left, right):
         left_empty = (left == 0).astype(np.int64)
         right_empty = (right == 0).astype(np.int64)
 

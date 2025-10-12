@@ -1,7 +1,4 @@
 from numba import njit, prange
-import jax.numpy as jnp
-import jax
-import numpy as np
 
 from .cardiac_grid_model import CardiacGridModel
 from ._registry import load_ops
@@ -11,6 +8,7 @@ ops = load_ops("courtemanche")
 jit_ops = wrap_calc(ops)
 
 calc_rhs = jit_ops["calc_rhs"]
+calc_where = jit_ops["calc_where"]
 calc_gating_variable = jit_ops["calc_gating_variable"]
 calc_gating_variable_rush_larsen = jit_ops["calc_gating_variable_rush_larsen"]
 calc_cmdn = jit_ops["calc_cmdn"]
@@ -110,7 +108,7 @@ class Courtemanche(CardiacGridModel):
                 var += "_"
             setattr(self, "init_" + var, val)
 
-    def run(self, u, rhs, indexes, dt):
+    def run(self, dt):
         """
         Executes the ionic kernel function to update ionic currents and state
         variables
@@ -127,8 +125,9 @@ class Courtemanche(CardiacGridModel):
         dt : float
             Time step for the simulation.
         """
-        res = ionic_kernel(u, rhs, indexes, self.myo_indexes, dt, self.nai, self.ki,
-                           self.cai, self.caup, self.carel, self.m, self.h, self.j_,
+        ionic_kernel(self.u, self.rhs, self.myo_indexes, dt,
+                     self.nai, self.ki,
+                     self.cai, self.caup, self.carel, self.m, self.h, self.j_,
                      self.d, self.f, self.oa, self.oi, self.ua, self.ui,
                      self.xr, self.xs, self.fca, self.irel, self.vrel,
                      self.urel, self.wrel,
@@ -142,16 +141,9 @@ class Courtemanche(CardiacGridModel):
                      self.inacamax, self.inakmax, self.ipcamax, self.krel,
                      self.iupmax, self.kq10)
 
-        (self.nai, self.ki, self.cai, self.caup, self.carel, self.m, self.h,
-         self.j_, self.d, self.f, self.oa, self.oi, self.ua, self.ui,
-         self.xr, self.xs, self.fca, self.irel, self.vrel,
-         self.urel, self.wrel) = res[1:]
 
-        return np.array(res[0])
-
-
-@jax.jit
-def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt,
+@njit(parallel=True, fastmath=True, cache=True)
+def ionic_kernel(u, rhs, indexes, dt,
                  nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs,
                  xr, fca, irel, vrel, urel, wrel,
                  gna, gnab, gk1, gkr, gks, gto, gcal, gcab, gkur_coeff, F, T,
@@ -182,45 +174,67 @@ def ionic_kernel(u, rhs, diffusion_indexes, reaction_indexes, dt,
     ... : float
         Model parameters
     """
-    ena, ek, eca = calc_equilibrum_potentials(nai, nao, ki, ko, cai, cao, R, T,
-                                              F, log=jnp.log, where=jnp.where)
 
-    m = calc_gating_m(m, u, dt, exp=jnp.exp, where=jnp.where)
-    h = calc_gating_h(h, u, dt, exp=jnp.exp, where=jnp.where)
-    j_ = calc_gating_j(j_, u, dt, exp=jnp.exp, where=jnp.where)
+    for i in prange(indexes.shape[0]):
+        ii = indexes[i]
 
-    ina = calc_ina(u, m, h, j_, gna, ena)
-    ik1 = calc_ik1(u, gk1, ek, exp=jnp.exp)
-    ito, oa, oi = calc_ito(u, dt, kq10, oa, oi, gto, ek, exp=jnp.exp)
-    ikur, ua, ui = calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff, exp=jnp.exp)
-    ikr, xr = calc_ikr(u, dt, xr, gkr, ek, exp=jnp.exp)
-    iks, xs = calc_iks(u, dt, xs, gks, ek, exp=jnp.exp, sqrt=jnp.sqrt)
-    ical, d, f, fca = calc_ical(u, dt, d, f, cai, gcal, fca, exp=jnp.exp)
-    inak = calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T,
-                     exp=jnp.exp)
-    inaca = calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx,
-                       F, u, R, T, exp=jnp.exp)
-    ibca = calc_ibca(gcab, eca, u)
-    ibna = calc_ibna(gnab, ena, u)
-    ipca = calc_ipca(ipcamax, cai)
-    irel, urel, vrel, wrel = calc_irel(dt, urel, vrel, irel, wrel, ical, inaca,
-                                       krel, carel, cai, u, F, Vrel,
-                                       exp=jnp.exp)
-    itr = calc_itr(caup, carel)
-    iup = calc_iup(iupmax, cai, kup)
-    iupleak = calc_iupleak(caup, caupmax, iupmax)
+        ena, ek, eca = calc_equilibrum_potentials(nai.flat[ii], nao,
+                                                  ki.flat[ii], ko,
+                                                  cai.flat[ii], cao, R, T, F,
+                                                  where=calc_where)
 
-    caup += dt * calc_dcaup(iup, iupleak, itr, Vrel, Vup)
-    nai += dt * calc_dnai(inak, inaca, ibna, ina, F, Vj)
+        m.flat[ii] = calc_gating_m(m.flat[ii], u.flat[ii], dt,
+                                   where=calc_where)
+        h.flat[ii] = calc_gating_h(h.flat[ii], u.flat[ii], dt,
+                                   where=calc_where)
+        j_.flat[ii] = calc_gating_j(j_.flat[ii], u.flat[ii], dt,
+                                    where=calc_where)
 
-    ki += dt * calc_dki(inak, ik1, ito, ikur, ikr, iks, ibk, F, Vj)
-    cai += dt * calc_dcai(cai, inaca, ipca, ical, ibca, iup, iupleak, irel,
-                          Vrel, Vup, trpnmax, kmtrpn, cmdnmax, kmcmdn, F, Vj)
+        ina = calc_ina(u.flat[ii], m.flat[ii], h.flat[ii], j_.flat[ii],
+                       gna, ena)
+        ik1 = calc_ik1(u.flat[ii], gk1, ek)
+        ito, oa.flat[ii], oi.flat[ii] = calc_ito(u.flat[ii], dt, kq10,
+                                                 oa.flat[ii], oi.flat[ii],
+                                                 gto, ek)
+        ikur, ua.flat[ii], ui.flat[ii] = calc_ikur(u.flat[ii], dt, kq10,
+                                                   ua.flat[ii], ui.flat[ii],
+                                                   ek, gkur_coeff)
+        ikr, xr.flat[ii] = calc_ikr(u.flat[ii], dt, xr.flat[ii], gkr, ek)
+        iks, xs.flat[ii] = calc_iks(u.flat[ii], dt, xs.flat[ii], gks, ek)
+        ical, d.flat[ii], f.flat[ii], fca.flat[ii] = calc_ical(u.flat[ii],
+                                                               dt,
+                                                               d.flat[ii],
+                                                               f.flat[ii],
+                                                               cai.flat[ii],
+                                                               gcal,
+                                                               fca.flat[ii])
+        inak = calc_inak(inakmax, nai.flat[ii], nao, ko, kmnai, kmko, F,
+                         u.flat[ii], R, T)
+        inaca = calc_inaca(inacamax, nai.flat[ii], nao, cai.flat[ii], cao,
+                           kmnancx, kmcancx, ksatncx, F, u.flat[ii], R, T)
+        ibca = calc_ibca(gcab, eca, u.flat[ii])
+        ibna = calc_ibna(gnab, ena, u.flat[ii])
+        ipca = calc_ipca(ipcamax, cai.flat[ii])
+        irel.flat[ii], urel.flat[ii], vrel.flat[ii], wrel.flat[ii] = calc_irel(
+            dt, urel.flat[ii], vrel.flat[ii], irel.flat[ii], wrel.flat[ii],
+            ical, inaca, krel, carel.flat[ii], cai.flat[ii], u.flat[ii],
+            F, Vrel)
+        itr = calc_itr(caup.flat[ii], carel.flat[ii])
+        iup = calc_iup(iupmax, cai.flat[ii], kup)
+        iupleak = calc_iupleak(caup.flat[ii], caupmax, iupmax)
 
-    carel += carel + dt * calc_dcarel(carel, itr, irel, csqnmax, kmcsqn)
+        caup.flat[ii] += dt * calc_dcaup(iup, iupleak, itr, Vrel, Vup)
+        nai.flat[ii] += dt * calc_dnai(inak, inaca, ibna, ina, F, Vj)
 
-    rhs = dt*(-calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca,
-              ibna, ibca))
+        ki.flat[ii] += dt * calc_dki(inak, ik1, ito, ikur, ikr, iks, ibk, F,
+                                     Vj)
+        cai.flat[ii] += dt * calc_dcai(cai.flat[ii], inaca, ipca, ical, ibca,
+                                       iup, iupleak, irel.flat[ii], Vrel,
+                                       Vup, trpnmax, kmtrpn, cmdnmax, kmcmdn,
+                                       F, Vj)
 
-    return (rhs, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs,
-            xr, fca, irel, vrel, urel, wrel)
+        carel.flat[ii] += dt * calc_dcarel(carel.flat[ii], itr,
+                                           irel.flat[ii], csqnmax, kmcsqn)
+
+        rhs.flat[ii] = dt*(-calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical,
+                                     ipca, inak, inaca, ibna, ibca))
