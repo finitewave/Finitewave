@@ -1,1 +1,2 @@
 from .isotropic_stencil import IsotropicStencil
+from .anisotropic_stencil import AnisotropicStencil

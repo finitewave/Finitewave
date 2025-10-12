@@ -45,40 +45,54 @@ showing how the excitation wave propagates in the anisotropic medium.
 import matplotlib.pyplot as plt
 import numpy as np
 
-import finitewave as fw
+import finitewave.gridywave as fw
 
 # number of nodes on the side
 n = 400
 # fiber orientation angle
-alpha = 0.25 * np.pi
-tissue = fw.CardiacTissue2D([n, n])
+tissue = fw.CardiacTissueGrid([n, n])
+alpha = 0.25 * np.pi * 2
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, n])
-tissue.add_boundaries()
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, n, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
 tissue.fibers[:, :, 1] = np.sin(alpha)
 
+# tissue.mesh[np.random.rand(n, n) < 0.2] = 2  # introduce some inexcitable regions
+
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, n//2 - 3, n//2 + 3,
-                                                n//2 - 3, n//2 + 3))
+stim_sequence.add_stim(fw.StimVoltageGridCoord(time=0, volt_value=1,
+                                               x_min=n//2 - 3, x_max=n//2 + 3,
+                                               y_min=n//2 - 3, y_max=n//2 + 3))
 
-# create model object:
-aliev_panfilov = fw.AlievPanfilov2D()
-# set up numerical parameters:
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 30
+action_pot_tracker = fw.ActionPotentialGridTracker()
+# to specify the mesh node under the measuring - use the cell_ind field:
+# eather list or list of lists can be used
+action_pot_tracker.cell_ind = [[50, 3]]
+action_pot_tracker.step = 1
+
+tracker_sequence = fw.TrackerSequence()
+tracker_sequence.add_tracker(action_pot_tracker)
+
+simulation = fw.CardiacGridSimulation()
+simulation.dt = 0.01
+simulation.dr = 0.25
+simulation.t_max = 50
 # add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
+simulation.cardiac_tissue = tissue
+simulation.cardiac_model = fw.AlievPanfilov()
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
-aliev_panfilov.run()
+# run the model:
+simulation.run()
 
-# show the potential map at the end of calculations:
-plt.figure()
-plt.imshow(aliev_panfilov.u)
-plt.colorbar()
+# visualize the results:
+plt.imshow(simulation.cardiac_model.u, cmap='jet', origin='lower')
+plt.colorbar(label='Transmembrane Potential (u)')
+plt.title('Aliev-Panfilov Model - Transmembrane Potential')
+plt.xlabel('X-axis')
+plt.ylabel('Y-axis')
 plt.show()

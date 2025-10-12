@@ -2,6 +2,7 @@ import numpy as np
 from finitewave.core.diffusion.diffusion_model import DiffusionModel
 
 from .stencil.isotropic_stencil import IsotropicStencil
+from .stencil.anisotropic_stencil import AnisotropicStencil
 from .solver.explicit_euler import ExplicitEuler
 
 
@@ -41,3 +42,5 @@ class DiffusionGridModel(DiffusionModel):
     def default_stencil(self):
         if self.simulation.cardiac_tissue.fibers is None:
             return IsotropicStencil()
+
+        return AnisotropicStencil()

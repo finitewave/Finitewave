@@ -3,28 +3,30 @@ from scipy import sparse as sp
 from .stencil import Stencil
 
 
-class AsymmetricStencil(Stencil):
+class AnisotropicStencil(Stencil):
     """
-    This class computes the weights for diffusion on a 2D using an isotropic
-    stencil. The stencil includes 5 points: the central point and the
-    four neighbors.
+    This class computes the weights for diffusion kernel on 2D and 3D grids
+    using an asymmetric stencil. The stencil includes 8 neighbors in 2D and
+    18 neighbors in 3D.
 
-    The method assumes weights being used in the following order:
-
-    - ``w[i, j, 0] : (i-1, j)``,
-    - ``w[i, j, 1] : (i, j-1)``,
-    - ``w[i, j, 2] : (i, j)``,
-    - ``w[i, j, 3] : (i, j+1)``,
-    - ``w[i, j, 4] : (i-1, j)``.
+    Attributes
+    ----------
+    boundary : StencilBoundary
+        An instance of the StencilBoundary class to handle Neumann boundary
+        conditions.
 
     Notes
     -----
-    The method can handle heterogeneity in the diffusion coefficients given
-    by the ``conductivity`` parameter.
+    - The method can handle heterogeneity in the diffusion coefficients given
+        by the ``conductivity`` parameter.
+    - the stencil reduces to ``IsotropicStencil`` if
+        (1) the fiber orientation is aligned with the grid,
+        (2) the `D_al = D_ac`, and
+        (3) `AsymmetricStencilBoundary` is set.
     """
 
     def __init__(self):
-        self.boundary = IsotropicFirstOrderBoundary()
+        self.boundary = AsymmetricStencilBoundary()
 
     def assemble_matrices(self, simulation):
         """
@@ -37,8 +39,10 @@ class AsymmetricStencil(Stencil):
 
         Returns
         -------
-        numpy.ndarray
-            The weights for isotropic diffusion in 2D.
+        scipy.sparse.csr_matrix
+            The stiffness matrix for the asymmetric stencil.
+        scipy.sparse.csr_matrix
+            The mass matrix for the asymmetric stencil.
         """
         tissue = simulation.cardiac_tissue
         model = simulation.cardiac_model
@@ -49,37 +53,170 @@ class AsymmetricStencil(Stencil):
 
         conductivity = tissue.conductivity
         conductivity *= np.ones_like(mesh, dtype=simulation.npfloat)
-        diffusion = d_model * conductivity / simulation.dr**2
+
+        diffusion = self.compute_diffusion(mesh, tissue.fibers,
+                                           tissue.D_al, tissue.D_ac)
+        diffusion *= (d_model * conductivity[..., np.newaxis, np.newaxis] /
+                      simulation.dr ** 2)
 
         stiff, mass = self.compute_weights_sparse(mesh, diffusion,
                                                   tissue.myo_indexes)
         return stiff, mass
 
     def compute_weights_sparse(self, mesh, diffusion, indexes):
-        rows, cols, weights = self.boundary.compute(mesh, indexes)
-        weights = weights.astype(diffusion.dtype)
-        weights *= 0.5 * (diffusion.flat[cols] + diffusion.flat[rows])
+        """
+        Computes the weights for the asymmetric stencil as a sparse matrix.
 
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        diffusion : numpy.ndarray
+            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        indexes : numpy.ndarray
+            The indexes of the non-empty cells in the mesh.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            The stiffness matrix for the asymmetric stencil.
+        scipy.sparse.csr_matrix
+            The mass matrix for the asymmetric stencil.
+        """
+        rows, cols, weights = self.boundary.compute_weights(mesh, diffusion,
+                                                            indexes)
+        weights = weights.astype(diffusion.dtype)
+        rows, cols = self.reindex_matrix(mesh, rows, cols, indexes)
+
+        size = len(indexes)
+        shape = (size, size)
+        K_stiff = sp.csr_matrix((weights, (rows, cols)), shape=shape)
+        M_mass = sp.diags(np.ones_like(indexes, dtype=weights.dtype),
+                          offsets=0, format='csr')
+        return K_stiff.tocsr(), M_mass.tocsr()
+
+    def reindex_matrix(self, mesh, rows, cols, indexes):
+        """
+        Reindexes the rows and columns of the sparse matrix to avoid zero
+        rows in the sparse matrix.
+
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        rows : numpy.ndarray
+            The row indices of the sparse matrix.
+        cols : numpy.ndarray
+            The column indices of the sparse matrix.
+        indexes : numpy.ndarray
+            The indexes of the non-empty cells in the mesh.
+
+        Returns
+        -------
+        numpy.ndarray
+            The reindexed row indices.
+        numpy.ndarray
+            The reindexed column indices.
+        """
         c_indexes = np.zeros(mesh.size, dtype=np.int64)
         c_indexes[indexes] = np.arange(len(indexes))
         rows = c_indexes[rows]
         cols = c_indexes[cols]
+        return rows, cols
 
-        size = len(indexes)
-        shape = (size, size)
-        K = sp.csr_matrix((weights, (rows, cols)), shape=shape)
-        row_sums = np.array(K.sum(axis=1)).ravel()
-        D = sp.diags(-row_sums, offsets=0, format='csr')
-        K_new = K + D
-        M = sp.diags(np.ones_like(row_sums), offsets=0, format='csr')
-        return K_new.tocsr(), M.tocsr()
+    def compute_diffusion(self, mesh, fibers, D_al, D_ac):
+        """
+        Computes the diffusion tensor based on fiber orientations.
+
+        Parameters
+        ----------
+        fibers : np.ndarray
+            Array representing fiber orientations.
+        D_al : float
+            Longitudinal diffusion coefficient.
+        D_ac : float
+            Cross-sectional diffusion coefficient.
+
+        Returns
+        -------
+        np.ndarray
+            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        """
+        ndim = fibers.shape[-1]
+        diffusion = np.zeros(mesh.shape + (ndim, ndim), dtype=fibers.dtype)
+        for i in range(ndim):
+            for j in range(ndim):
+                diffusion[..., i, j] = self.compute_diffusion_components(
+                    fibers, i, j, D_al, D_ac)
+        return diffusion
+
+    def compute_diffusion_components(self, fibers, i_axis, j_axis, D_al, D_ac):
+        """
+        Computes the diffusion components based on fiber orientations.
+
+        Parameters
+        ----------
+        fibers : np.ndarray
+            Array representing fiber orientations.
+        i_axis : int
+            First axis index.
+        j_axis : int
+            Second axis index.
+        D_al : float
+            Longitudinal diffusion coefficient.
+        D_ac : float
+            Cross-sectional diffusion coefficient.
+
+        Returns
+        -------
+        np.ndarray
+            Array of diffusion components based on fiber orientations
+        """
+        return (D_ac * (i_axis == j_axis) +
+                (D_al - D_ac) * fibers[..., i_axis] * fibers[..., j_axis])
 
 
-class AsymmetricFirstOrderBoundary:
+class AsymmetricStencilBoundary:
+    """
+    This class computes indexes and weights for the asymmetric stencil.
+
+    Notes
+    -----
+    Rules for handling boundaries are:
+    - If a major (directly adjacent) neighbor is invalid
+        (out of bounds or in an empty cell), flow from this neighbor is zero.
+    - If more than one minor neighbor from upper or lower side is invalid,
+        flow from these neighbors is determined only by the major component.
+    - If a minor neighbor from upper or lower side is invalid, minor component
+        is calculated using the remaining valid minor neighbors.
+
+    Diffusion components are calculated in the middle of two nodes, therefore
+    the diffusion coefficient is averaged between the corresponding nodes.
+
+    References
+    ----------
+    Bram van Es, Barry Koren, Hugo J. de Blank,
+    Finite-difference schemes for anisotropic diffusion,
+    Journal of Computational Physics,
+    Volume 272, 2014, Pages 526-549, ISSN 0021-9991,
+    https://doi.org/10.1016/j.jcp.2014.04.046.
+    """
     def __init__(self):
         pass
 
     def compute_weights(self, mesh, diffusion, indexes):
+        """
+        Computes the weights for the asymmetric stencil.
+
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        diffusion : numpy.ndarray
+            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        indexes : numpy.ndarray
+            The indexes of the non-empty cells in the mesh.
+        """
         rows, cols, weights = [], [], []
         ijk = np.array(np.unravel_index(indexes, mesh.shape))
         for i in range(mesh.ndim):

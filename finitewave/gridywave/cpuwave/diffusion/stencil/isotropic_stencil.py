@@ -5,17 +5,9 @@ from .stencil import Stencil
 
 class IsotropicStencil(Stencil):
     """
-    This class computes the weights for diffusion on a 2D using an isotropic
-    stencil. The stencil includes 5 points: the central point and the
-    four neighbors.
-
-    The method assumes weights being used in the following order:
-
-    - ``w[i, j, 0] : (i-1, j)``,
-    - ``w[i, j, 1] : (i, j-1)``,
-    - ``w[i, j, 2] : (i, j)``,
-    - ``w[i, j, 3] : (i, j+1)``,
-    - ``w[i, j, 4] : (i-1, j)``.
+    This class computes the weights for diffusion on a 2D and 3D grid
+    using an isotropic stencil. The stencil includes 4 neighbors in 2D and 6
+    neighbors in 3D.
 
     Notes
     -----
@@ -94,12 +86,12 @@ class IsotropicFirstOrderBoundary:
             left = self.is_valid_neighbor(neighbors_left, mesh, i_axis)
             right = self.is_valid_neighbor(neighbors_right, mesh, i_axis)
             left, right = self.apply_boundary_rule(left, right)
-            
+
             rows.append(indexes[left > 0])
             cols.append(np.ravel_multi_index(neighbors_left[:, left > 0],
                                              mesh.shape))
             weights.append(left[left > 0])
-            
+
             rows.append(indexes[right > 0])
             cols.append(np.ravel_multi_index(neighbors_right[:, right > 0],
                                              mesh.shape))
