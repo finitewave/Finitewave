@@ -8,8 +8,8 @@ from finitewave.elementalwave.diffusion.solver.solver import Solver
 class ImplicitEulerCGSolver(Solver):
     def __init__(self):
         self.maxiter = None
-        self.rtol = 1e-6
-        self.atol = 0
+        self.rtol = 0.
+        self.atol = 1e-6
         self.preconditioner = None
 
     def assemble_system(self, stiffness_matrix, mass_matrix, dt):
@@ -17,7 +17,7 @@ class ImplicitEulerCGSolver(Solver):
         return [a_matrix, mass_matrix]
 
     @threadpool_limits.wrap(limits=1, user_api="blas")
-    def solve(self, u, rhs, matrices):
+    def solve(self, u, rhs, indexes, matrices):
         a_matrix = matrices[0]
         mass_matrix = matrices[1]
         b = mass_matrix @ (u + rhs)

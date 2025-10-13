@@ -4,15 +4,15 @@ from tqdm import tqdm
 import numpy as np
 import numba
 
-from finitewave.gridywave.cpuwave2D.simulation.cardiac_simulation_2d import (
-    CardiacSimulation2D
+from finitewave.gridywave.cpuwave.simulation.cardiac_grid_simulation import (
+    CardiacGridSimulation
 )   
 from finitewave.elementalwave.diffusion.diffusion_model_fem import (
     DiffusionModelFEM
 )
 
 
-class CardiacSimulationFEM(CardiacSimulation2D):
+class CardiacSimulationFEM(CardiacGridSimulation):
     """
     Base class for electrophysiological models.
 

@@ -12,8 +12,8 @@ class StimVoltageCoordFEM(StimVoltage):
         self.z1 = z1
         self.z2 = z2
 
-    def stimulate(self, simulation):
-
+    def initialize(self, simulation):
+        super().initialize(simulation)
         tissue = simulation.cardiac_tissue
         mask = np.ones(tissue.coords.shape[0], dtype=bool)
         mask &= ((tissue.coords[:, 0] >= self.x1) &
@@ -22,7 +22,8 @@ class StimVoltageCoordFEM(StimVoltage):
                  (tissue.coords[:, 1] <= self.y2))
         mask &= ((tissue.coords[:, 2] >= self.z1) &
                  (tissue.coords[:, 2] <= self.z2))
+        self.mask = np.zeros_like(mask)
+        self.mask[tissue.myo_indexes] = mask[tissue.myo_indexes]
 
-        myo_indexes = simulation.cardiac_model.myo_indexes
-        mask = mask[myo_indexes]
-        simulation.diffusion_model.u[mask] = self.volt_value
+    def stimulate(self, simulation):
+        simulation.cardiac_model.u[self.mask] = self.volt_value

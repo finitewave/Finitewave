@@ -4,8 +4,12 @@ from finitewave.core.command.command_sequence import CommandSequence
 from finitewave.core.state.state_loader import StateLoader
 from finitewave.core.state.state_saver import StateSaver, StateSaverCollection
 
-from finitewave.gridywave.cpuwave2D.model.aliev_panfilov_2d import (
+from finitewave.gridywave.cpuwave.model.aliev_panfilov import (
     AlievPanfilov
+)
+
+from finitewave.gridywave.cpuwave.model.courtemanche import (
+    Courtemanche
 )
 
 from .simulation.cardiac_simulation_fem import (

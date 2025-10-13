@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvista as pv
 
-import finitewave as fw
+import finitewave.elementalwave as fw
 
 
 def load_mesh(path):
@@ -46,37 +46,43 @@ def prepace(path, stim_times, pacing_time, values, voltage_threshold):
     prepacing_tracker.write()
 
 
-# create a tissue of size 400x400 with cardiomycytes:
-path = Path(__file__).parents[2].joinpath("data", "atrial_mesh")
+# path = Path("/Users/arstanbek/Projects/fibrosis/ElementalWave/data")
+path = Path("/Users/arstanbek/Projects/fibrosis/Finitewave/examples/data/atrial_mesh")
+
 coords, elems = load_mesh(path)
+tissue = fw.CardiacTissue(coords, elems)
+# tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
 
-# prepace(path, [0, 45], 1, [1, 1], 0)
+print(tissue.mesh)
 
-state_loader = fw.StateLoader()
-state_loader.path = path.joinpath("prepacing")
+# create model object and set up parameters
+cardiac_model = fw.Courtemanche()
+# Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
+# with a visible plateau and realistic repolarization.
+# courtemanche.gkur_coeff *= 3
+cardiac_model.gkur_coeff *= 0.5
+cardiac_model.gto *= 0.5
+cardiac_model.gcal *= 0.3
 
-stim_coord = coords[len(coords) // 2]
-stim_size = 1
-stim = fw.StimVoltageElectrodesFEM(0, 1, stim_coord, stim_size)
-
-tissue = fw.CardiacTissueFEM(coords, elems)
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(stim)
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 5, 0, 10))
+# stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-model = fw.CourtemancheFEM()
-model.dt = 0.01
-model.t_max = 40
+simulation = fw.CardiacSimulation()
+simulation.dt = 0.01
+simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
-model.cardiac_tissue = tissue
-model.stim_sequence = stim_sequence
-# model.state_loader = state_loader
+simulation.cardiac_tissue = tissue
+simulation.cardiac_model = cardiac_model
+simulation.stim_sequence = stim_sequence
+# simulation.stencil = stencil
 
 # run the model:
-model.run(num_of_threads=None)
+simulation.run()
 
-u = model.u
+u = simulation.cardiac_model.u
 
 # show the potential map at the end of calculations:
 faces = np.hstack([[3, *tri] for tri in elems])

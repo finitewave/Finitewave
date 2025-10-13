@@ -46,15 +46,6 @@ class CardiacTissue(ABC):
             raise ValueError("Mesh dimension must match the tissue dimension.")
 
         self._mesh = mesh
-        self.add_boundaries()
-
-    @abstractmethod
-    def add_boundaries(self):
-        """
-        Abstract method to be implemented by subclasses for adding boundary
-        conditions to the tissue mesh.
-        """
-        pass
 
     def add_pattern(self, fibro_pattern):
         """

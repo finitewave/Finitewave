@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import pyvista as pv
-import finitewave as fw
+import finitewave.elementalwave as fw
 import matplotlib.pyplot as plt
 
 
@@ -19,17 +19,17 @@ elems = np.genfromtxt(path.joinpath("mesh.elem"),
                       usecols=[1, 2, 3],
                       dtype=int)
 
-print(coords.shape, elems.shape)
+# print(coords.shape, elems.shape)
 
-# triangle edge length
-edge_length = [np.linalg.norm(coords[elems[:, 0]] - coords[elems[:, 1]], axis=1),
-               np.linalg.norm(coords[elems[:, 1]] - coords[elems[:, 2]], axis=1),
-               np.linalg.norm(coords[elems[:, 2]] - coords[elems[:, 0]], axis=1)]
+# # triangle edge length
+# edge_length = [np.linalg.norm(coords[elems[:, 0]] - coords[elems[:, 1]], axis=1),
+#                np.linalg.norm(coords[elems[:, 1]] - coords[elems[:, 2]], axis=1),
+#                np.linalg.norm(coords[elems[:, 2]] - coords[elems[:, 0]], axis=1)]
 
-edge_length = np.concatenate(edge_length)
+# edge_length = np.concatenate(edge_length)
 
-plt.hist(edge_length)
-plt.show()
+# plt.hist(edge_length)
+# plt.show()
 
 # stim_coords = coords[np.random.choice(coords.shape[0], 1, replace=False)]
 

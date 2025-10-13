@@ -3,7 +3,7 @@ from finitewave.core.tissue.cardiac_tissue import CardiacTissue
 
 
 class CardiacTissueFEM(CardiacTissue):
-    def __init__(self, coords, elems):
+    def __init__(self, coords, elems, elem_type="tri"):
         super().__init__()
         self.coords = coords
         self.elems = elems
@@ -11,6 +11,7 @@ class CardiacTissueFEM(CardiacTissue):
         self.mesh_elems = np.ones(self.elems.shape[0])
         self.conductivity = 1.
         self.fibers = None
+        self.meta["shape"] = elem_type
 
     @property
     def coords(self):
@@ -29,9 +30,6 @@ class CardiacTissueFEM(CardiacTissue):
     @mesh.setter
     def mesh(self, mesh):
         self._mesh = mesh
-
-    def add_boundaries(self):
-        pass
 
     @property
     def myo_indexes(self):
