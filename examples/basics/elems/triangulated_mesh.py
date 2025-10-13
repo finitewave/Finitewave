@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import finitewave.elementalwave as fw
+import finitewave as fw
 
 
 def build_triangular_mesh(n, m, x_range=(0, 1), y_range=(0, 1)):
@@ -30,15 +30,15 @@ size = 50
 
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
 
-tissue = fw.CardiacTissue(coords, elems)
-# tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
+tissue = fw.CardiacTissueElements(coords, elems)
+tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
 
 print(tissue.mesh)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, size, 0, 1))
-# stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
@@ -46,7 +46,7 @@ simulation.dt = 0.01
 simulation.t_max = 100
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.Courtemanche()
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 # simulation.stencil = stencil
 
@@ -56,10 +56,8 @@ simulation.run()
 u = simulation.cardiac_model.u
 
 plt.figure()
-plt.plot(simulation.diffusion_model.solver.num_iterations)
+plt.plot(simulation.solver.num_iterations)
 plt.show()
-
-print(np.sum(simulation.diffusion_model.solver.num_iterations))
 
 # show the potential map at the end of calculations:
 plt.figure()

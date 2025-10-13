@@ -1,1 +1,1 @@
-from .cardiac_simulation import CardiacSimulation
+from .cardiac_simulation_base import CardiacSimulationBase

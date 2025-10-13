@@ -1,1 +1,0 @@
-from .cardiac_grid_simulation import CardiacGridSimulation

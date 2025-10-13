@@ -77,11 +77,11 @@ print(coords.shape, elems.shape)
 tissue = fw.CardiacTissueFEM(coords, elems)
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoordFEM(0, 1,
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
                                                0, size_x[1],
                                                0, 1,
                                                0, size_z[1]))
-stim_sequence.add_stim(fw.StimVoltageCoordFEM(45, 1,
+stim_sequence.add_stim(fw.StimVoltageCoord(45, 1,
                                                0, size_x[1]/2,
                                                0, size_y[1],
                                                0, size_z[1]))

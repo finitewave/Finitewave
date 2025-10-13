@@ -29,7 +29,7 @@ Execution:
 import numpy as np
 import matplotlib.pyplot as plt
 
-import finitewave.gridywave as fw
+import finitewave as fw
 
 # create a tissue:
 n = 400
@@ -40,7 +40,7 @@ tissue = fw.CardiacTissueGrid([n, m])
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 5, 0, m))
 
 action_pot_tracker = fw.ActionPotentialGridTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
@@ -51,7 +51,7 @@ action_pot_tracker.step = 1
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
 simulation.t_max = 300
