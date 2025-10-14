@@ -106,16 +106,12 @@ class StimVoltageCoord(StimVoltage):
     def initialize(self, simulation):
         super().initialize(simulation)
 
-        if simulation.cardiac_tissue.meta["type"] == "Grid":
-            coords = np.argwhere(simulation.cardiac_tissue.mesh > 0)
-
-        elif simulation.cardiac_tissue.meta["type"] == "Elements":
-            coords = simulation.cardiac_tissue.coords
-        else:
-            raise ValueError("Unsupported cardiac tissue type.")
+        myo_indexes = simulation.cardiac_model.myo_indexes
+        mesh_indexes = simulation.cardiac_model.mesh_indexes
+        coords = simulation.cardiac_tissue.coords[mesh_indexes]
 
         mask = np.zeros(coords.shape[0], dtype=bool)
-        mask[simulation.cardiac_tissue.myo_indexes] = True
+        mask[myo_indexes] = True
         for i_axis in range(coords.shape[1]):
             mask &= ((coords[:, i_axis] >= self._range[2 * i_axis]) &
                      (coords[:, i_axis] <= self._range[2 * i_axis + 1]))

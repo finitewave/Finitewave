@@ -1,6 +1,6 @@
 from numba import njit, prange
 
-from .cardiac_grid_model import CardiacGridModel
+from .cardiac_model import CardiacModel
 from ._registry import load_ops
 from ._jitwrap import wrap_calc
 
@@ -41,7 +41,7 @@ calc_iup = jit_ops["calc_iup"]
 calc_iupleak = jit_ops["calc_iupleak"]
 
 
-class Courtemanche(CardiacGridModel):
+class Courtemanche(CardiacModel):
     """
     A class to represent the Courtemanche cardiac model.
 

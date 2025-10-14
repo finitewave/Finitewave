@@ -1,1 +1,3 @@
 from .stim_voltage_coord import StimVoltageCoord
+from .stim_voltage_electrodes import StimVoltageElectrodes
+from .stim_voltage_matrix import StimVoltageMatrix

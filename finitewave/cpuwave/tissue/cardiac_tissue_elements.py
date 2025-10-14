@@ -26,6 +26,14 @@ class CardiacTissueElements(CardiacTissue):
         self._coords = coords
 
     @property
+    def myo_coords(self):
+        return self.coords[self.myo_indexes]
+
+    @property
+    def myo_elems(self):
+        return self.elems[self.myo_elems_indexes]
+
+    @property
     def mesh(self):
         return self._mesh
 
@@ -44,11 +52,3 @@ class CardiacTissueElements(CardiacTissue):
         myo_vertex_mask = self.mesh == 1
         myo_elems_mask &= np.all(myo_vertex_mask[self.elems], axis=1)
         return np.flatnonzero(myo_elems_mask)
-
-    @property
-    def myo_elems(self):
-        return self.elems[self.myo_elems_indexes]
-
-    @property
-    def myo_coords(self):
-        return self.coords[self.myo_indexes]

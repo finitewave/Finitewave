@@ -1,9 +1,9 @@
 import numpy as np
 
-from finitewave.core.model.cardiac_model import CardiacModel
+from finitewave.core.model.cardiac_model_base import CardiacModelBase
 
 
-class CardiacGridModel(CardiacModel):
+class CardiacModel(CardiacModelBase):
     """
     Base class for cardiac grid models.
 
@@ -14,11 +14,24 @@ class CardiacGridModel(CardiacModel):
     memory_save : bool
         Whether to save memory by only storing the state variables at the
         tissue indexes (``mesh > 0``).
+    D_model : float
+        Model-specific diffusion coefficient.
+    u : np.ndarray
+        Array representing the action potential (mV) across the tissue.
+    rhs : np.ndarray
+        Array representing the sum of the ionic currents multiplied by dt.
+    myo_indexes : np.ndarray
+        Array of myocyte indices corresponding to cardiac model arrays.
+        If memory saving is enabled, the indexes correspond to
+        ``mesh.flat[mesh_indexes] == 1``.
+    mesh_indexes : np.ndarray
+        Array of indices corresponding to the full tissue mesh.
+        State variables and rhs correspond to mesh.flat[mesh_indexes]
     """
 
     def __init__(self, memory_save=False):
         """
-        Initializes the CardiacGridModel instance with default parameters.
+        Initializes the CardiacModel instance with default parameters.
 
         Parameters
         ----------
@@ -75,7 +88,8 @@ class CardiacGridModel(CardiacModel):
         """
         if self.memory_save:
             self.myo_indexes = cardiac_tissue.myo_on_tissue_indexes
-            self.tissue_indexes = cardiac_tissue.tissue_indexes
+            self.mesh_indexes = cardiac_tissue.tissue_indexes
             return
 
         self.myo_indexes = cardiac_tissue.myo_indexes
+        self.mesh_indexes = np.arange(cardiac_tissue.mesh.size)

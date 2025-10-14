@@ -1,7 +1,8 @@
+import numpy as np
 from finitewave.core.stimulation.stim_voltage import StimVoltage
 
 
-class StimVoltageMatrixFDM(StimVoltage):
+class StimVoltageMatrix(StimVoltage):
     """
     A class that applies a voltage stimulus to a 2D cardiac tissue model
     according to a specified matrix.
@@ -25,8 +26,21 @@ class StimVoltageMatrixFDM(StimVoltage):
 
     def initialize(self, simulation):
         super().initialize(simulation)
+        if simulation.cardiac_model.memory_save:
+            raise NotImplementedError(
+                "StimVoltageMatrix is not implemented for memory_save mode."
+            )
+
+        if simulation.cardiac_model.u.size != simulation.matrix.size:
+            raise ValueError(
+                "The size of the stim matrix does not match the size of the" +
+                " cardiac model."
+            )
+
         self.simulation = simulation
-        self.mask = (self.matrix > 0) & (simulation.cardiac_tissue.mesh == 1)
+        mask = np.zeros_like(simulation.matrix, dtype=bool)
+        mask.flat[simulation.cardiac_model.myo_indexes] = True
+        self.indexes = np.flatnonzero(mask)
 
     def stimulate(self, simulation):
         """
@@ -47,4 +61,4 @@ class StimVoltageMatrixFDM(StimVoltage):
         where the corresponding value in ``matrix`` is greater than 0,
         and the ``model.cardiac_tissue.mesh`` value is 1.
         """
-        simulation.diffusion_model.u[self.mask] = self.volt_value
+        simulation.cardiac_model.u[self.indexes] = self.volt_value

@@ -31,7 +31,7 @@ size = 50
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
 
 tissue = fw.CardiacTissueElements(coords, elems)
-tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
+# tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
 
 print(tissue.mesh)
 

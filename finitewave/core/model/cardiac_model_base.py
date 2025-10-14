@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import copy
 
 
-class CardiacModel(ABC):
+class CardiacModelBase(ABC):
     """
     Base class for electrophysiological models.
 

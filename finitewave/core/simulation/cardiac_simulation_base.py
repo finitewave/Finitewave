@@ -68,6 +68,14 @@ class CardiacSimulationBase:
         """
         Initializes the model for simulation. Sets up arrays, computes weights,
         and initializes stimuli, trackers, and commands.
+
+        Note
+        ----
+        The order of initialization is important. The cardiac_model must be
+        initialized before the diffusion model and solver, as they depend on
+        the state variables of the cardiac model. Similarly, stimuli and
+        trackers should be initialized after the models are set up, as they
+        may depend on the state of the models.
         """
         self.step = 0
         self.t = 0

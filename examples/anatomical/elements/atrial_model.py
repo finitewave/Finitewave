@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvista as pv
 
-import finitewave.elementalwave as fw
+import finitewave as fw
 
 
 def load_mesh(path):
@@ -50,7 +50,7 @@ def prepace(path, stim_times, pacing_time, values, voltage_threshold):
 path = Path("/Users/arstanbek/Projects/fibrosis/Finitewave/examples/data/atrial_mesh")
 
 coords, elems = load_mesh(path)
-tissue = fw.CardiacTissue(coords, elems)
+tissue = fw.CardiacTissueElements(coords, elems)
 # tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
 
 print(tissue.mesh)
@@ -64,15 +64,16 @@ cardiac_model.gkur_coeff *= 0.5
 cardiac_model.gto *= 0.5
 cardiac_model.gcal *= 0.3
 
+stim_coords = coords[1000:1001]
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 5, 0, 10))
+stim_sequence.add_stim(fw.StimVoltageElectrodes(0, 1, stim_coords, 1))
 # stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 10
+simulation.t_max = 500
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = cardiac_model

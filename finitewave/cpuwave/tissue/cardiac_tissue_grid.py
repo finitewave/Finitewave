@@ -34,6 +34,42 @@ class CardiacTissueGrid(CardiacTissue):
         self.fibers = None
 
     @property
+    def coords(self):
+        """
+        Gets the coordinates of all points in the tissue mesh.
+
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates of all points in the tissue mesh.
+        """
+        return np.argwhere(self.mesh >= 0)
+
+    @property
+    def myo_coords(self):
+        """
+        Gets the coordinates of the myocytes in the tissue mesh.
+
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates of the myocytes in the tissue mesh.
+        """
+        return np.argwhere(self.mesh == 1)
+
+    @property
+    def tissue_coords(self):
+        """
+        Gets the coordinates of the tissue in the tissue mesh.
+
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates of the tissue in the tissue mesh.
+        """
+        return np.argwhere(self.mesh > 0)
+
+    @property
     def myo_indexes(self):
         """
         Gets the flat indices of the myocytes in the tissue mesh.
@@ -46,6 +82,19 @@ class CardiacTissueGrid(CardiacTissue):
         return np.flatnonzero(self.mesh == 1)
 
     @property
+    def myo_on_tissue_indexes(self):
+        """
+        Gets the flat indices of the myocytes on the ``tissue_indexes``.
+
+        Returns
+        -------
+        numpy.ndarray
+            The indices of the ``tissue_indexes`` where mesh value is ``1``.
+        """
+        mesh = self.mesh[self.mesh > 0]
+        return np.flatnonzero(mesh == 1)
+
+    @property
     def tissue_indexes(self):
         """
         Gets the flat indices of the tissue in the tissue mesh.
@@ -56,17 +105,3 @@ class CardiacTissueGrid(CardiacTissue):
             The flat indices of the ``mesh`` where value is not ``0``.
         """
         return np.flatnonzero(self.mesh > 0)
-
-    @property
-    def myo_on_tissue_indexes(self):
-        """
-        Gets the flat indices of the myocytes on the ``tissue_indexes``.
-
-        Returns
-        -------
-        numpy.ndarray
-            The indices of the ``tissue_indexes`` where mesh value is ``1``.
-        """
-        mesh = self.mesh.flat[self.tissue_indexes]
-        indexes = np.arange(len(mesh))
-        return indexes[mesh == 1]

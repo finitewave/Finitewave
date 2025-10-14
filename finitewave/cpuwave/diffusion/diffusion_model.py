@@ -44,4 +44,4 @@ class DiffusionModel(DiffusionModelBase):
         if self.simulation.cardiac_tissue.elems.shape[1] == 4:
             return TetrahedralAssembler()
 
-        raise ValueError
+        raise ValueError("Unknown element type")

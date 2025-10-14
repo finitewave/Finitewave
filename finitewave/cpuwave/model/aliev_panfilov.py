@@ -2,7 +2,7 @@ import numpy as np
 import jax
 from numba import njit, prange
 
-from .cardiac_grid_model import CardiacGridModel
+from .cardiac_model import CardiacModel
 from ._registry import load_ops
 from ._jitwrap import wrap_calc
 
@@ -13,7 +13,7 @@ calc_dv = jit_ops["calc_dv"]
 calc_rhs = jit_ops["calc_rhs"]
 
 
-class AlievPanfilov(CardiacGridModel):
+class AlievPanfilov(CardiacModel):
     """
     Implementation of the Aliev–Panfilov model of cardiac excitation for
     regular grids.
