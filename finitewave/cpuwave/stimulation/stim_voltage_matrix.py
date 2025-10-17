@@ -26,21 +26,29 @@ class StimVoltageMatrix(StimVoltage):
 
     def initialize(self, simulation):
         super().initialize(simulation)
-        if simulation.cardiac_model.memory_save:
-            raise NotImplementedError(
-                "StimVoltageMatrix is not implemented for memory_save mode."
-            )
+        # if simulation.cardiac_model.memory_save:
+        #     raise NotImplementedError(
+        #         "StimVoltageMatrix is not implemented for memory_save mode."
+        #     )
 
-        if simulation.cardiac_model.u.size != simulation.matrix.size:
-            raise ValueError(
-                "The size of the stim matrix does not match the size of the" +
-                " cardiac model."
-            )
+        # if simulation.cardiac_model.u.size != self.matrix.size:
+        #     raise ValueError(
+        #         "The size of the stim matrix does not match the size of the" +
+        #         " cardiac model."
+        #     )
 
-        self.simulation = simulation
-        mask = np.zeros_like(simulation.matrix, dtype=bool)
-        mask.flat[simulation.cardiac_model.myo_indexes] = True
-        self.indexes = np.flatnonzero(mask)
+        mesh_indexes = simulation.cardiac_model.mesh_indexes
+        mesh_mask = self.matrix.flat[mesh_indexes] > 0
+
+        myo_indexes = simulation.cardiac_model.myo_indexes
+        ind_mask = myo_indexes[mesh_mask[myo_indexes] > 0]
+        self.indexes = ind_mask
+
+        # self.simulation = simulation
+        # mask = np.zeros_like(self.matrix, dtype=bool)
+        # mask.flat[simulation.cardiac_model.myo_indexes] = True
+        # mask &= self.matrix > 0
+        # self.indexes = np.flatnonzero(mask)
 
     def stimulate(self, simulation):
         """
@@ -61,4 +69,4 @@ class StimVoltageMatrix(StimVoltage):
         where the corresponding value in ``matrix`` is greater than 0,
         and the ``model.cardiac_tissue.mesh`` value is 1.
         """
-        simulation.cardiac_model.u[self.indexes] = self.volt_value
+        simulation.cardiac_model.u.flat[self.indexes] = self.volt_value

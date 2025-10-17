@@ -19,6 +19,7 @@ elems = np.genfromtxt(path.joinpath("mesh.elem"),
                       usecols=[1, 2, 3],
                       dtype=int)
 
+
 # print(coords.shape, elems.shape)
 
 # # triangle edge length

@@ -57,7 +57,7 @@ into an observable ECG trace.
 import matplotlib.pyplot as plt
 import numpy as np
 
-import finitewave.gridywave as fw
+import finitewave as fw
 
 # set up the tissue:
 n = 100
@@ -73,28 +73,29 @@ stim_sequence = fw.StimSequence()
 
 for i in range(10):
     stim_time = i * 300
-    stim_sequence.add_stim(fw.StimVoltageGridCoord(stim_time, 1,
+    stim_sequence.add_stim(fw.StimVoltageCoord(stim_time, 1,
                                                    0, n,
+                                                   0, 5,
                                                    0, 5))
 
 tracker_sequence = fw.TrackerSequence()
 # create an ECG tracker:
 ecg_tracker = fw.ECGGridTracker()
 ecg_tracker.start_time = 5
-ecg_tracker.step = 100
+ecg_tracker.step = 10
 ecg_tracker.measure_coords = np.array([[n//2, n//2, 20],
                                        [10, n//2, 20],
                                        [n//2, 3*n//4, 20],])
 
 tracker_sequence.add_tracker(ecg_tracker)
 
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 1000
+simulation.t_max = 100
 # add the tissue and the stim parameters to the model object:
-simulation.cardiac_tissue = fw.CardiacTissueGrid([n, n])
-simulation.cardiac_model = cardiac_model
+simulation.cardiac_tissue = fw.CardiacTissueGrid([n, n, 5])
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 simulation.tracker_sequence = tracker_sequence
 
@@ -103,7 +104,7 @@ simulation.run()
 colors = ['tab:blue', 'tab:orange', 'tab:green']
 
 fig, axs = plt.subplots(ncols=2)
-axs[0].imshow(simulation.diffusion_model.u)
+axs[0].imshow(simulation.cardiac_model.u[:, :, 3])
 for i, y in enumerate(ecg_tracker.output.T):
     coord = ecg_tracker.measure_coords[i]
     axs[0].scatter(coord[1], coord[0], color=colors[i])

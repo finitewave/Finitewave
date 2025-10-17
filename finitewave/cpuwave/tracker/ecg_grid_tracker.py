@@ -47,6 +47,18 @@ class ECGGridTracker(Tracker):
         self.measure_coords = np.atleast_2d(self.measure_coords)
         self.ecg = []
 
+        myo_indexes = self.simulation.cardiac_model.myo_indexes
+        mesh_indexes = self.simulation.cardiac_model.mesh_indexes
+
+        myo_indexes_on_mesh = mesh_indexes[myo_indexes]
+
+        self.myo_coords = self.unravel_index(
+            myo_indexes_on_mesh, self.simulation.cardiac_tissue.mesh.shape)
+
+        self.myo_indexes = np.zeros_like(self.simulation.cardiac_model.u,
+                                         dtype=bool)
+        self.myo_indexes[myo_indexes] = True
+
     def calc_ecg(self):
         """
         Calculate the ECG signal at the measurement points.
@@ -56,17 +68,17 @@ class ECGGridTracker(Tracker):
         np.ndarray
             The computed ECG signal.
         """
-        u = self.simulation.diffusion_model.u
-        u_prev = self.simulation.diffusion_model.u_new
-        rhs = self.simulation.diffusion_model.rhs
+        u = self.simulation.solver.u
+        u_prev = self.simulation.solver.u_new
+        rhs = self.simulation.solver.rhs
         dt = self.simulation.dt
         dr = self.simulation.dr
 
-        indexes = self.simulation.diffusion_model.myo_indexes
-        i, j, k = self.unravel_index(indexes, u.shape)
+        # indexes = self.simulation.cardiac_model.myo_indexes
+        # i, j, k = self.unravel_index(indexes, u.shape)
 
-        tr_current = (u - u_prev - rhs).flat[indexes] / dt
-        ecg = calc_ecg(tr_current, self.measure_coords, i, j, k, dr,
+        tr_current = (u - u_prev - rhs).flat[self.myo_indexes] / dt
+        ecg = calc_ecg(tr_current, self.measure_coords, *self.myo_coords, dr,
                        self.distance_power)
         return ecg
 
@@ -108,7 +120,7 @@ class ECGGridTracker(Tracker):
         np.save(Path(self.path, self.file_name), self.output)
 
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def calc_ecg(tr_current, coords, i, j, k, dr, distance_power=1):
 
     n_c = len(coords)
@@ -116,7 +128,10 @@ def calc_ecg(tr_current, coords, i, j, k, dr, distance_power=1):
 
     for c in prange(n_c):
         x, y, z = coords[c]
-        d = np.sqrt((x - i)**2 + (y - j)**2 + (z - k)**2) ** distance_power
+        dx = x - i
+        dy = y - j
+        dz = z - k
+        d = np.sqrt(dx * dx + dy * dy + dz * dz) ** distance_power
         ecg[c] = np.sum(tr_current / (d * dr))
 
     return ecg
