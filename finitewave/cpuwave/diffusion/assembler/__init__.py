@@ -1,2 +1,3 @@
 from .triangle_assembler import TriangleAssembler
 from .tetrahedral_assembler import TetrahedralAssembler
+from .quadrilateral_assembler import QuadrilateralAssembler

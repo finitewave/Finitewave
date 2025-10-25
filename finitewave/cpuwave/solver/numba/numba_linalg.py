@@ -3,6 +3,55 @@ from numba import njit, prange
 
 
 @njit(parallel=True, fastmath=True, cache=True)
+def forward_euler(indptr, indices, data, u, rhs, mass_inv, u_new, indexes, dt):
+    """
+    Performs the Forward Euler step:
+    y = u + M^{-1} * (A * u + rhs)
+
+    Parameters
+    ----------
+    indptr : np.ndarray
+        CSR index pointer array.
+    indices : np.ndarray
+        CSR indices array.
+    data : np.ndarray
+        CSR data array.
+    u : np.ndarray
+        Current solution vector.
+    rhs : np.ndarray
+        Right-hand side vector.
+    mass : np.ndarray
+        Inverse of the mass matrix diagonal.
+    y : np.ndarray
+        Output solution vector.
+    indexes : np.ndarray
+        Array of indexes where the solution is defined.
+
+    Returns
+    -------
+    y : np.ndarray
+        Updated solution vector after the Forward Euler step.
+    """
+    n_rows = indptr.size - 1
+
+    for i in prange(n_rows):
+        start, end = indptr[i], indptr[i+1]
+        if start == end:
+            continue
+        tr_curr = 0.0
+        for j in range(start, end):
+            jj = indices[j]
+            jj = indexes[jj]
+            tr_curr += data[j] * u.flat[jj]
+
+        ii = indexes[i]
+        u_new.flat[ii] = u.flat[ii] + dt * (mass_inv.flat[ii] * (-tr_curr) +
+                                            rhs.flat[ii])
+
+    return u_new
+
+
+@njit(parallel=True, fastmath=True, cache=True)
 def matvec_numba(indptr, indices, data, x, y, indexes):
     n = indptr.shape[0] - 1
     for i in prange(n):
@@ -17,26 +66,6 @@ def matvec_numba(indptr, indices, data, x, y, indexes):
 
         ii = indexes[i]
         y.flat[ii] = y_i
-    return y
-
-
-@njit(parallel=True, fastmath=True, cache=True)
-def matvec_and_add_numba(indptr, indices, data, x0, x1, y, indexes):
-    n_rows = indptr.size - 1
-
-    for i in prange(n_rows):
-        start, end = indptr[i], indptr[i+1]
-        if start == end:
-            continue
-        acc = 0.0
-        for j in range(start, end):
-            jj = indices[j]
-            jj = indexes[jj]
-            acc += data[j] * x0.flat[jj]
-
-        ii = indexes[i]
-        y.flat[ii] = acc + x1.flat[ii]
-
     return y
 
 

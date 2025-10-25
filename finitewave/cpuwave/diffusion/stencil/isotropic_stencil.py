@@ -62,7 +62,7 @@ class IsotropicStencil(Stencil):
         K = sp.csr_matrix((weights, (rows, cols)), shape=shape)
         row_sums = np.array(K.sum(axis=1)).ravel()
         D = sp.diags(-row_sums, offsets=0, format='csr')
-        K_new = K + D
+        K_new = - (K + D)
         M = sp.diags(np.ones_like(row_sums), offsets=0, format='csr')
         return K_new.tocsr(), M.tocsr()
 

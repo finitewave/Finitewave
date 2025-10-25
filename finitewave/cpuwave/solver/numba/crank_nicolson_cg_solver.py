@@ -32,7 +32,7 @@ class CrankNicolsonCGSolver(Solver):
         dt = self.simulation.dt
         self.a_lhs_matrix = mass + 0.5 * dt * stiff
         self.a_rhs_matrix = mass - 0.5 * dt * stiff
-        self.mass_matrix = mass
+        self.mass_matrix = dt * mass
 
     def run(self):
         self.u = self.simulation.cardiac_model.u

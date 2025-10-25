@@ -236,5 +236,5 @@ def ionic_kernel(u, rhs, indexes, dt,
         carel.flat[ii] += dt * calc_dcarel(carel.flat[ii], itr,
                                            irel.flat[ii], csqnmax, kmcsqn)
 
-        rhs.flat[ii] = dt*(-calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical,
-                                     ipca, inak, inaca, ibna, ibca))
+        rhs.flat[ii] = (- calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical,
+                                   ipca, inak, inaca, ibna, ibca))

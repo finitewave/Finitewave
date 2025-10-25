@@ -45,13 +45,13 @@ showing how the excitation wave propagates in the anisotropic medium.
 import matplotlib.pyplot as plt
 import numpy as np
 
-import finitewave.gridywave as fw
+import finitewave as fw
 
 # number of nodes on the side
 n = 400
 # fiber orientation angle
 tissue = fw.CardiacTissueGrid([n, n])
-alpha = 0.25 * np.pi * 2
+alpha = np.pi / 3
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, n])
 # add fibers orientation vectors
@@ -59,32 +59,20 @@ tissue.fibers = np.zeros([n, n, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
 tissue.fibers[:, :, 1] = np.sin(alpha)
 
-# tissue.mesh[np.random.rand(n, n) < 0.2] = 2  # introduce some inexcitable regions
-
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageGridCoord(time=0, volt_value=1,
-                                               x_min=n//2 - 3, x_max=n//2 + 3,
-                                               y_min=n//2 - 3, y_max=n//2 + 3))
+stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
+                                           x_min=n//2 - 3, x_max=n//2 + 3,
+                                           y_min=n//2 - 3, y_max=n//2 + 3))
 
-action_pot_tracker = fw.ActionPotentialGridTracker()
-# to specify the mesh node under the measuring - use the cell_ind field:
-# eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[50, 3]]
-action_pot_tracker.step = 1
-
-tracker_sequence = fw.TrackerSequence()
-tracker_sequence.add_tracker(action_pot_tracker)
-
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 50
+simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
-simulation.tracker_sequence = tracker_sequence
 
 # run the model:
 simulation.run()

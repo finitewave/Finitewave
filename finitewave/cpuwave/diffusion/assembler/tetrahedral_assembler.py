@@ -1,9 +1,9 @@
 
 import numpy as np
-from .assembler import Assembler
+from .element_assembler import ElementAssembler
 
 
-class TetrahedralAssembler(Assembler):
+class TetrahedralAssembler(ElementAssembler):
     def __init__(self):
         super().__init__()
         self.mass_coef = 20
@@ -14,15 +14,16 @@ class TetrahedralAssembler(Assembler):
         p2 = coords[elems[:, 2]]
         p3 = coords[elems[:, 3]]
 
-        v0 = p1-p0
-        v1 = p2-p0
-        v2 = p3-p0
+        v0 = p1 - p0
+        v1 = p2 - p0
+        v2 = p3 - p0
 
-        cross = np.cross(v1, v2)
-        dot = np.sum(v0 * cross, axis=1)
-        volumes = np.abs(dot) / 6
+        # cross = np.cross(v1, v2)
+        # dot = np.sum(v0 * cross, axis=1)
+        # volumes = np.abs(dot) / 6
 
         B = np.stack([v0, v1, v2], axis=2)
+        volumes = np.abs(np.linalg.det(B)) / 6.0
         B_inv = np.linalg.inv(B)
         grad_1_to_3 = B_inv
         grad_0 = -np.sum(B_inv, axis=1)

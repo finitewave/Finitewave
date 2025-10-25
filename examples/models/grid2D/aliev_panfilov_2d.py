@@ -54,7 +54,7 @@ tracker_sequence.add_tracker(action_pot_tracker)
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 300
+simulation.t_max = 20
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()

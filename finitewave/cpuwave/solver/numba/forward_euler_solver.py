@@ -1,4 +1,5 @@
-from .numba_linalg import matvec_and_add_numba
+from scipy import sparse
+from .numba_linalg import forward_euler
 from ..solver import Solver
 
 
@@ -9,6 +10,7 @@ class ForwardEulerSolver(Solver):
         self.u = None
         self.rhs = None
         self.myo_indexes = None
+        self.num_iterations = []
 
     def initialize(self, simulation):
         self.simulation = simulation
@@ -34,17 +36,21 @@ class ForwardEulerSolver(Solver):
             Time step for the simulation.
         """
         stiff, mass = self.simulation.diffusion_model.weights
-        dt = self.simulation.dt
-        self.a_matrix = mass + dt * stiff
+        mass_lumped = mass.sum(axis=1).A.ravel()
+        self.mass_inv = 1 / mass_lumped
+        # mass_inv = sparse.diags(mass_lumped, offsets=0, format='csr')
+        # self.a_matrix = dt * stiff + sparse.eye(mass.shape[0], format='csr')
+        self.stiff = stiff
 
     def run(self):
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
-        matvec_and_add_numba(self.a_matrix.indptr, self.a_matrix.indices,
-                             self.a_matrix.data, self.u, self.rhs, self.u_new,
-                             self.myo_indexes)
+        forward_euler(self.stiff.indptr, self.stiff.indices,
+                      self.stiff.data, self.u, self.rhs, self.mass_inv,
+                      self.u_new, self.myo_indexes, self.simulation.dt)
 
         self.u, self.u_new = self.u_new, self.u
         self.simulation.cardiac_model.u = self.u
+        self.num_iterations.append(1)

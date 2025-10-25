@@ -4,6 +4,7 @@ from .stencil.isotropic_stencil import IsotropicStencil
 from .stencil.anisotropic_stencil import AnisotropicStencil
 from .assembler.triangle_assembler import TriangleAssembler
 from .assembler.tetrahedral_assembler import TetrahedralAssembler
+from .assembler.quadrilateral_assembler import QuadrilateralAssembler
 
 
 class DiffusionModel(DiffusionModelBase):
@@ -38,10 +39,13 @@ class DiffusionModel(DiffusionModelBase):
         return AnisotropicStencil()
 
     def _default_assembler(self):
-        if self.simulation.cardiac_tissue.elems.shape[1] == 3:
+        if self.simulation.cardiac_tissue.meta['shape'] == 'Triangle':
             return TriangleAssembler()
 
-        if self.simulation.cardiac_tissue.elems.shape[1] == 4:
+        if self.simulation.cardiac_tissue.meta['shape'] == 'Tetrahedral':
             return TetrahedralAssembler()
+
+        if self.simulation.cardiac_tissue.meta['shape'] == 'Quadrilateral':
+            return QuadrilateralAssembler()
 
         raise ValueError("Unknown element type")

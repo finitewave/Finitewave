@@ -22,7 +22,7 @@ class CardiacTissueElements(CardiacTissue):
     @coords.setter
     def coords(self, coords):
         if coords.shape[1] == 2:
-            coords = np.hstack([coords, np.zeros(coords.shape[0])])
+            coords = np.hstack([coords, np.zeros((coords.shape[0], 1))])
         self._coords = coords
 
     @property

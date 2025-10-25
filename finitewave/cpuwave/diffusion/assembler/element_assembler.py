@@ -3,10 +3,9 @@ from scipy import sparse
 from numba import njit, prange
 
 
-class Assembler:
+class ElementAssembler:
     def __init__(self):
-        super().__init__()
-        self.mass_coef = None
+        pass
 
     def assemble_matrices(self, simulation):
         tissue = simulation.cardiac_tissue
@@ -21,7 +20,7 @@ class Assembler:
 
         volumes, grads = self.volumes_and_grads(coords, elems)
         stiffness_matrix, mass_matrix = self.stiffness_and_mass_matrix(
-            coords, elems, volumes, grads, diffusion, self.mass_coef
+            coords, elems, volumes, grads, diffusion, self.elem_mass
         )
         return stiffness_matrix, mass_matrix
 
@@ -49,12 +48,12 @@ class Assembler:
         return new_indexes[elems]
 
     def stiffness_and_mass_matrix(self, coords, elems, volumes, grads,
-                                  diffusion, mass_coef):
+                                  diffusion, elem_mass):
         # TODO: Lumped M
         shape = (coords.shape[0], coords.shape[0])
         rows, cols, stiff, mass = stiffness_and_mass_matrix(elems, volumes,
                                                             grads, diffusion,
-                                                            mass_coef)
+                                                            elem_mass)
         stiffness_matrix = sparse.coo_matrix((stiff, (rows, cols)),
                                              shape=shape)
         mass_matrix = sparse.coo_matrix((mass, (rows, cols)), shape=shape)
@@ -62,15 +61,12 @@ class Assembler:
 
 
 @njit(parallel=True)
-def stiffness_and_mass_matrix(elems, volumes, grads, diffusion, mass_coef):
+def stiffness_and_mass_matrix(elems, volumes, grads, diffusion, elem_mass):
     n_elems, n_points = elems.shape
     rows = np.zeros(n_elems * n_points ** 2, dtype=elems.dtype)
     cols = np.zeros_like(rows)
     stiff_data = np.zeros_like(rows, dtype=diffusion.dtype)
     mass_data = np.zeros_like(rows, dtype=diffusion.dtype)
-
-    Me = (1 / mass_coef) * (np.ones((n_points, n_points)) +
-                            np.eye(n_points))
 
     for e in prange(n_elems):
         for i in range(n_points):
@@ -82,6 +78,6 @@ def stiffness_and_mass_matrix(elems, volumes, grads, diffusion, mass_coef):
                                     diffusion[e] @
                                     grads[e, j, :])
                 stiff_data[ind] = val
-                mass_data[ind] = volumes[e] * Me[i, j]
+                mass_data[ind] = volumes[e] * elem_mass[i, j]
 
     return rows, cols, stiff_data, mass_data

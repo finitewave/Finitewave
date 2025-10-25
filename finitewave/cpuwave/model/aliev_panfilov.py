@@ -137,7 +137,7 @@ def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2):
     for i in prange(len(indexes)):
         ii = indexes[i]
         v.flat[ii] += dt * calc_dv(v.flat[ii], u.flat[ii], a, k, eps, mu1, mu2)
-        rhs.flat[ii] = dt * calc_rhs(u.flat[ii], v.flat[ii], a, k)
+        rhs.flat[ii] = calc_rhs(u.flat[ii], v.flat[ii], a, k)
 
 
 # @jax.jit

@@ -32,7 +32,7 @@ class BackwardEulerCGSolver(Solver):
 
     def run(self):
         self.u = (self.simulation.cardiac_model.u +
-                  self.simulation.cardiac_model.rhs)
+                  self.simulation.dt * self.simulation.cardiac_model.rhs)
         self.b = matvec_numba(self.mass_matrix.indptr,
                               self.mass_matrix.indices,
                               self.mass_matrix.data, self.u, self.b,
