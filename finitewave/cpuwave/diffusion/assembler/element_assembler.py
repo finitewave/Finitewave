@@ -5,7 +5,7 @@ from numba import njit, prange
 
 class ElementAssembler:
     def __init__(self):
-        pass
+        self.reference_element = None
 
     def assemble_matrices(self, simulation):
         tissue = simulation.cardiac_tissue
@@ -18,9 +18,10 @@ class ElementAssembler:
         diffusion = self.compute_diffusion(simulation, tissue)
         diffusion = diffusion[tissue.myo_elems_indexes]
 
-        volumes, grads = self.volumes_and_grads(coords, elems)
+        volumes, grads = self.compute_metrics(coords, elems)
         stiffness_matrix, mass_matrix = self.stiffness_and_mass_matrix(
-            coords, elems, volumes, grads, diffusion, self.elem_mass
+            coords, elems, volumes, grads, diffusion,
+            self.reference_element.elem_mass
         )
         return stiffness_matrix, mass_matrix
 

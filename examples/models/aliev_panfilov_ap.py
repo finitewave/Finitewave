@@ -26,21 +26,19 @@ Execution:
 
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 import finitewave as fw
 
-# create a tissue:
+# create a tissue of size 400x400 with cardiomycytes:
 n = 400
-m = 400
-
-tissue = fw.CardiacTissueGrid([n, m])
-# tissue.mesh[np.random.rand(n, m) < 0.3] = 2  # introduce some inexcitable regions
+tissue = fw.CardiacTissueGrid([n, n])
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
+                                           x_min=n//2 - 3, x_max=n//2 + 3,
+                                           y_min=n//2 - 3, y_max=n//2 + 3))
 
 action_pot_tracker = fw.ActionPotentialGridTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
@@ -51,32 +49,23 @@ action_pot_tracker.step = 1
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
+# create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 20
-# add the tissue and the stim parameters to the model object:
-simulation.cardiac_tissue = tissue
+simulation.t_max = 30
 simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
-simulation.tracker_sequence = tracker_sequence
 
 # run the model:
 simulation.run()
 
-# visualize the results:
-plt.imshow(simulation.cardiac_model.u, cmap='jet', origin='lower')
-plt.colorbar(label='Transmembrane Potential (u)')
-plt.title('Aliev-Panfilov Model - Transmembrane Potential')
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.show()
-
 # plot the action potential
-# plt.figure()
-# time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-# plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-# plt.legend(title='Aliev-Panfilov')
-# plt.title('Action Potential')
-# plt.grid()
-# plt.show()
+plt.figure()
+time = np.arange(len(action_pot_tracker.output)) * simulation.dt
+plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+plt.legend(title='Aliev-Panfilov')
+plt.title('Action Potential')
+plt.grid()
+plt.show()

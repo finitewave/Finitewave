@@ -2,9 +2,11 @@ from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 
 from .stencil.isotropic_stencil import IsotropicStencil
 from .stencil.anisotropic_stencil import AnisotropicStencil
-from .assembler.triangle_assembler import TriangleAssembler
-from .assembler.tetrahedral_assembler import TetrahedralAssembler
-from .assembler.quadrilateral_assembler import QuadrilateralAssembler
+from .assembler.elements.triangle_element import LinearTriangleElement
+from .assembler.elements.quadrilateral_element import LinearQuadrilateralElement
+from .assembler.elements.tetrahedral_element import LinearTetrahedralElement
+from .assembler.surface_assembler import SurfaceAssembler
+from .assembler.volume_assembler import VolumeAssembler
 
 
 class DiffusionModel(DiffusionModelBase):
@@ -40,12 +42,18 @@ class DiffusionModel(DiffusionModelBase):
 
     def _default_assembler(self):
         if self.simulation.cardiac_tissue.meta['shape'] == 'Triangle':
-            return TriangleAssembler()
-
-        if self.simulation.cardiac_tissue.meta['shape'] == 'Tetrahedral':
-            return TetrahedralAssembler()
+            assembler = SurfaceAssembler()
+            assembler.reference_element = LinearTriangleElement()
+            return assembler
 
         if self.simulation.cardiac_tissue.meta['shape'] == 'Quadrilateral':
-            return QuadrilateralAssembler()
+            assembler = SurfaceAssembler()
+            assembler.reference_element = LinearQuadrilateralElement()
+            return assembler
+
+        if self.simulation.cardiac_tissue.meta['shape'] == 'Tetrahedral':
+            assembler = VolumeAssembler()
+            assembler.reference_element = LinearTetrahedralElement()
+            return assembler
 
         raise ValueError("Unknown element type")

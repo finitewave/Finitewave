@@ -1,6 +1,7 @@
-from scipy import sparse
-from .numba_linalg import forward_euler
+from .numba_linalg import forward_euler, matvec_numba, ax_p_y_numba
 from ..solver import Solver
+import scipy.sparse as sparse
+import numpy as np
 
 
 class ForwardEulerSolver(Solver):
@@ -38,8 +39,7 @@ class ForwardEulerSolver(Solver):
         stiff, mass = self.simulation.diffusion_model.weights
         mass_lumped = mass.sum(axis=1).A.ravel()
         self.mass_inv = 1 / mass_lumped
-        # mass_inv = sparse.diags(mass_lumped, offsets=0, format='csr')
-        # self.a_matrix = dt * stiff + sparse.eye(mass.shape[0], format='csr')
+        print(self.mass_inv)
         self.stiff = stiff
 
     def run(self):

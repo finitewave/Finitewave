@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 
 from ..solver import Solver
-from .numba_linalg import cg_numba, matvec_numba
+from .numba_linalg import cg_numba, matvec_numba, ax_p_y_numba
 
 
 class CrankNicolsonCGSolver(Solver):
@@ -10,8 +10,7 @@ class CrankNicolsonCGSolver(Solver):
         self.maxiter = 100
         self.atol = 1e-8
         self.num_iterations = []
-        self.b0 = None
-        self.b1 = None
+        self.b = None
         self.u = None
         self.a_lhs_matrix = None
         self.a_rhs_matrix = None
@@ -20,8 +19,7 @@ class CrankNicolsonCGSolver(Solver):
     def initialize(self, simulation):
         self.simulation = simulation
         self.num_iterations = []
-        self.b0 = np.zeros_like(simulation.cardiac_model.u)
-        self.b1 = np.zeros_like(simulation.cardiac_model.u)
+        self.b = np.zeros_like(simulation.cardiac_model.u)
         self.u = simulation.cardiac_model.u
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.rhs = simulation.cardiac_model.rhs
@@ -32,25 +30,22 @@ class CrankNicolsonCGSolver(Solver):
         dt = self.simulation.dt
         self.a_lhs_matrix = mass + 0.5 * dt * stiff
         self.a_rhs_matrix = mass - 0.5 * dt * stiff
-        self.mass_matrix = dt * mass
 
     def run(self):
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
-
-        self.b0 = matvec_numba(self.a_rhs_matrix.indptr,
-                               self.a_rhs_matrix.indices,
-                               self.a_rhs_matrix.data, self.u, self.b0,
-                               self.myo_indexes)
-        self.b1 = matvec_numba(self.mass_matrix.indptr,
-                               self.mass_matrix.indices,
-                               self.mass_matrix.data, self.rhs, self.b1,
-                               self.myo_indexes)
-        b = self.b0 + self.b1
+        # Explicit step for the reaction term (rhs of ionic model)
+        self.u = ax_p_y_numba(self.simulation.dt, self.rhs, self.u,
+                              self.myo_indexes)
+        # Implicit step for the diffusion term
+        self.b = matvec_numba(self.a_rhs_matrix.indptr,
+                              self.a_rhs_matrix.indices,
+                              self.a_rhs_matrix.data, self.u, self.b,
+                              self.myo_indexes)
         self.u, success = cg_numba(self.a_lhs_matrix.indptr,
                                    self.a_lhs_matrix.indices,
-                                   self.a_lhs_matrix.data, b, self.u,
+                                   self.a_lhs_matrix.data, self.b, self.u,
                                    self.myo_indexes, atol=self.atol,
                                    maxiter=self.maxiter)
         if success < 0:

@@ -35,24 +35,24 @@ showing the resulting excitation wave pattern.
 
 import matplotlib.pyplot as plt
 
-import finitewave.gridywave as gw
+import finitewave as fw
 
 # create a tissue of size 400x400 with cardiomycytes:
 n = 400
-tissue = gw.CardiacTissueGrid([n, n])
+tissue = fw.CardiacTissueGrid([n, n])
 
 # set up stimulation parameters:
-stim_sequence = gw.StimSequence()
-stim_sequence.add_stim(gw.StimVoltageGridCoord(time=0, volt_value=1,
-                                               x_min=n//2 - 3, x_max=n//2 + 3,
-                                               y_min=n//2 - 3, y_max=n//2 + 3))
+stim_sequence = fw.StimSequence()
+stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
+                                           x_min=n//2 - 3, x_max=n//2 + 3,
+                                           y_min=n//2 - 3, y_max=n//2 + 3))
 
 # create model object and set up parameters:
-simulation = gw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
 simulation.t_max = 30
-simulation.cardiac_model = gw.AlievPanfilovGrid()
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 

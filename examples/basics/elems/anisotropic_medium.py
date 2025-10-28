@@ -1,33 +1,35 @@
 import numpy as np
 import pyvista as pv
+
 import finitewave as fw
 
 
 # create a tissue of size 50x50 with 200x200 points:
 n = 200
 size = 50
-coords, elems = fw.build_quadrilateral_mesh(n, n, (0, size), (0, size))
+coords, elems = fw.build_triangulated_mesh(n, n, (0, size), (0, size))
 
 # create cardiac tissue object:
-tissue = fw.CardiacTissueElements(coords, elems, elem_type='Quadrilateral')
+tissue = fw.CardiacTissueElements(coords, elems, elem_type='Triangle')
+# define fiber directions for anisotropic conduction:
+tissue.fibers = np.zeros((elems.shape[0], 3))
+tissue.fibers[:, 0] = np.cos(np.pi / 6)  # set fiber direction at 30 degrees
+tissue.fibers[:, 1] = np.sin(np.pi / 6)  # set fiber direction at 30 degrees
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-
-stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, size, 0, 1))
-stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
+                                           size//2 - 1, size//2 + 1,
+                                           size//2 - 1, size//2 + 1))
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 100
+simulation.t_max = 15
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
-# set up the solver, default is Crank-Nicolson:
-# ! Forward Euler is conditionally stable for quadrilateral meshes
-simulation.solver = fw.ForwardEulerSolver()
 
 # run the model:
 simulation.run()

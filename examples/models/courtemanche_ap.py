@@ -30,10 +30,10 @@ Execution:
 
 import numpy as np
 import matplotlib.pyplot as plt
-import finitewave.gridywave as fw
+import finitewave as fw
 
-n = 100
-m = 100
+n = 200
+m = 200
 
 # create model object and set up parameters
 courtemanche = fw.Courtemanche()
@@ -46,7 +46,8 @@ courtemanche.gcal *= 0.3
 
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord(300, 1, 0, n, 0, m//2))
 
 action_pot_tracker = fw.ActionPotentialGridTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
@@ -57,26 +58,32 @@ action_pot_tracker.step = 1
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.dr = 0.25
+simulation.dr = 0.5
 simulation.t_max = 500
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m])
 simulation.cardiac_model = courtemanche
 simulation.stim_sequence = stim_sequence
-simulation.tracker_sequence = tracker_sequence
+# simulation.tracker_sequence = tracker_sequence
 
 # run the model:
 simulation.run()
 
-# plot the action potential
 plt.figure()
-time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-plt.legend(title='Courtemanche')
-plt.xlabel('Time (ms)')
-plt.ylabel('Voltage (mV)')
-plt.title('Action Potential')
-plt.grid()
+plt.imshow(simulation.cardiac_model.u, cmap="RdBu_r", origin='lower')
+plt.colorbar(label='u')
+plt.title('u at final time')
 plt.show()
+
+# plot the action potential
+# plt.figure()
+# time = np.arange(len(action_pot_tracker.output)) * simulation.dt
+# plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+# plt.legend(title='Courtemanche')
+# plt.xlabel('Time (ms)')
+# plt.ylabel('Voltage (mV)')
+# plt.title('Action Potential')
+# plt.grid()
+# plt.show()

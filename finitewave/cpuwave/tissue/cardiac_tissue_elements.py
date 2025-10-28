@@ -3,7 +3,7 @@ from finitewave.core.tissue.cardiac_tissue import CardiacTissue
 
 
 class CardiacTissueElements(CardiacTissue):
-    def __init__(self, coords, elems, elem_type="Tri"):
+    def __init__(self, coords, elems, elem_type):
         super().__init__()
         self.coords = coords
         self.elems = elems

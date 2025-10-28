@@ -20,9 +20,9 @@ def forward_euler(indptr, indices, data, u, rhs, mass_inv, u_new, indexes, dt):
         Current solution vector.
     rhs : np.ndarray
         Right-hand side vector.
-    mass : np.ndarray
-        Inverse of the mass matrix diagonal.
-    y : np.ndarray
+    mass_inv : np.ndarray
+        Inverse of the lumped mass matrix diagonal.
+    u_new : np.ndarray
         Output solution vector.
     indexes : np.ndarray
         Array of indexes where the solution is defined.
@@ -38,15 +38,16 @@ def forward_euler(indptr, indices, data, u, rhs, mass_inv, u_new, indexes, dt):
         start, end = indptr[i], indptr[i+1]
         if start == end:
             continue
-        tr_curr = 0.0
+        i_tr = 0.0
         for j in range(start, end):
             jj = indices[j]
             jj = indexes[jj]
-            tr_curr += data[j] * u.flat[jj]
+            i_tr += data[j] * u.flat[jj]
 
         ii = indexes[i]
-        u_new.flat[ii] = u.flat[ii] + dt * (mass_inv.flat[ii] * (-tr_curr) +
-                                            rhs.flat[ii])
+        u_new.flat[ii] = (u.flat[ii] -
+                          dt * mass_inv.flat[i] * i_tr +
+                          dt * rhs.flat[ii])
 
     return u_new
 
@@ -105,6 +106,15 @@ def ay_p_x_numba(a, x, y, indexes):
     for i in prange(n):
         ii = indexes[i]
         y.flat[ii] = a * y.flat[ii] + x.flat[ii]
+    return y
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def ax_p_y_numba(a, x, y, indexes):
+    n = len(indexes)
+    for i in prange(n):
+        ii = indexes[i]
+        y.flat[ii] = a * x.flat[ii] + y.flat[ii]
     return y
 
 

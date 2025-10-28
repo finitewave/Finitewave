@@ -30,13 +30,13 @@ size = 50
 
 coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
 
-tissue = fw.CardiacTissueFEM(coords, elems)
+tissue = fw.CardiacTissueElements(coords, elems, elem_type="Triangle")
 tissue.mesh = np.random.random(coords.shape[0]) >= 0.2
 # tissue.mesh_elems = np.random.random(elems.shape[0]) >= 0.4
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoordFEM(0, 1, 0, size, 0, 1))
-stim_sequence.add_stim(fw.StimVoltageCoordFEM(45, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, size, 0, 1))
+stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
 aliev_panfilov = fw.AlievPanfilovFEM()

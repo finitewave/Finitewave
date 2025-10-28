@@ -59,10 +59,10 @@ class IsotropicStencil(Stencil):
 
         size = len(indexes)
         shape = (size, size)
-        K = sp.csr_matrix((weights, (rows, cols)), shape=shape)
+        K = sp.csr_matrix((- weights, (rows, cols)), shape=shape)
         row_sums = np.array(K.sum(axis=1)).ravel()
         D = sp.diags(-row_sums, offsets=0, format='csr')
-        K_new = - (K + D)
+        K_new = (K + D)
         M = sp.diags(np.ones_like(row_sums), offsets=0, format='csr')
         return K_new.tocsr(), M.tocsr()
 
@@ -87,15 +87,15 @@ class IsotropicFirstOrderBoundary:
             right = self.is_valid_neighbor(neighbors_right, mesh, i_axis)
             left, right = self.apply_boundary_rule(left, right)
 
-            rows.append(indexes[left > 0])
+            rows.append(indexes[left > 0].copy())
             cols.append(np.ravel_multi_index(neighbors_left[:, left > 0],
                                              mesh.shape))
-            weights.append(left[left > 0])
+            weights.append(left[left > 0].copy())
 
-            rows.append(indexes[right > 0])
+            rows.append(indexes[right > 0].copy())
             cols.append(np.ravel_multi_index(neighbors_right[:, right > 0],
                                              mesh.shape))
-            weights.append(right[right > 0])
+            weights.append(right[right > 0].copy())
 
         rows = np.concatenate(rows)
         cols = np.concatenate(cols)
@@ -105,7 +105,7 @@ class IsotropicFirstOrderBoundary:
     def is_valid_neighbor(self, neighbors, mesh, i_axis):
         mask = ((neighbors[i_axis] >= 0) &
                 (neighbors[i_axis] < mesh.shape[i_axis]))
-        mask[mask] = mesh[tuple(neighbors[:, mask])] > 0
+        mask[mask] = mesh[tuple(neighbors[:, mask])] == 1
         return mask.astype(np.int64)
 
     def apply_boundary_rule(self, left, right):

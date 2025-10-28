@@ -3,110 +3,109 @@ import numpy as np
 from .element_assembler import ElementAssembler
 
 
-class TriangleAssembler(ElementAssembler):
+class SurfaceAssembler(ElementAssembler):
     def __init__(self):
         super().__init__()
-        self.mass_coef = 12.
-        self.elem_mass = (1 / self.mass_coef) * np.array([[2, 1, 1],
-                                                          [1, 2, 1],
-                                                          [1, 1, 2]])
-        # self.elem_mass = (1/3) * np.eye(3)
-        self.dN_dxi = np.array([-1.0, 1.0, 0.0])
-        self.dN_deta = np.array([-1.0, 0.0, 1.0])
-        self.quad_weights = np.array([1/2])
-        self.n_points = 3
+        self.reference_element = None
 
-    def volumes_and_grads(self, coords, elems):
+    def compute_metrics(self, coords, elems):
         """
-        Computes area and global gradients for linear triangles in 3D
-        using the Jacobian from the reference triangle.
+        Computes area and global gradients for surface elements in 3D
+        using the Jacobian.
 
         Parameters:
         ----------
         coords: (N_nodes, 3)
             Coordinates of the mesh nodes.
-        elems: (N_elems, 3)
-            Element connectivity (node indices for each triangle).
+        elems: (N_elems, N_points)
+            Element connectivity (node indices for each surface element).
 
         Returns:
         -------
         areas: (N_elems,)
-            Area of each triangle element.
+            Area of each surface element.
         grads: (N_elems, 3, 3)
             Gradient of shape functions in global coordinates for each element.
         """
         jacobian = self.build_jacobian(coords, elems)
         areas = self.compute_areas(jacobian)
-        grads = self.compute_gradients(jacobian, self.n_points)
+        grads = self.compute_gradients(jacobian)
 
         return areas, grads
 
     def build_jacobian(self, coords, elems):
         """
-        Build Jacobian matrices for quadrilateral elements.
+        Build Jacobian matrices for surface elements.
 
         Parameters:
         ----------
         coords: (N_nodes, 3)
             Coordinates of the mesh nodes.
-        elems: (N_elems, 4)
-            Element connectivity (node indices for each quadrilateral).
+        elems: (N_elems, N_points)
+            Element connectivity (node indices for each surface element).
 
         Returns:
         -------
         jacobian: (N_elems, 2, 3)
-            Jacobian matrices for each quadrilateral element.
+            Jacobian matrices for each surface element.
         """
         n_elems = elems.shape[0]
         jacobian = np.zeros((n_elems, 2, 3))
 
-        for i in range(self.n_points):
-            jacobian[:, 0, :] += self.dN_dxi[i] * coords[elems[:, i]]
-            jacobian[:, 1, :] += self.dN_deta[i] * coords[elems[:, i]]
+        for i in range(self.reference_element.n_points):
+            jacobian[:, 0, :] += (self.reference_element.dN_dxi[i] *
+                                  coords[elems[:, i]])
+            jacobian[:, 1, :] += (self.reference_element.dN_deta[i] *
+                                  coords[elems[:, i]])
 
         return jacobian
 
-    def compute_gradients(self, jacobian, n_points):
-        """Compute global gradients for triangle elements.
+    def compute_gradients(self, jacobian):
+        """Compute global gradients for surface elements.
 
         Parameters:
         ----------
         jacobian: (N, 2, 3)
-            Jacobian matrices for N triangle elements.
+            Jacobian matrices for N surface elements.
 
         Returns:
         -------
             grads: (N, n_points, 3)
-                Gradient of shape functions in global coordinates for each element.
+                Gradient of shape functions in global coordinates for each
+                element.
         """
         jacobian_inv = self.invert_jacobian(jacobian)
         n_elems = jacobian_inv.shape[0]
+        n_points = self.reference_element.n_points
         grads = np.zeros((n_elems, n_points, 3))
 
         for i in range(n_points):
-            dN_ref = np.stack([np.full(n_elems, self.dN_dxi[i]),
-                               np.full(n_elems, self.dN_deta[i])], axis=1)
+            dN_ref = np.stack(
+                [np.full(n_elems, self.reference_element.dN_dxi[i]),
+                 np.full(n_elems, self.reference_element.dN_deta[i])], axis=1
+                )
             grads[:, i, :] = np.einsum('nij,nj->ni', jacobian_inv, dN_ref)
 
         return grads
 
     def compute_areas(self, jacobian):
-        """Compute areas of triangles from their Jacobian matrices.
+        """Compute areas of surface elements from their Jacobian matrices.
 
         Parameters:
         ----------
         jacobian: (N, 2, 3)
-            Jacobian matrices for N triangle elements.
+            Jacobian matrices for N surface elements.
 
         Returns:
         -------
             areas: (N,)
-                Area of each triangle element.
+                Area of each surface element.
         """
         v1 = jacobian[:, 0, :]
         v2 = jacobian[:, 1, :]
         cross_v = np.cross(v1, v2)
-        areas = self.quad_weights * np.linalg.norm(cross_v, axis=1)
+        areas = (self.reference_element.quad_weights *
+                 np.linalg.norm(cross_v, axis=1))
         return areas
 
     def invert_jacobian(self, jacobian):

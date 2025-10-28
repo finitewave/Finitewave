@@ -1,37 +1,16 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import pyvista as pv
 
 import finitewave as fw
 
 
-def build_triangular_mesh(n, m, x_range=(0, 1), y_range=(0, 1)):
-    x = np.linspace(x_range[0], x_range[1], n+1)
-    y = np.linspace(y_range[0], y_range[1], m+1)
-    xv, yv = np.meshgrid(x, y)
-    coords = np.vstack([xv.ravel(), yv.ravel(), np.zeros((n+1)*(m+1))]).T
-
-    elems = []
-    for j in range(m):
-        for i in range(n):
-            v0 = j * (n + 1) + i
-            v1 = v0 + 1
-            v2 = v0 + (n + 1)
-            v3 = v2 + 1
-            elems.append([v0, v1, v3])
-            elems.append([v0, v3, v2])
-    elems = np.array(elems)
-
-    return coords, elems
-
-
-# create a tissue of size 400x400 with cardiomycytes:
+# create a tissue of size 50x50 with 200x200 points:
 n = 200
 size = 50
+coords, elems = fw.build_triangulated_mesh(n, n, (0, size), (0, size))
 
-coords, elems = build_triangular_mesh(n, n, (0, size), (0, size))
-
+# create cardiac tissue object:
 tissue = fw.CardiacTissueElements(coords, elems, elem_type='Triangle')
-# tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -46,22 +25,22 @@ simulation.t_max = 100
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
+# set up the solver:
 # simulation.solver = fw.ForwardEulerSolver()
 
 # run the model:
 simulation.run()
 
+# get the resulting potential at the element centers:
 u = simulation.cardiac_model.u
-
-plt.figure()
-plt.plot(simulation.solver.num_iterations)
-plt.show()
+elems_u = np.mean(u[elems], axis=1)
 
 # show the potential map at the end of calculations:
-plt.figure()
-plt.tricontourf(coords[:, 0], coords[:, 1], elems, u, levels=100,
-                cmap="RdBu_r")
-plt.colorbar(label='u')
-plt.title('u at final time')
-plt.gca().set_aspect('equal')
-plt.show()
+faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
+mesh = pv.PolyData(tissue.coords, faces)
+mesh.cell_data["values"] = elems_u
+
+pl = pv.Plotter()
+pl.add_mesh(mesh, cmap="RdBu_r", show_edges=False)
+pl.camera_position = 'xy'
+pl.show()

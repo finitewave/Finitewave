@@ -1,1 +1,1 @@
-from finitewave.core.tissue.cardiac_tissue import CardiacTissue
+from .cardiac_tissue import CardiacTissue
