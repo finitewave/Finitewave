@@ -1,5 +1,3 @@
 from .surface_assembler import SurfaceAssembler
 from .volume_assembler import VolumeAssembler
-from .elements.triangle_element import LinearTriangleElement
-from .elements.quadrilateral_element import LinearQuadrilateralElement
-from .elements.tetrahedral_element import LinearTetrahedralElement
+from .grid_assembler import GridAssembler

@@ -1,12 +1,15 @@
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 
-from .stencil.isotropic_stencil import IsotropicStencil
-from .stencil.anisotropic_stencil import AnisotropicStencil
-from .assembler.elements.triangle_element import LinearTriangleElement
-from .assembler.elements.quadrilateral_element import LinearQuadrilateralElement
-from .assembler.elements.tetrahedral_element import LinearTetrahedralElement
+from .elements.triangle_element import LinearTriangleElement
+from .elements.quadrilateral_element import LinearQuadrilateralElement
+from .elements.tetrahedral_element import LinearTetrahedralElement
+
+from .stencils.isotropic_stencil import IsotropicStencil
+from .stencils.assymetric_stencil import AsymmetricStencil
+
 from .assembler.surface_assembler import SurfaceAssembler
 from .assembler.volume_assembler import VolumeAssembler
+from .assembler.grid_assembler import GridAssembler
 
 
 class DiffusionModel(DiffusionModelBase):
@@ -35,10 +38,9 @@ class DiffusionModel(DiffusionModelBase):
             return self._default_assembler()
 
     def _default_stencil(self):
-        if self.simulation.cardiac_tissue.fibers is None:
-            return IsotropicStencil()
-
-        return AnisotropicStencil()
+        assembler = GridAssembler()
+        assembler.stencil = AsymmetricStencil()
+        return assembler
 
     def _default_assembler(self):
         if self.simulation.cardiac_tissue.meta['shape'] == 'Triangle':

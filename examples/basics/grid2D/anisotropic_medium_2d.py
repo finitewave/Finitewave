@@ -65,8 +65,8 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
 
 simulation = fw.CardiacSimulation()
-simulation.dt = 0.001
-simulation.dr = 0.1
+simulation.dt = 0.01
+simulation.dr = 0.25
 simulation.t_max = 25
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
