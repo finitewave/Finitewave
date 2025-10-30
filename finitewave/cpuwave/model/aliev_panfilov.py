@@ -98,6 +98,10 @@ class AlievPanfilov(CardiacModel):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
+        self.counter += 1
+        if (self.counter - 1) % self.step != 0:
+            return
+
         ionic_kernel(self.u, self.rhs, self.myo_indexes, dt, self.v, self.a,
                      self.k, self.eps, self.mu1, self.mu2)
 

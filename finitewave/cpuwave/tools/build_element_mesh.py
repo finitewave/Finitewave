@@ -1,5 +1,4 @@
 import numpy as np
-from numba import njit, prange
 
 
 def build_triangulated_mesh(n, m, x_range, y_range):

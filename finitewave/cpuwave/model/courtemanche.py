@@ -125,6 +125,10 @@ class Courtemanche(CardiacModel):
         dt : float
             Time step for the simulation.
         """
+        self.counter += 1
+        if (self.counter - 1) % self.step != 0:
+            return
+
         ionic_kernel(self.u, self.rhs, self.myo_indexes, dt,
                      self.nai, self.ki,
                      self.cai, self.caup, self.carel, self.m, self.h, self.j_,

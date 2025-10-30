@@ -1,8 +1,9 @@
 import numpy as np
 from scipy import sparse as sp
+from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 
 
-class GridAssembler:
+class GridAssembler(DiffusionModelBase):
     """
     This class computes the weights for solver on 2D and 3D grids.
 
@@ -14,16 +15,19 @@ class GridAssembler:
     """
 
     def __init__(self):
+        super().__init__()
         self.stencil = None
 
-    def assemble_matrices(self, simulation):
+    def initialize(self, simulation):
         """
-        Computes the weights for isotropic diffusion in 2D.
+        Computes the weights for the diffusion operator on a grid.
+        """
+        self.simulation = simulation
+        self.compute_weights()
 
-        Parameters
-        ----------
-        simulation : simulation
-            A simulation object containing the simulation parameters.
+    def compute_weights(self):
+        """
+        Computes the weights for the diffusion operator on a grid.
 
         Returns
         -------
@@ -32,8 +36,8 @@ class GridAssembler:
         scipy.sparse.csr_matrix
             The mass matrix for the asymmetric stencil.
         """
-        tissue = simulation.cardiac_tissue
-        model = simulation.cardiac_model
+        tissue = self.simulation.cardiac_tissue
+        model = self.simulation.cardiac_model
 
         mesh = tissue.mesh.copy()
         mesh[mesh != 1] = 0
@@ -41,16 +45,16 @@ class GridAssembler:
         diffusion = self.compute_diffusion(mesh, tissue.conductivity,
                                            tissue.fibers, tissue.D_al,
                                            tissue.D_ac, model.D_model,
-                                           simulation.dr)
-        diffusion = diffusion.astype(simulation.npfloat)
+                                           self.simulation.dr)
+        diffusion = diffusion.astype(self.simulation.npfloat)
 
-        stiff, mass = self.compute_weights_sparse(mesh, diffusion,
-                                                  tissue.myo_indexes)
-        return stiff, mass
+        self.weights = self.compute_weights_sparse(mesh, diffusion,
+                                                   tissue.myo_indexes)
+        return self.weights
 
     def compute_weights_sparse(self, mesh, diffusion, indexes):
         """
-        Computes the weights for the asymmetric stencil as a sparse matrix.
+        Computes the weights as a sparse matrix.
 
         Parameters
         ----------
@@ -64,9 +68,9 @@ class GridAssembler:
         Returns
         -------
         scipy.sparse.csr_matrix
-            The stiffness matrix for the asymmetric stencil.
+            The stiffness matrix.
         scipy.sparse.csr_matrix
-            The mass matrix for the asymmetric stencil.
+            The mass matrix. Diagonal matrix with ones on the diagonal.
         """
         rows, cols, weights = self.stencil.compute_weights(mesh, diffusion,
                                                            indexes)

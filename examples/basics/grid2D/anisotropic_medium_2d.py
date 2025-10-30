@@ -51,27 +51,32 @@ import finitewave as fw
 n = 256
 # fiber orientation angle
 tissue = fw.CardiacTissueGrid([n, n])
-alpha = np.pi / 3
-tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3)
+alpha = np.pi / 4
+# tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.1)
 # add fibers orientation vectors
-tissue.fibers = np.zeros([n, n, 2])
-tissue.fibers[:, :, 0] = np.cos(alpha)
-tissue.fibers[:, :, 1] = np.sin(alpha)
+# tissue.fibers = np.zeros([n, n, 2])
+# tissue.fibers[:, :, 0] = np.cos(alpha)
+# tissue.fibers[:, :, 1] = np.sin(alpha)
+
+diffusion_model = fw.GridAssembler()
+diffusion_model.stencil = fw.AsymmetricStencil()
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
-                                           x_min=n//2 - 3, x_max=n//2 + 3,
-                                           y_min=n//2 - 3, y_max=n//2 + 3))
+                                           x_min=n//2 - 5, x_max=n//2 + 5,
+                                           y_min=n//2 - 5, y_max=n//2 + 5))
 
 simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.dr = 0.25
-simulation.t_max = 25
+simulation.dt = 0.001
+simulation.dr = 0.1
+simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.Courtemanche()
+simulation.cardiac_model.step = 2
 simulation.stim_sequence = stim_sequence
+simulation.diffusion_model = diffusion_model
 
 # run the model:
 simulation.run()

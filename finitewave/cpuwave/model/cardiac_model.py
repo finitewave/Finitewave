@@ -42,6 +42,8 @@ class CardiacModel(CardiacModelBase):
         super().__init__()
         self.memory_save = memory_save
         self.state_vars = []
+        self.step = 1
+        self.counter = 0
 
     def initialize(self, simulation):
         """

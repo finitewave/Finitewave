@@ -118,8 +118,8 @@ class AsymmetricStencil:
                 |                   |
              minor_1 ------------ minor_2
         """
-        minor_lower = major_shift
-        minor_upper = - major_shift
+        minor_lower = - major_shift
+        minor_upper = major_shift
 
         ijk_center = np.array(np.unravel_index(indexes, mesh.shape))
         ijk_major = self.build_neighbor(ijk_center, major_shift, major_axis)
@@ -219,7 +219,8 @@ class AsymmetricStencil:
         m_upper = m3 + m4 + m + m0
         m_lower = m1 + m2 + m + m0
 
-        mask = ((m == 0) | (m0 == 0) | (m_upper < 3) | (m_lower < 3))
+        # mask = ((m == 0) | (m0 == 0) | (m_upper < 3) | (m_lower < 3))
+        mask = (m == 0) | (m0 == 0) | ((m3 + m4) < 2) | ((m1 + m2) < 0)
 
         w = np.where(mask, 0, m / m_upper - m / m_lower)
         w0 = np.where(mask, 0, m0 / m_upper - m0 / m_lower)

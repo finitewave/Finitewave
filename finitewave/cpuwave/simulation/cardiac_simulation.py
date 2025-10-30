@@ -59,13 +59,7 @@ class CardiacSimulation(CardiacSimulationBase):
     def initialize(self):
 
         if self.solver is None:
-            if self.cardiac_tissue.meta["type"] == "Grid":
-                self.solver = ForwardEulerSolver()
-
-            elif self.cardiac_tissue.meta["type"] == "Elements":
-                self.solver = CrankNicolsonCGSolver()
-            else:
-                raise ValueError("Unsupported tissue type")
+            self.solver = self.default_solver()
 
         super().initialize()
 
@@ -136,3 +130,12 @@ class CardiacSimulation(CardiacSimulationBase):
             num_of_threads = min(num_of_threads, max_num_of_threads)
 
         numba.set_num_threads(num_of_threads)
+
+    def default_solver(self):
+        if self.cardiac_tissue.meta["type"] == "Grid":
+            return ForwardEulerSolver()
+
+        if self.cardiac_tissue.meta["type"] == "Elements":
+            return CrankNicolsonCGSolver()
+
+        raise ValueError("Unsupported tissue type")

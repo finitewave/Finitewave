@@ -36,10 +36,9 @@ showing the resulting excitation wave pattern.
 import matplotlib.pyplot as plt
 
 import finitewave as fw
-import numpy as np
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n = 256
 tissue = fw.CardiacTissueGrid([n, n])
 # tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3).astype(tissue.mesh.dtype)
 
@@ -49,19 +48,18 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            x_min=n//2 - 3, x_max=n//2 + 3,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
 
-diffusion_model = fw.DiffusionModel()
-diffusion_model.assembler = fw.GridAssembler()
-diffusion_model.assembler.stencil = fw.IsotropicStencil()
+diffusion_model = fw.GridAssembler()
+diffusion_model.stencil = fw.IsotropicStencil()
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 30
+simulation.t_max = 15
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
-# simulation.diffusion_model = diffusion_model
+simulation.diffusion_model = diffusion_model
 
 # run the model:
 simulation.run()
