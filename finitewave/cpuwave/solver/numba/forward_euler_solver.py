@@ -39,7 +39,6 @@ class ForwardEulerSolver(Solver):
         stiff, mass = self.simulation.diffusion_model.weights
         mass_lumped = mass.sum(axis=1).A.ravel()
         self.mass_inv = 1 / mass_lumped
-        print(self.mass_inv)
         self.stiff = stiff
 
     def run(self):

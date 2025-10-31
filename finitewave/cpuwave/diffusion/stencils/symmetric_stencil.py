@@ -48,7 +48,6 @@ class SymmetricStencil:
         """
         rows, cols, weights = [], [], []
 
-        print(diffusion[0, 0, :, :])
         for i in range(mesh.ndim):
             axis = np.roll(np.arange(mesh.ndim), i)
             major_axis = axis[0]
@@ -87,8 +86,6 @@ class SymmetricStencil:
         ijk_list, mask_list = self.valid_neighbors(mesh, indexes, major_axis,
                                                    minor_axis, major_neighbor)
         ijk, ijk_0, ijk_1, ijk_2, ijk_3, ijk_4 = ijk_list
-
-        print(major_axis, minor_axis, major_neighbor)
 
         m, m0, m1, m2, m3, m4 = mask_list
         d_upper = np.zeros((ijk.shape[1], 2, 2), dtype=D.dtype)
@@ -130,8 +127,8 @@ class SymmetricStencil:
                 |                   |
              minor_1 ------------ minor_2
         """
-        minor_lower = major_shift
-        minor_upper = -major_shift
+        minor_lower = - major_shift
+        minor_upper = major_shift
 
         ijk_center = np.array(np.unravel_index(indexes, mesh.shape))
         ijk_major = self.build_neighbor(ijk_center, major_shift, major_axis)
@@ -211,21 +208,25 @@ class SymmetricStencil:
         w4 = np.zeros_like(m4, dtype=d_upper.dtype)
 
         # m, m0, m3, m4
-        w_, w0_, w3_, w4_ = self.flow_upper_component(d_upper, m, m0, m3, m4)
+        mx = (-0.5, 0.5, -0.5, 0.5)
+        my = (-0.5, -0.5, 0.5, 0.5)
+        w_, w0_, w3_, w4_ = self.flow_component(d_upper, m, m0, m3, m4, mx, my)
         w += 0.5 * w_
         w0 += 0.5 * w0_
         w3 += 0.5 * w3_
         w4 += 0.5 * w4_
 
         # m, m0, m1, m2
-        w_, w0_, w1_, w2_ = self.flow_lower_component(d_lower, m, m0, m1, m2)
+        mx = (-0.5, 0.5, -0.5, 0.5)
+        my = (0.5, 0.5, -0.5, -0.5)
+        w_, w0_, w1_, w2_ = self.flow_component(d_lower, m, m0, m1, m2, mx, my)
         w += 0.5 * w_
         w0 += 0.5 * w0_
         w1 += 0.5 * w1_
         w2 += 0.5 * w2_
         return w, w0, w1, w2, w3, w4
 
-    def flow_upper_component(self, d, m0, m1, m2, m3):
+    def flow_component(self, d, m0, m1, m2, m3, mx, my):
         """
         q = d @ [dx, dy]
         q @ n = 0, with n the normal vector at the boundary
@@ -234,6 +235,9 @@ class SymmetricStencil:
         dx = 0.5 * (u1 + u3) - 0.5 * (u0 + u2)
         dy = 0.5 * (u2 + u3) - 0.5 * (u0 + u1)
 
+        dx = mx0 * u0 + mx1 * u1 + mx2 * u2 + mx3 * u3
+        dy = my0 * u0 + my1 * u1 + my2 * u2 + my3 * u3
+
         .. code-block:: text
             m2 ----- m3
             |        |
@@ -241,166 +245,27 @@ class SymmetricStencil:
             |        |
             m0 ----- m1
         """
+        dxx = d[:, 0, 0]
+        dxy = d[:, 0, 1]
+
         w0 = np.zeros_like(m0, dtype=d.dtype)
         w1 = np.zeros_like(m1, dtype=d.dtype)
         w2 = np.zeros_like(m2, dtype=d.dtype)
         w3 = np.zeros_like(m3, dtype=d.dtype)
 
-        dxx = d[:, 0, 0]
-        dxy = d[:, 0, 1]
-        dyx = d[:, 1, 0]
-        dyy = d[:, 1, 1]
-
-        dx0, dy0 = - 0.5, - 0.5
-        dx1, dy1 = 0.5, - 0.5
-        dx2, dy2 = - 0.5, 0.5
-        dx3, dy3 = 0.5, 0.5
-
-        coef0 = dxx * dx0 + dxy * dy0
-        coef1 = dxx * dx1 + dxy * dy1
-        coef2 = dxx * dx2 + dxy * dy2
-        coef3 = dxx * dx3 + dxy * dy3
+        mx0, mx1, mx2, mx3 = mx
+        my0, my1, my2, my3 = my
 
         # m0 = m1 = m2 = m3 = 1
         mask = (m0 == 1) & (m1 == 1) & (m2 == 1) & (m3 == 1)
-        w0[mask] += coef0[mask]
-        w1[mask] += coef1[mask]
-        w2[mask] += coef2[mask]
-        w3[mask] += coef3[mask]
+        w0[mask] = (dxx * mx0 + dxy * my0)[mask]
+        w1[mask] = (dxx * mx1 + dxy * my1)[mask]
+        w2[mask] = (dxx * mx2 + dxy * my2)[mask]
+        w3[mask] = (dxx * mx3 + dxy * my3)[mask]
 
-        # m3 = 0 normal=(1, 1)
-        # qx * nx + qy * ny = 0
-        # u3 * c3 = - (u0 * c0 + u1 * c1 + u2 * c2)
-        mask = (m3 == 0) & (m2 != 0) & (m1 != 0) & (m0 != 0)
-        nx, ny = 1, 1
-
-        c0 = ((dxx * dx0 + dxy * dy0) * nx + (dyx * dx0 + dyy * dy0) * ny)
-        c1 = ((dxx * dx1 + dxy * dy1) * nx + (dyx * dx1 + dyy * dy1) * ny)
-        c2 = ((dxx * dx2 + dxy * dy2) * nx + (dyx * dx2 + dyy * dy2) * ny)
-        c3 = ((dxx * dx3 + dxy * dy3) * nx + (dyx * dx3 + dyy * dy3) * ny)
-
-        w0[mask] += coef0[mask] - coef3[mask] * c0[mask] / c3[mask]
-        w1[mask] += coef1[mask] - coef3[mask] * c1[mask] / c3[mask]
-        w2[mask] += coef2[mask] - coef3[mask] * c2[mask] / c3[mask]
-        # w3[mask] = 0
-
-        # m2 = 0 normal=(-1, 1)
-        mask = (m2 == 0) & (m3 != 0) & (m1 != 0) & (m0 != 0)
-        nx, ny = -1, 1
-        c0 = ((dxx * dx0 + dxy * dy0) * nx + (dyx * dx0 + dyy * dy0) * ny)
-        c1 = ((dxx * dx1 + dxy * dy1) * nx + (dyx * dx1 + dyy * dy1) * ny)
-        c3 = ((dxx * dx3 + dxy * dy3) * nx + (dyx * dx3 + dyy * dy3) * ny)
-        c2 = ((dxx * dx2 + dxy * dy2) * nx + (dyx * dx2 + dyy * dy2) * ny)
-
-        w0[mask] += coef0[mask] - coef2[mask] * c0[mask] / c2[mask]
-        w1[mask] += coef1[mask] - coef2[mask] * c1[mask] / c2[mask]
-        # w2[mask] = 0
-        w3[mask] += coef3[mask] - coef2[mask] * c3[mask] / c2[mask]
-
-        # # m0 = 0 or m1 = 0
-        # mask = ((m0 == 0) | (m1 == 0)) & (m2 != 0) & (m3 != 0)
-        # w0[mask] = 0
-        # w1[mask] = 0
-        # w2[mask] = 0
-        # w3[mask] = 0
-
-        # m2 = m3 = 0 normal=(0, 1)
-        # qy = dyx * dx + dyy * dy = 0 => dy = - (dyx / dyy) * dx
-        # dx = u1 - u0
-        # qx = (dxx - dxy * dyx / dyy) * dx
-        mask = (m2 == 0) & (m3 == 0) & (m1 != 0) & (m0 != 0)
-        w0[mask] = - (dxx - dxy * dyx / dyy)[mask]
-        w1[mask] = (dxx - dxy * dyx / dyy)[mask]
-        # w2[mask] = 0
-        # w3[mask] = 0
-
-        return w0, w1, w2, w3
-
-    def flow_lower_component(self, d, m0, m1, m2, m3):
-        """
-        q = d @ [dx, dy]
-        q @ n = 0, with n the normal vector at the boundary
-
-        qx = dxx * dx + dxy * dy
-        dx = 0.5 * (u1 + u3) - 0.5 * (u0 + u2)
-        dy = 0.5 * (u0 + u1) - 0.5 * (u2 + u3)
-
-        .. code-block:: text
-            m0 ----- m1
-            |        |
-            |        |
-            |        |
-            m2 ----- m3
-        """
-        w0 = np.zeros_like(m0, dtype=d.dtype)
-        w1 = np.zeros_like(m1, dtype=d.dtype)
-        w2 = np.zeros_like(m2, dtype=d.dtype)
-        w3 = np.zeros_like(m3, dtype=d.dtype)
-
-        dxx = d[:, 0, 0]
-        dxy = d[:, 0, 1]
-        dyx = d[:, 1, 0]
-        dyy = d[:, 1, 1]
-
-        dx0, dy0 = - 0.5, 0.5
-        dx1, dy1 = 0.5, 0.5
-        dx2, dy2 = - 0.5, - 0.5
-        dx3, dy3 = 0.5, - 0.5
-
-        coef0 = dxx * dx0 + dxy * dy0
-        coef1 = dxx * dx1 + dxy * dy1
-        coef2 = dxx * dx2 + dxy * dy2
-        coef3 = dxx * dx3 + dxy * dy3
-
-        # m0 = m1 = m2 = m3 = 1
-        mask = (m0 == 1) & (m1 == 1) & (m2 == 1) & (m3 == 1)
-        w0[mask] += coef0[mask]
-        w1[mask] += coef1[mask]
-        w2[mask] += coef2[mask]
-        w3[mask] += coef3[mask]
-
-        # m3 = 0 normal=(1, -1)
-        mask = (m3 == 0) & (m2 != 0) & (m1 != 0) & (m0 != 0)
-        nx, ny = 1, -1
-
-        c0 = ((dxx * dx0 + dxy * dy0) * nx + (dyx * dx0 + dyy * dy0) * ny)
-        c1 = ((dxx * dx1 + dxy * dy1) * nx + (dyx * dx1 + dyy * dy1) * ny)
-        c2 = ((dxx * dx2 + dxy * dy2) * nx + (dyx * dx2 + dyy * dy2) * ny)
-        c3 = ((dxx * dx3 + dxy * dy3) * nx + (dyx * dx3 + dyy * dy3) * ny)
-
-        w0[mask] += coef0[mask] - coef3[mask] * c0[mask] / c3[mask]
-        w1[mask] += coef1[mask] - coef3[mask] * c1[mask] / c3[mask]
-        w2[mask] += coef2[mask] - coef3[mask] * c2[mask] / c3[mask]
-        # w3[mask] = 0
-
-        # m2 = 0 normal=(-1, -1)
-        mask = (m2 == 0) & (m3 != 0) & (m1 != 0) & (m0 != 0)
-        nx, ny = -1, -1
-        c0 = ((dxx * dx0 + dxy * dy0) * nx + (dyx * dx0 + dyy * dy0) * ny)
-        c1 = ((dxx * dx1 + dxy * dy1) * nx + (dyx * dx1 + dyy * dy1) * ny)
-        c3 = ((dxx * dx3 + dxy * dy3) * nx + (dyx * dx3 + dyy * dy3) * ny)
-        c2 = ((dxx * dx2 + dxy * dy2) * nx + (dyx * dx2 + dyy * dy2) * ny)
-
-        w0[mask] += coef0[mask] - coef2[mask] * c0[mask] / c2[mask]
-        w1[mask] += coef1[mask] - coef2[mask] * c1[mask] / c2[mask]
-        # w2[mask] = 0
-        w3[mask] += coef3[mask] - coef2[mask] * c3[mask] / c2[mask]
-
-        # # m0 = 0 or m1 = 0
-        # mask = ((m0 == 0) | (m1 == 0)) & (m2 != 0) & (m3 != 0)
-        # w0[mask] = 0
-        # w1[mask] = 0
-        # w2[mask] = 0
-        # w3[mask] = 0
-
-        # m2 = m3 = 0 normal=(0, -1)
-        # qy = dyx * dx + dyy * dy = 0 => dy = - (dyx / dyy) * dx
-        # dx = u1 - u0
-        # qx = (dxx - dxy * dyx / dyy) * dx
-        mask = (m2 == 0) & (m3 == 0) & (m1 != 0) & (m0 != 0)
-        w0[mask] = - (dxx - dxy * dyx / dyy)[mask]
-        w1[mask] = (dxx - dxy * dyx / dyy)[mask]
-        # w2[mask] = 0
-        # w3[mask] = 0
-
+        # m2 = 0 or m3 = 0
+        # qx = dxx * (m1 - m0)
+        mask = ((m2 == 0) | (m3 == 0)) & (m1 != 0) & (m0 != 0)
+        w0[mask] = - dxx[mask].copy()
+        w1[mask] = dxx[mask].copy()
         return w0, w1, w2, w3

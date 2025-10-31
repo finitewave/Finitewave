@@ -219,8 +219,9 @@ class AsymmetricStencil:
         m_upper = m3 + m4 + m + m0
         m_lower = m1 + m2 + m + m0
 
-        # mask = ((m == 0) | (m0 == 0) | (m_upper < 3) | (m_lower < 3))
-        mask = (m == 0) | (m0 == 0) | ((m3 + m4) < 2) | ((m1 + m2) < 0)
+        mask = ((m == 0) | (m0 == 0) | (m_upper < 3) | (m_lower < 3))
+        # more stable version, but less precise
+        # mask = ((m == 0) | (m0 == 0) | (m_upper < 4) | (m_lower < 4))
 
         w = np.where(mask, 0, m / m_upper - m / m_lower)
         w0 = np.where(mask, 0, m0 / m_upper - m0 / m_lower)
