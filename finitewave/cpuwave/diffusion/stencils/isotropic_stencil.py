@@ -1,12 +1,13 @@
 import numpy as np
+from .stecil import Stencil
 
 
-class IsotropicStencil:
+class IsotropicStencil(Stencil):
     """
     Assembles the isotropic stencil with first-order boundary conditions.
     """
     def __init__(self):
-        pass
+        super().__init__()
 
     def compute_weights(self, mesh, diffusion, indexes):
         """
@@ -32,44 +33,19 @@ class IsotropicStencil:
         cols = []
         weights = []
 
-        for i_axis in range(mesh.ndim):
-            for shift in [-1, 1]:
-                diffusion_along_axis = diffusion[*ijk, i_axis, i_axis]
-                res = self.compute_flow_weights(diffusion_along_axis, i_axis,
-                                                shift, mesh, indexes)
-                rows += res[0]
-                cols += res[1]
-                weights += res[2]
+        ijk = np.array(np.unravel_index(indexes, mesh.shape))
+        for axis in range(mesh.ndim):
+            res = self.compute_flow_weights(mesh, diffusion, ijk, axis)
+            rows += res[0]
+            cols += res[1]
+            weights += res[2]
 
         rows = np.concatenate(rows)
         cols = np.concatenate(cols)
         weights = np.concatenate(weights)
         return rows, cols, weights
 
-    def is_valid_neighbor(self, neighbors, mesh, i_axis):
-        """
-        Checks if the given neighbors are valid within the mesh.
-
-        Parameters
-        ----------
-        neighbors : np.ndarray
-            The coordinates of the neighboring cells.
-        mesh : np.ndarray
-            The mesh of the simulation.
-        i_axis : int
-            The axis index.
-
-        Returns
-        -------
-        np.ndarray
-            A boolean mask indicating valid neighbors.
-        """
-        mask = ((neighbors[i_axis] >= 0) &
-                (neighbors[i_axis] < mesh.shape[i_axis]))
-        mask[mask] = mesh[tuple(neighbors[:, mask])] == 1
-        return mask.astype(np.int64)
-
-    def compute_flow_weights(self, diffusion, i_axis, shift, mesh, indexes):
+    def compute_flow_weights(self, mesh, diffusion, ijk, axis):
         """
         Computes the flow weights for the neighbor in the given axis and shift.
 
@@ -91,12 +67,37 @@ class IsotropicStencil:
         tuple of np.ndarray
             The rows, columns, and weights for the flow computation.
         """
-        d = 0.5 * (diffusion + np.roll(diffusion, -shift))
-        ijk_center = np.array(np.unravel_index(indexes, mesh.shape))
-        ijk_neighbor = ijk_center.copy()
-        ijk_neighbor[i_axis] += shift
-        valid = self.is_valid_neighbor(ijk_neighbor, mesh, i_axis)
-        rows = np.ravel_multi_index(ijk_center[:, valid > 0], mesh.shape)
-        cols = np.ravel_multi_index(ijk_neighbor[:, valid > 0], mesh.shape)
-        weights = d[valid > 0]
-        return [rows, rows], [cols, rows], [weights, -weights]
+        d_axis = diffusion[..., axis, axis]
+        ijk_neighbor = self.build_neighbor(ijk, shift=1, axis=axis)
+        m_valid = self.is_valid_neighbor(ijk_neighbor, mesh)
+        weights = self.average_diffusion(d_axis, ijk, ijk_neighbor, m_valid)
+
+        ijk_list = [ijk, ijk_neighbor]
+        w_list = [-weights, weights]
+
+        return self.nonzero_weights(mesh, ijk, ijk_neighbor, ijk_list, w_list)
+
+    def average_diffusion(self, diffusion, ijk, ijk_neighbor, mask):
+        """
+        Computes the average diffusion between the center and neighbor cells.
+
+        Parameters
+        ----------
+        diffusion : np.ndarray
+            The diffusion coefficients.
+        ijk : np.ndarray
+            The indices of the center cells.
+        ijk_neighbor : np.ndarray
+            The indices of the neighbor cells.
+        mask : np.ndarray
+            The mask indicating valid neighbors.
+
+        Returns
+        -------
+        np.ndarray
+            The average diffusion coefficients.
+        """
+        d_avg = np.zeros(mask.shape, dtype=diffusion.dtype)
+        d_avg[mask > 0] = 0.5 * (diffusion[tuple(ijk[:, mask > 0])] +
+                                 diffusion[tuple(ijk_neighbor[:, mask > 0])])
+        return d_avg

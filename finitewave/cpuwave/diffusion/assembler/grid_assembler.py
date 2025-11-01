@@ -80,7 +80,7 @@ class GridAssembler(DiffusionModelBase):
         size = len(indexes)
         shape = (size, size)
         # make stiffness matrix with positive diagonal
-        K_stiff = - sp.csr_matrix((weights, (rows, cols)), shape=shape)
+        K_stiff = sp.csr_matrix((weights, (rows, cols)), shape=shape)
         M_mass = sp.diags(np.ones_like(indexes, dtype=weights.dtype),
                           offsets=0, format='csr')
         return K_stiff.tocsr(), M_mass.tocsr()

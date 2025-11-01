@@ -42,13 +42,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyvista as pv
 
-import finitewave.gridywave as fw
+import finitewave as fw
 
 
 # number of nodes on the side
-n_i = 200
-n_j = 200
-n_k = 200
+n_i = 100
+n_j = 100
+n_k = 100
 
 phi = - np.pi / 4
 theta = np.pi / 3
@@ -62,28 +62,31 @@ tissue.fibers[:, :, :, 0] = np.cos(phi) * np.cos(theta)
 tissue.fibers[:, :, :, 1] = np.sin(phi) * np.cos(theta)
 tissue.fibers[:, :, :, 2] = np.sin(theta)
 
+diffusion_model = fw.GridAssembler()
+diffusion_model.stencil = fw.AsymmetricStencil()
+
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1,
-                                               n_i // 2 - 5, n_i // 2 + 5,
-                                               n_j // 2 - 5, n_j // 2 + 5,
-                                               n_k // 2 - 5, n_k // 2 + 5))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
+                                           n_i // 2 - 3, n_i // 2 + 3,
+                                           n_j // 2 - 3, n_j // 2 + 3,
+                                           n_k // 2 - 3, n_k // 2 + 3))
 # create model object:
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 15
+simulation.t_max = 9
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
+simulation.diffusion_model = diffusion_model
 # initialize model: compute weights, add stimuls, trackers etc.
 simulation.run()
 
+# visualize the potential map in 3D at the end of calculations:
 u = simulation.cardiac_model.u
-
-# visualize the potential map in 3D
 
 mesh_builder = fw.VisMeshBuilder3D()
 grid = mesh_builder.build_mesh(u > 0.95)

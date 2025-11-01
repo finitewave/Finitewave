@@ -36,9 +36,10 @@ showing the resulting excitation wave pattern.
 import matplotlib.pyplot as plt
 
 import finitewave as fw
+import numpy as np
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 256
+n = 400
 tissue = fw.CardiacTissueGrid([n, n])
 # tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3).astype(tissue.mesh.dtype)
 
@@ -55,7 +56,7 @@ diffusion_model.stencil = fw.IsotropicStencil()
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 15
+simulation.t_max = 30
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
@@ -63,6 +64,10 @@ simulation.diffusion_model = diffusion_model
 
 # run the model:
 simulation.run()
+
+# plt.figure()
+# plt.imshow(simulation.diffusion_model.weights[0].toarray())
+# plt.show()
 
 # show the potential map at the end of calculations:
 plt.figure()

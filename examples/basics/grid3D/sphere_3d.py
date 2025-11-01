@@ -50,10 +50,9 @@ Applications:
 - Modeling electrical activity in simplified anatomical geometries
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-import finitewave.gridywave as fw
+import finitewave as fw
 
 
 # Create a spherical mask within a 100x100x100 cube
@@ -70,12 +69,12 @@ def create_sphere(shape, radius, center):
     mesh = np.zeros(shape)
     mesh[create_sphere_mask(mesh.shape, radius, center)] = 1
     mesh[create_sphere_mask(mesh.shape, radius-5, center)] = 0
-    mesh = mesh[:shape[0] - n//4, :, :]
+    mesh = mesh[:shape[0] - n//8, :, :]
     return mesh
 
 
 # set up the cardiac tissue:
-n = 200
+n = 150
 shape = (n, n, n)
 mesh = create_sphere(shape, n//2-5, (n//2, n//2, n//2))
 n, m, k = mesh.shape
@@ -84,21 +83,27 @@ tissue = fw.CardiacTissueGrid((n, m, k))
 tissue.mesh = mesh
 
 # set up stimulation parameters:
-z_min = np.where(tissue.mesh)[2].min()
-z_max = z_min + 3
+z_max = np.where(tissue.mesh)[2].max()
+z_min = z_max - 3
 
-stim1 = fw.StimVoltageGridCoord(time=0, volt_value=1, z_min=z_min, z_max=z_max)
-stim2 = fw.StimVoltageGridCoord(time=50, volt_value=1, y_max=m//2)
+stim1 = fw.StimVoltageCoord(time=0, volt_value=1,
+                            x_min=0, x_max=n,
+                            y_min=0, y_max=m,
+                            z_min=z_min, z_max=z_max)
+stim2 = fw.StimVoltageCoord(time=50, volt_value=1,
+                            x_min=0, x_max=n,
+                            y_min=0, y_max=m//2,
+                            z_min=0, z_max=k)
 
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(stim1)
 stim_sequence.add_stim(stim2)
 
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 150
+simulation.t_max = 200
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_model = fw.AlievPanfilov(memory_save=True)
 simulation.cardiac_tissue = tissue

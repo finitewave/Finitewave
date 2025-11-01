@@ -12,9 +12,9 @@ wave propagation is influenced by the local fiber direction at each depth.
 
 Fiber Setup:
 ------------
-- Domain size: 200×200×100 (i, j, k)
+- Domain size: 200×200×50 (i, j, k)
 - Fiber rotation:
-    • Varies linearly from -π/3 to +π/2 along the k-axis (depth)
+    • Varies linearly from -π/3 to +π/3 along the k-axis (depth)
     • In-plane rotation only (z-component of fibers = 0)
     • Represented as 3D unit vectors: (cos(ϕ), sin(ϕ), 0)
 
@@ -47,51 +47,60 @@ Applications:
 """
 
 
-import finitewave.gridywave as fw
+import finitewave as fw
 
-import matplotlib.pyplot as plt
 import numpy as np
+import pyvista as pv
 
 
 # number of nodes on the side
-n_i = 200
-n_j = 200
-n_k = 100
+n_i = 128
+n_j = 128
+n_k = 50
 
 # set up the cardiac tissue:
 tissue = fw.CardiacTissueGrid((n_i, n_j, n_k))
 # orientation of fibers changes along the z-axis from -pi/3 to pi/3
-phi_k = np.linspace(- np.pi / 3, np.pi / 3, n_k - 2)
+phi_k = np.linspace(- np.pi / 3, np.pi / 3, n_k)
 # add fibers orientation vectors
 tissue.fibers = np.zeros((n_i, n_j, n_k, 3))
 for k, phi in enumerate(phi_k):
-    tissue.fibers[:, :, k + 1, 0] = np.cos(phi)
-    tissue.fibers[:, :, k + 1, 1] = np.sin(phi)
-    tissue.fibers[:, :, k + 1, 2] = 0
+    tissue.fibers[:, :, k, 0] = np.cos(phi)
+    tissue.fibers[:, :, k, 1] = np.sin(phi)
+    tissue.fibers[:, :, k, 2] = 0
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageGridCoord(0, 1,
-                                               n_i // 2 - 5, n_i // 2 + 5,
-                                               n_j // 2 - 5, n_j // 2 + 5))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
+                                           n_i // 2 - 3, n_i // 2 + 3,
+                                           n_j // 2 - 3, n_j // 2 + 3,
+                                           #    n_k // 2 - 3, n_k // 2 + 3))
+                                           0, n_k))
 # create model object:
-simulation = fw.CardiacGridSimulation()
+simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 15
+simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
-# initialize model: compute weights, add stimuls, trackers etc.
+# initialize and run simulation: compute weights, add stimuls, trackers etc.
 simulation.run()
 
-# visualize the potential map in 3D
-vis_mesh = tissue.mesh.copy()
-vis_mesh[n_i//2:, n_j//2:, :] = 0
-
+u = simulation.cardiac_model.u
+mesh = tissue.mesh
+# visualize the wavefront at the end of calculations:
 mesh_builder = fw.VisMeshBuilder3D()
-grid = mesh_builder.build_mesh(vis_mesh)
-grid = mesh_builder.add_scalar(simulation.cardiac_model.u, 'u')
-grid.plot(cmap='RdBu_r')
+grid = mesh_builder.build_mesh(u > 0.95)
+grid = mesh_builder.add_scalar(u, 'u')
+# Create full mesh for context
+full_mesh_builder = fw.VisMeshBuilder3D()
+full_grid = full_mesh_builder.build_mesh(mesh)
+full_grid = full_mesh_builder.add_scalar(u, 'u')
+
+pl = pv.Plotter()
+pl.add_mesh(grid, scalars='u', cmap='RdBu_r')
+pl.add_mesh(full_grid, scalars='u', cmap='RdBu_r', opacity=0.3)
+pl.show()

@@ -41,14 +41,13 @@ class DiffusionModel(DiffusionModelBase):
         simulation : Simulation
             The simulation instance associated with this diffusion model.
         """
-        super().initialize(simulation)
         self.simulation = simulation
 
         if self.assembler is None:
             self.assembler = self.default_assembler()
-            self.assembler.initialize(simulation)
 
-        self.compute_weights()
+        self.assembler.initialize(simulation)
+        self.weights = self.assembler.weights
 
     def compute_weights(self):
         """Computes weights using the selected assembler."""

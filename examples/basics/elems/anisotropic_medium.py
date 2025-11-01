@@ -5,7 +5,7 @@ import finitewave as fw
 
 
 # create a tissue of size 50x50 with 200x200 points:
-n = 200
+n = 400
 size = 50
 coords, elems = fw.build_triangulated_mesh(n, n, (0, size), (0, size))
 
@@ -25,10 +25,10 @@ stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 15
+simulation.t_max = 20
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.Courtemanche()
 simulation.stim_sequence = stim_sequence
 
 # run the model:
