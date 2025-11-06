@@ -44,20 +44,35 @@ class ECGGridTracker(Tracker):
             The simulation object.
         """
         self.simulation = simulation
-        self.measure_coords = np.atleast_2d(self.measure_coords)
+        self.measure_coords = self.build_measure_coords(self.measure_coords)
         self.ecg = []
 
+        mesh_shape = self.simulation.cardiac_tissue.mesh.shape
         myo_indexes = self.simulation.cardiac_model.myo_indexes
         mesh_indexes = self.simulation.cardiac_model.mesh_indexes
 
-        myo_indexes_on_mesh = mesh_indexes[myo_indexes]
+        self.myo_coords = self.build_myo_coords(myo_indexes, mesh_indexes,
+                                                mesh_shape)
+        self.myo_mask = self.build_myo_mask(myo_indexes, mesh_indexes)
 
-        self.myo_coords = self.unravel_index(
-            myo_indexes_on_mesh, self.simulation.cardiac_tissue.mesh.shape)
+    def build_myo_coords(self, myo_indexes, mesh_indexes, mesh_shape):
+        global_myo_indexes = mesh_indexes[myo_indexes]
+        myo_coords = np.unravel_index(global_myo_indexes, mesh_shape)
 
-        self.myo_indexes = np.zeros_like(self.simulation.cardiac_model.u,
-                                         dtype=bool)
-        self.myo_indexes[myo_indexes] = True
+        if len(myo_coords) == 2:
+            myo_coords = (myo_coords[0], myo_coords[1], 0)
+        return myo_coords
+
+    def build_measure_coords(self, coords):
+        coords = np.atleast_2d(coords)
+        coords = np.hstack((coords, np.zeros((coords.shape[0],
+                                              3 - coords.shape[1]))))
+        return coords.astype(self.simulation.npfloat)
+
+    def build_myo_mask(self, myo_indexes, mesh_indexes):
+        myo_mask = np.zeros_like(mesh_indexes, dtype=bool)
+        myo_mask[myo_indexes] = True
+        return myo_mask
 
     def calc_ecg(self):
         """
@@ -74,23 +89,10 @@ class ECGGridTracker(Tracker):
         dt = self.simulation.dt
         dr = self.simulation.dr
 
-        # indexes = self.simulation.cardiac_model.myo_indexes
-        # i, j, k = self.unravel_index(indexes, u.shape)
-
-        tr_current = (u - u_prev - rhs).flat[self.myo_indexes] / dt
+        tr_current = (u - u_prev - dt * rhs).flat[self.myo_mask] / dt
         ecg = calc_ecg(tr_current, self.measure_coords, *self.myo_coords, dr,
                        self.distance_power)
         return ecg
-
-    def unravel_index(self, indexes, shape):
-        if len(shape) == 2:
-            i, j = np.unravel_index(indexes, shape)
-            k = 0.
-        elif len(shape) == 3:
-            i, j, k = np.unravel_index(indexes, shape)
-        else:
-            raise ValueError("Unsupported mesh dimension")
-        return i, j, k
 
     def _track(self):
         ecg = self.calc_ecg()
@@ -123,15 +125,13 @@ class ECGGridTracker(Tracker):
 @njit(parallel=True, fastmath=True)
 def calc_ecg(tr_current, coords, i, j, k, dr, distance_power=1):
 
-    n_c = len(coords)
-    ecg = np.zeros(n_c, dtype=tr_current.dtype)
+    n = coords.shape[0]
+    ecg = np.zeros(n, dtype=tr_current.dtype)
 
-    for c in prange(n_c):
+    for c in prange(n):
         x, y, z = coords[c]
-        dx = x - i
-        dy = y - j
-        dz = z - k
-        d = np.sqrt(dx * dx + dy * dy + dz * dz) ** distance_power
+        ds = (i - x) ** 2 + (j - y) ** 2 + (k - z) ** 2
+        d = np.sqrt(ds) ** distance_power
         ecg[c] = np.sum(tr_current / (d * dr))
 
     return ecg

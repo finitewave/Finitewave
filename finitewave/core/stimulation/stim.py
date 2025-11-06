@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import numpy as np
 
 
 class Stim(ABC):
@@ -36,21 +37,24 @@ class Stim(ABC):
         self.passed = False
 
     @abstractmethod
-    def stimulate(self, model):
+    def stimulate(self, simulation):
         """
         Applies the stimulation to the provided model.
         """
         pass
 
     @abstractmethod
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Prepares the stimulation for application.
         """
         pass
 
-    def update_status(self, model):
+    def update_status(self, simulation):
         """
         Marks the stimulation as completed.
         """
-        self.passed = model.t >= (self.t + self.duration)
+        duration = max(self.duration, simulation.dt / 2)
+        self.passed = ((simulation.t > (self.t + duration)) |
+                       (simulation.t < self.t - simulation.dt / 2))
+        return self.passed

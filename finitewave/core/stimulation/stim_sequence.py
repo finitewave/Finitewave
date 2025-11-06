@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class StimSequence:
     """A sequence of stimuli to be applied to the cardiac model.
 
@@ -25,22 +28,22 @@ class StimSequence:
         self.sequence = []
         self.model = None
 
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Prepares each stimulus in the sequence for application.
 
-        This method sets up each stimulus based on the provided model
+        This method sets up each stimulus based on the provided simulation
         ensuring that each stimulus is ready to be applied according to its
         specified start time.
 
         Parameters
         ----------
-        model : CardiacModel
-            The simulation model that will be used to prepare the stimuli.
+        simulation : Simulation
+            The simulation instance.
         """
-        self.model = model
+        self.simulation = simulation
         for stim in self.sequence:
-            stim.initialize(model)
+            stim.initialize(simulation)
 
     def add_stim(self, stim):
         """
@@ -72,6 +75,7 @@ class StimSequence:
         stimulated and then marked as done.
         """
         for stim in self.sequence:
-            if self.model.t >= stim.t and not stim.passed:
-                stim.stimulate(self.model)
-                stim.update_status(self.model)
+            if stim.update_status(self.simulation):
+                continue
+
+            stim.stimulate(self.simulation)
