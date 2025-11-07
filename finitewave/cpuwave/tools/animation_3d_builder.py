@@ -1,22 +1,26 @@
 from pathlib import Path
 import numpy as np
 import pyvista as pv
-from natsort import natsorted
 from tqdm import tqdm
 
-from .vis_mesh_builder_3d import VisMeshBuilder3D
 from .animation_2d_builder import Animation2DBuilder
+from .pyvista_grid_builder import PyVistaGridBuilder
 
 
 class Animation3DBuilder(Animation2DBuilder):
     def __init__(self) -> None:
         super().__init__()
+        self.mesh_builder = PyVistaGridBuilder()
 
     def write(self,
-              mask=None,
+              coords=None,
+              elems=None,
+              mesh=None,
+              nan_mask=None,
+              elem_type=None,
               window_size=(800, 800),
               clim=[0, 1],
-              cmap="viridis",
+              cmap="RdBu_r",
               format="mp4",
               scalar_name="Scalar",
               scalar_bar=False,
@@ -24,46 +28,46 @@ class Animation3DBuilder(Animation2DBuilder):
               **kwargs):
         """Write the animation to a file.
 
-        Args:
-            mask (np.array): Mask to apply to the scalar field.
-            window_size (tuple, optional): Size of the window.
-                Defaults to (800, 800).
-            clim (list, optional): Color limits. Defaults to [0, 1].
-            cmap (str, optional): Color map. Defaults to "viridis".
-            format (str, optional): Format of the animation. Defaults to "mp4".
-                Other options are "gif".
-            scalar_name (str, optional): Name of the scalar field.
-                Defaults to "Scalar".
-            scalar_bar (bool, optional): Show scalar bar. Defaults to False.
+        Parameters
+        ----------
+        coords : ndarray, optional
+            Coordinates of the mesh nodes.
+        elems : ndarray, optional
+            Elements of the mesh.
+        mesh : ndarray, optional
+            Mesh grid to build the visualization mesh.
+        nan_mask : ndarray, optional
+            Mask where to apply NaN values.
+        window_size : tuple, optional
+            Size of the rendering window.
+        clim : list, optional
+            Color limits for the scalar data.
+        cmap : str, optional
+            Colormap to use for rendering.
+        format : str, optional
+            Output format ('mp4' or 'gif').
+        scalar_name : str, optional
+            Name of the scalar data.
+        scalar_bar : bool, optional
+            Whether to show the scalar bar.
+        camera_position : str or list, optional
+            Camera position for rendering.
+        **kwargs : dict
+            Additional keyword arguments for the movie/gif writer.
         """
 
-        path = Path(self.path)
-        files = natsorted(path.glob("*.npy"))
+        files = self.collect_frames(self.path)[:-10:2]
+        path_save = self.make_path_save(format)
 
-        path_save = self.path_save
+        scalar = self.load_scalar(files[0], self.scalar_mask, nan_mask)
 
-        if path_save is None:
-            path_save = path.parent
+        grid = self.build_grid(coords, elems, mesh, elem_type)
+        scalar = self.calc_cell_scalars(scalar, elems, mesh)
+        grid = self.mesh_builder.add_scalar(scalar, scalar_name)
 
-        path_save = Path(path_save).joinpath(f'{self.animation_name}.{format}')
-
-        scalar = self.load_scalar(files[0], self.scalar_mask)
-
-        if self.scalar_mask is None:
-            mesh = np.ones_like(scalar)
-            mesh[np.isnan(scalar)] = 0
-        else:
-            mesh = self.scalar_mask
-
-        if mask is not None:
-            scalar[mask] = np.nan
-
-        mesh_builder = VisMeshBuilder3D()
-        mesh_builder.build_mesh(mesh, as_surface=True)
-        grid = mesh_builder.add_scalar(scalar, scalar_name)
-
-        pl = pv.Plotter(notebook=False, off_screen=True,
-                        window_size=window_size)
+        pl = pv.Plotter(notebook=False, off_screen=True, window_size=window_size)
+        pl.add_mesh(grid, cmap=cmap, show_edges=False, clim=clim,
+                    scalars=scalar_name, show_scalar_bar=scalar_bar)
 
         if format == "mp4":
             pl.open_movie(path_save, **kwargs)
@@ -72,21 +76,65 @@ class Animation3DBuilder(Animation2DBuilder):
         else:
             raise ValueError("Format must be 'mp4' or 'gif'")
 
-        pl.add_mesh(grid, scalars=scalar_name,
-                    clim=clim, cmap=cmap, show_scalar_bar=scalar_bar)
         pl.camera_position = camera_position
-
         pl.show(auto_close=False)
-
         pl.write_frame()
 
         for filename in tqdm(files[1:], disable=not self.prog_bar,
                              desc="Building animation"):
-            scalar = self.load_scalar(filename, self.scalar_mask)
-            if mask is not None:
-                scalar[mask] = np.nan
-
-            mesh_builder.add_scalar(scalar, scalar_name)
+            scalar = self.load_scalar(filename, self.scalar_mask, nan_mask)
+            scalar = self.calc_cell_scalars(scalar, elems, mesh)
+            grid = self.mesh_builder.add_scalar(scalar, scalar_name)
             pl.write_frame()
 
         pl.close()
+
+    def make_path_save(self, format):
+        if self.path_save is None:
+            self.path_save = Path(self.path).parent
+
+        return Path(self.path_save).joinpath(f'{self.animation_name}.{format}')
+
+    def calc_cell_scalars(self, scalar, elems, mesh):
+        if mesh is not None:
+            return scalar
+
+        return np.mean(scalar[elems], axis=1)
+
+    def build_grid(self, coords, elems, mesh, elem_type="Tri"):
+        """Build a PyVista mesh from coordinates and elements.
+
+        Parameters
+        ----------
+        coords : ndarray, optional
+            Coordinates of the mesh nodes.
+        elems : ndarray, optional
+            Elements of the mesh.
+        mesh : ndarray, optional
+            Mesh grid to build the visualization mesh.
+
+        Returns
+        -------
+        pv.PolyData
+            The constructed PyVista mesh.
+        """
+        if elems is None and mesh is None:
+            raise ValueError("Either elems or mesh must be provided.")
+
+        if elems is not None and mesh is not None:
+            raise ValueError("Only one of elems or mesh should be provided.")
+
+        if mesh is not None:
+            self.mesh_builder.build_from_grid(mesh, as_surface=True)
+            return self.mesh_builder.grid
+
+        if elem_type is None:
+            raise ValueError("elem_type must be specified when elems are provided.")
+
+        if 'Tetra' in elem_type:
+            self.mesh_builder.build_from_tetrahedra(coords, elems,
+                                                    as_surface=True)
+            return self.mesh_builder.grid
+
+        self.mesh_builder.build_from_surface_elems(coords, elems)
+        return self.mesh_builder.grid

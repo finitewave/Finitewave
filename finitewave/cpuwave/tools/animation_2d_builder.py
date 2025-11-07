@@ -15,34 +15,64 @@ class Animation2DBuilder:
         self.prog_bar = False
         self.animation_name = 'animation'
 
-    def load_scalar(self, path, mask=None):
-        """Load the scalar field from a file.
+    def load_scalar(self, path, scalar_mask=None, nan_mask=None):
+        """
+        Load a scalar field value from path and apply mask if provided.
 
-        Args:
-            path (str): Path to the snapshot folder.
-            mask (np.array, optional): Mask to apply to the scalar field.
+        Parameters
+        ----------
+        path : str
+            Path to the NumPy file containing the scalar data.
+        scalar_mask : ndarray, optional
+            Mask indicating where scalar values should be placed
+            in the output array. If given, the output will be reshaped
+            according to the mask.
+        nan_mask : ndarray, optional
+            Mask indicating where to set NaN values in the output array.
 
-        Returns:
-            np.array: Scalar field.
+        Returns
+        -------
+        ndarray
+            The loaded scalar data, possibly reshaped according to the mask.
         """
 
-        scalar = np.load(path).astype(float)
+        scalar = np.load(path).astype(np.float32)
 
-        if mask is None:
+        if scalar_mask is None:
+            if nan_mask is not None:
+                scalar[nan_mask] = np.nan
             return scalar
 
-        if mask.shape == scalar.shape:
+        if scalar_mask.shape == scalar.shape:
+            if nan_mask is not None:
+                scalar[nan_mask] = np.nan
             return scalar
 
-        if mask[mask > 0].shape == scalar.shape:
-            scalar_mesh = np.zeros_like(mask, dtype=float)
-            scalar_mesh[mask > 0] = scalar
+        if scalar_mask[scalar_mask > 0].shape == scalar.shape:
+            scalar_mesh = np.zeros_like(scalar_mask, dtype=float)
+            scalar_mesh[scalar_mask > 0] = scalar
+
+            if nan_mask is not None:
+                scalar_mesh[nan_mask] = np.nan
             return scalar_mesh
 
         raise ValueError("Mask and scalar must have the same shape, or scalar"
                          + " must have the same shape as mask[mask > 0]")
 
     def collect_frames(self, path):
+        """
+        Collect and sort frame files from the specified directory.
+
+        Parameters
+        ----------
+        path : str
+            Directory path containing the frame files.
+
+        Returns
+        -------
+        list of Path
+            Sorted list of frame file paths.
+        """
         files = natsorted(Path(path).glob("*.npy"))
 
         if len(files) == 0:

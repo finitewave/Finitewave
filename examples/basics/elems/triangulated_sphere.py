@@ -1,64 +1,93 @@
 from pathlib import Path
 import numpy as np
 import pyvista as pv
-import finitewave.elementalwave as fw
+import finitewave as fw
 import matplotlib.pyplot as plt
 
 
-# path = Path("/Users/arstanbek/Projects/fibrosis/ElementalWave/data")
-path = Path("C:/Users/aooke/Projects/ElementalWave/data/start")
+radius = 15
+mesh = pv.Icosphere(nsub=7, radius=radius)
 
-coords = np.genfromtxt(path.joinpath("mesh.pts"),
-                       skip_header=1,
-                       usecols=[0, 1, 2])
-coords /= 1000
+coords = mesh.points
+elems = mesh.faces.reshape((-1, 4))[:, 1:4]
 
-# print(coords.min(axis=0), coords.max(axis=0))
-elems = np.genfromtxt(path.joinpath("mesh.elem"),
-                      skip_header=1,
-                      usecols=[1, 2, 3],
-                      dtype=int)
+center1 = np.array([radius, 0, 0])
+center2 = np.array([0, radius, 0])
 
+radius_hole = 0.5 * np.pi * radius / 4
 
-# print(coords.shape, elems.shape)
+elem_centers = np.mean(coords[elems], axis=1)
+dist1 = np.linalg.norm(elem_centers - center1, axis=1)
+dist2 = np.linalg.norm(elem_centers - center2, axis=1)
+mask = (dist1 > radius_hole) & (dist2 > radius_hole)
 
-# # triangle edge length
-# edge_length = [np.linalg.norm(coords[elems[:, 0]] - coords[elems[:, 1]], axis=1),
-#                np.linalg.norm(coords[elems[:, 1]] - coords[elems[:, 2]], axis=1),
-#                np.linalg.norm(coords[elems[:, 2]] - coords[elems[:, 0]], axis=1)]
+elems = elems[mask, :]
 
-# edge_length = np.concatenate(edge_length)
+# phi, theta = np.pi / 4, 0
 
-# plt.hist(edge_length)
-# plt.show()
+phi = np.linspace(np.pi/8, 3*np.pi/8, 10)
+theta = np.zeros_like(phi)
 
-# stim_coords = coords[np.random.choice(coords.shape[0], 1, replace=False)]
+stim_1_coords = np.array([radius * np.cos(phi) * np.cos(theta),
+                          radius * np.sin(phi) * np.cos(theta),
+                          radius * np.sin(theta)]).T
+# find the closest node to stim_1_coords
+idxs = [mesh.find_closest_point(coord) for coord in stim_1_coords]
+stim_coords = coords[idxs]
+stim_matrix = ((coords[:, 0] > 0) & (coords[:, 1] > 0) & (coords[:, 2] > 0))
 
-# # create a tissue of size 400x400 with cardiomycytes:
+# create cardiac tissue object:
+tissue = fw.CardiacTissueElements(coords, elems, elem_type='Triangle')
 
-# tissue = fw.CardiacTissueFEM(coords, elems)
-# # set up stimulation parameters:
-# stim_sequence = fw.StimSequence()
-# stim_sequence.add_stim(fw.StimVoltageElectrodesFEM(0, 1, stim_coords, 1))
+# set up stimulation parameters:
+# stim_coords = coords[:1, :]
+stim_sequence = fw.StimSequence()
+stim_sequence.add_stim(fw.StimVoltageElectrodes(0, 1, stim_1_coords, size=2))
+stim_sequence.add_stim(fw.StimCurrentElectrodes(32, 1, 1, stim_1_coords, size=2))
+stim_sequence.add_stim(fw.StimVoltageMatrix(54, 1, stim_matrix))
 
-# # create model object and set up parameters:
-# aliev_panfilov = fw.LuoRudy91FEM()
-# aliev_panfilov.dt = 0.01
-# aliev_panfilov.t_max = 2
-# # add the tissue and the stim parameters to the model object:
-# aliev_panfilov.cardiac_tissue = tissue
-# aliev_panfilov.stim_sequence = stim_sequence
+frame_tracker = fw.FrameTracker()
+frame_tracker.step = 20
+frame_tracker.start_time = 100
+tracker_sequence = fw.TrackerSequence()
+tracker_sequence.add_tracker(frame_tracker)
 
-# # run the model:
-# aliev_panfilov.run(num_of_threads=1)
+# create model object and set up parameters:
+simulation = fw.CardiacSimulation()
+simulation.dt = 0.01
+simulation.t_max = 135
+# add the tissue and the stim parameters to the model object:
+simulation.cardiac_tissue = tissue
+simulation.cardiac_model = fw.AlievPanfilov()
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
+# set up the solver:
+# simulation.solver = fw.ForwardEulerSolver()
 
-# u = aliev_panfilov.u
+# run the model:
+simulation.run()
 
-# # u = np.zeros(coords.shape[0])
-# # u[coords[:, 1] <= -19.9] = 1
-# # show the potential map at the end of calculations:
-# faces = np.hstack([[3, *tri] for tri in elems])
-# mesh = pv.PolyData(coords, faces)
-# mesh.point_data["values"] = u
-# # plot
-# mesh.plot(cmap="RdBu_r", show_edges=False)
+np.save("coords.npy", coords.astype(np.float32))
+np.save("elems.npy", elems.astype(np.int32))
+
+# get the resulting potential at the element centers:
+u = simulation.cardiac_model.u
+elems_u = np.mean(u[elems], axis=1)
+
+# show the potential map at the end of calculations:
+faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
+mesh = pv.PolyData(coords, faces)
+mesh.cell_data["values"] = elems_u
+
+pl = pv.Plotter()
+pl.add_mesh(mesh, cmap="RdBu_r", show_edges=False)
+pl.camera_position = 'xy'
+pl.show()
+
+# print(f"Number of nodes: {coords.shape[0]}")
+# print(f"Number of elements: {elems.shape[0]}")
+
+# pv.set_plot_theme("document")
+# p = pv.Plotter()
+# p.add_mesh(mesh, color="lightblue", show_edges=True, opacity=0.5)
+# p.show()

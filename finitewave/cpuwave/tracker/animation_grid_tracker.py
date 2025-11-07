@@ -1,12 +1,12 @@
 from pathlib import Path
 import numpy as np
 
-from .frame_grid_tracker import FrameGridTracker
+from .frame_tracker import FrameTracker
 from finitewave.cpuwave.tools.animation_2d_builder import Animation2DBuilder
-from finitewave.cpuwave.tools.animation_3d_builder import Animation3DBuilder
+from finitewave.cpuwave.tools.animation_3d_builder_ import Animation3DBuilder
 
 
-class AnimationGridTracker(FrameGridTracker):
+class AnimationGridTracker(FrameTracker):
     """
     A class to track and save frames of a 2D cardiac tissue model simulation
     for animation purposes.

@@ -57,7 +57,9 @@ class MultiVariableGridTracker(Tracker):
             self.vars[var_] = []
 
         if self.cell_ind is None:
-            self._meausure_mask = simulation.cardiac_tissue.mesh == 1
+            self._meausure_mask = np.ones_like(
+                simulation.cardiac_model.mesh_indexes, dtype=bool
+                )
         else:
             self._meausure_mask = tuple(np.atleast_2d(self.cell_ind).T)
 

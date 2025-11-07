@@ -2,10 +2,9 @@ from pathlib import Path
 import numpy as np
 
 from finitewave.core.tracker.tracker import Tracker
-from finitewave.cpuwave.tools import Animation2DBuilder
 
 
-class FrameGridTracker(Tracker):
+class FrameTracker(Tracker):
     """
     A class to track and save frames of a 2D cardiac tissue model simulation
     for animation purposes.
@@ -33,7 +32,7 @@ class FrameGridTracker(Tracker):
         Tracker.__init__(self)
         self.dir_name = "snapshots"   # Directory for saving frames
         self.var_name = "u"           # Name of the target array to capture
-        self.frame_type = "float64"   # Default frame format settings
+        self.frame_type = np.float64  # Default frame format settings
         self._frame_counter = 0       # Internal frame counter
         self.overwrite = True         # Overwrite existing frames
 
@@ -49,6 +48,7 @@ class FrameGridTracker(Tracker):
         """
         self.simulation = simulation
         self._frame_counter = 0  # Reset frame counter
+        self._frame_type = simulation.npfloat
 
         if not Path(self.path, self.dir_name).is_dir():
             Path(self.path, self.dir_name).mkdir(parents=True)
@@ -63,8 +63,7 @@ class FrameGridTracker(Tracker):
 
         The frames are saved in the specified directory as NumPy files.
         """
-        self.simulation.sync_cardiac_model()
-        frame = self.simulation.cardiac_model.__dict__[self.var_name].copy()
+        frame = self.simulation.cardiac_model.__dict__[self.var_name]
         dir_path = Path(self.path, self.dir_name)
 
         np.save(

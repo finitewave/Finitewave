@@ -64,5 +64,5 @@ class StimElectrodes(Stim):
         """
         tree = spatial.KDTree(myo_coords)
         inds = tree.query_ball_point(self.coords, self.size)
-        inds = np.unique(np.concatenate(inds))
+        inds = np.unique(np.concatenate(inds)).astype(np.int32)
         return myo_indexes[inds]
