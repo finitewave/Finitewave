@@ -34,6 +34,9 @@ related fields.
      - .. image:: images/spiral_wave_lv.gif
           :width: 220px
           :alt: Image 3
+   * - .. image:: images/sphere.gif
+          :width: 200px
+          :alt: Image 4
 
 Installation
 ============
