@@ -37,6 +37,8 @@ related fields.
    * - .. image:: images/sphere.gif
           :width: 200px
           :alt: Image 4
+     - (no image)
+     - (no image)
 
 Installation
 ============
