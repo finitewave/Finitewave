@@ -1,10 +1,26 @@
-from .numba_linalg import forward_euler, matvec_numba, ax_p_y_numba
+from .numba_linalg import forward_euler
 from ..solver import Solver
-import scipy.sparse as sparse
-import numpy as np
 
 
 class ForwardEulerSolver(Solver):
+    """Implements the Forward Euler time integration method for cardiac
+    simulations.
+
+    Attributes
+    ----------
+    a_matrix : scipy.sparse.csr_matrix
+        The system matrix for the Forward Euler method.
+    u_new : np.ndarray
+        The solution vector at the new time step.
+    u : np.ndarray
+        The solution vector at the current time step.
+    rhs : np.ndarray
+        The right-hand side vector from the cardiac model.
+    myo_indexes : np.ndarray
+        Indexes of myocardial nodes in the simulation.
+    num_iterations : list
+        List to track the number of iterations per time step.
+    """
     def __init__(self):
         self.a_matrix = None
         self.u_new = None
@@ -14,6 +30,13 @@ class ForwardEulerSolver(Solver):
         self.num_iterations = []
 
     def initialize(self, simulation):
+        """Initializes the Forward Euler solver with the given simulation.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            The simulation object containing the cardiac and diffusion models.
+        """
         self.simulation = simulation
         self.u_new = simulation.cardiac_model.u.copy()
         self.u = simulation.cardiac_model.u
@@ -23,9 +46,8 @@ class ForwardEulerSolver(Solver):
 
     def assemble_system(self):
         """Assembles the system matrix for the Forward Euler method.
-        A = M + dt * K.
-
-        TODO: Add support for mass lumping.
+        Takes the stiffness and mass matrices from the diffusion model
+        and computes the inverse of the lumped mass matrix diagonal.
 
         Parameters
         ----------
@@ -42,6 +64,13 @@ class ForwardEulerSolver(Solver):
         self.stiff = stiff
 
     def run(self):
+        """Performs a single time step using the Forward Euler method.
+
+        For each time step:
+        1. Update the solution vector and right-hand side from the cardiac model.
+        2. u_new = u - dt * M^{-1} * K * u + dt * rhs (explicit diffusion step).
+        3. Update the cardiac model solution with the new values.
+        """        
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
