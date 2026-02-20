@@ -5,8 +5,8 @@ import finitewave as fw
 
 
 # create a tissue of size 50x50 with 200x200 points:
-n = 400
-size = 50
+n = 200
+size = 25
 coords, elems = fw.build_triangulated_mesh(n, n, (0, size), (0, size))
 
 # create cardiac tissue object:

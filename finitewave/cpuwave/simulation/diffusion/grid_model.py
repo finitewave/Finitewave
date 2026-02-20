@@ -1,22 +1,23 @@
 import numpy as np
-from scipy import sparse as sp
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
+from finitewave.cpuwave.numerics.fdm.asymmetric_stencil import AsymmetricStencil
 
 
-class GridAssembler(DiffusionModelBase):
+class GridModel(DiffusionModelBase):
     """
-    This class computes the weights for solver on 2D and 3D grids.
+    Diffusion model for grid-based simulations.
+
+    This model uses a finite difference stencil to compute the diffusion
+    weights, which are then used in the time integration step of the
+    simulation.
 
     Attributes
     ----------
-    stencil : Stencil
-        An instance of the Stencil class to compute the weights for the
-        diffusion operator.
+    Inherits all attributes from DiffusionModelBase.
     """
-
     def __init__(self):
         super().__init__()
-        self.stencil = None
+        self.stencil = AsymmetricStencil()
 
     def initialize(self, simulation):
         """
@@ -44,78 +45,15 @@ class GridAssembler(DiffusionModelBase):
 
         diffusion = self.compute_diffusion(mesh, tissue.conductivity,
                                            tissue.fibers, tissue.D_al,
-                                           tissue.D_ac, model.D_model,
-                                           self.simulation.dr)
+                                           tissue.D_ac, model.D_model)
         diffusion = diffusion.astype(self.simulation.npfloat)
 
-        self.weights = self.compute_weights_sparse(mesh, diffusion,
-                                                   tissue.myo_indexes)
+        self.weights = self.stencil.compute_system_matrices(mesh, diffusion,
+                                                            tissue.dr, tissue.myo_indexes,
+                                                            reindex=True)
         return self.weights
 
-    def compute_weights_sparse(self, mesh, diffusion, indexes):
-        """
-        Computes the weights as a sparse matrix.
-
-        Parameters
-        ----------
-        mesh : numpy.ndarray
-            The mesh of the simulation.
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
-        indexes : numpy.ndarray
-            The indexes of the non-empty cells in the mesh.
-
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            The stiffness matrix.
-        scipy.sparse.csr_matrix
-            The mass matrix. Diagonal matrix with ones on the diagonal.
-        """
-        rows, cols, weights = self.stencil.compute_weights(mesh, diffusion,
-                                                           indexes)
-        weights = weights.astype(diffusion.dtype)
-        rows, cols = self.reindex_matrix(mesh, rows, cols, indexes)
-
-        size = len(indexes)
-        shape = (size, size)
-        # make stiffness matrix with positive diagonal
-        K_stiff = sp.csr_matrix((weights, (rows, cols)), shape=shape)
-        M_mass = sp.diags(np.ones_like(indexes, dtype=weights.dtype),
-                          offsets=0, format='csr')
-        return K_stiff.tocsr(), M_mass.tocsr()
-
-    def reindex_matrix(self, mesh, rows, cols, indexes):
-        """
-        Reindexes the rows and columns of the sparse matrix to avoid zero
-        rows in the sparse matrix.
-
-        Parameters
-        ----------
-        mesh : numpy.ndarray
-            The mesh of the simulation.
-        rows : numpy.ndarray
-            The row indices of the sparse matrix.
-        cols : numpy.ndarray
-            The column indices of the sparse matrix.
-        indexes : numpy.ndarray
-            The indexes of the non-empty cells in the mesh.
-
-        Returns
-        -------
-        numpy.ndarray
-            The reindexed row indices.
-        numpy.ndarray
-            The reindexed column indices.
-        """
-        c_indexes = np.zeros(mesh.size, dtype=np.int64)
-        c_indexes[indexes] = np.arange(len(indexes))
-        rows = c_indexes[rows]
-        cols = c_indexes[cols]
-        return rows, cols
-
-    def compute_diffusion(self, mesh, conductivity, fibers, D_al, D_ac,
-                          D_model, dr):
+    def compute_diffusion(self, mesh, conductivity, fibers, D_al, D_ac, D_model):
         """
         Computes the diffusion tensor based on fiber orientations.
 
@@ -144,7 +82,7 @@ class GridAssembler(DiffusionModelBase):
             ndim = mesh.ndim
             diffusion = np.zeros(mesh.shape + (ndim, ndim), dtype=mesh.dtype)
             for i in range(ndim):
-                diffusion[..., i, i] = conductivity * D_model / (dr ** 2)
+                diffusion[..., i, i] = conductivity * D_model
             return diffusion
 
         ndim = fibers.shape[-1]
@@ -152,7 +90,7 @@ class GridAssembler(DiffusionModelBase):
         for i in range(ndim):
             for j in range(ndim):
                 d_ij = self.compute_diffusion_components(fibers, i, j, D_al, D_ac)
-                diffusion[..., i, j] = d_ij * conductivity * D_model / (dr ** 2)
+                diffusion[..., i, j] = d_ij * conductivity * D_model
         return diffusion
 
     def compute_diffusion_components(self, fibers, i_axis, j_axis, D_al, D_ac):

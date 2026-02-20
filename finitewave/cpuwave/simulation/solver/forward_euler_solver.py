@@ -1,5 +1,5 @@
-from .numba_linalg import forward_euler
-from ..solver import Solver
+from finitewave.cpuwave.numerics.linalg.numba_linalg import forward_euler
+from .solver import Solver
 
 
 class ForwardEulerSolver(Solver):

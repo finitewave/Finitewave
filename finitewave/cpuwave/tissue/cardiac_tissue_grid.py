@@ -24,13 +24,15 @@ class CardiacTissueGrid(CardiacTissue):
         used.
     """
 
-    def __init__(self, shape):
+    def __init__(self, shape, dr=1.0):
         super().__init__()
         self.meta["dim"] = len(shape)
         self.meta["shape"] = shape
         self.meta["type"] = "Grid"
+        self.meta["dr"] = dr
         self.mesh = np.ones(shape, dtype=np.int8)
         self.conductivity = 1.0
+        self.dr = dr
         self.fibers = None
 
     @property

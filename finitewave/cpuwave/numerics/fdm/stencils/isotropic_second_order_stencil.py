@@ -1,5 +1,5 @@
 import numpy as np
-from .isotropic_stencil import IsotropicStencil
+from ..isotropic_stencil import IsotropicStencil
 
 
 class IsotropicSecondOrderStencil(IsotropicStencil):

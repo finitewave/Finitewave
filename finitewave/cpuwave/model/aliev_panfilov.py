@@ -1,5 +1,4 @@
 import numpy as np
-import jax
 from numba import njit, prange
 
 from .cardiac_model import CardiacModel

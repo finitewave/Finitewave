@@ -1,9 +1,9 @@
 import numpy as np
 
-from .element_assembler import ElementAssembler
+from .volume_assembler import VolumeAssembler
 
 
-class SurfaceAssembler(ElementAssembler):
+class SurfaceAssembler(VolumeAssembler):
     """
     Class for assembling surface element diffusion models.
 
@@ -11,15 +11,10 @@ class SurfaceAssembler(ElementAssembler):
     ----------
     reference_element : ReferenceElement
         The reference element used for numerical integration.
-    simulation : Simulation
-        The simulation instance associated with this assembler.
-    weights : tuple
-        The computed diffusion weights (stiffness and mass matrices).
     """
 
     def __init__(self):
         super().__init__()
-        self.reference_element = None
 
     def compute_metrics(self, coords, elems):
         """
@@ -37,12 +32,12 @@ class SurfaceAssembler(ElementAssembler):
         -------
         areas: (N_elems,)
             Area of each surface element.
-        grads: (N_elems, 3, 3)
+        grads: (N_elems, N_points, 3)
             Gradient of shape functions in global coordinates for each element.
         """
         jacobian = self.build_jacobian(coords, elems)
-        areas = self.compute_areas(jacobian)
-        grads = self.compute_gradients(jacobian)
+        areas = self._compute_areas(jacobian)
+        grads = self._compute_gradients(jacobian)
 
         return areas, grads
 
@@ -72,8 +67,28 @@ class SurfaceAssembler(ElementAssembler):
                                   coords[elems[:, i]])
 
         return jacobian
+    
+    def compute_areas(self, coords, elems):
+        """
+        Computes areas of surface elements from their Jacobian matrices.
 
-    def compute_gradients(self, jacobian):
+        Parameters:
+        ----------
+        coords: (N_nodes, 3)
+            Coordinates of the mesh nodes.
+        elems: (N_elems, N_points)
+            Element connectivity (node indices for each surface element).
+
+        Returns:
+        -------
+            areas: (N_elems,)
+                Area of each surface element.
+        """
+        jacobian = self.build_jacobian(coords, elems)
+        areas = self._compute_areas(jacobian)
+        return areas
+
+    def _compute_gradients(self, jacobian):
         """Compute global gradients for surface elements.
 
         Parameters:
@@ -86,6 +101,11 @@ class SurfaceAssembler(ElementAssembler):
             grads: (N, n_points, 3)
                 Gradient of shape functions in global coordinates for each
                 element.
+
+        Note:
+        -----
+            The output shape is (N, n_points, 3) to match the expected format
+            for subsequent computations.
         """
         jacobian_inv = self.invert_jacobian(jacobian)
         n_elems = jacobian_inv.shape[0]
@@ -101,7 +121,7 @@ class SurfaceAssembler(ElementAssembler):
 
         return grads
 
-    def compute_areas(self, jacobian):
+    def _compute_areas(self, jacobian):
         """Compute areas of surface elements from their Jacobian matrices.
 
         Parameters:

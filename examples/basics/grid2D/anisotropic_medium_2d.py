@@ -50,7 +50,7 @@ import finitewave as fw
 # number of nodes on the side
 n = 400
 # fiber orientation angle
-tissue = fw.CardiacTissueGrid([n, n])
+tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 alpha = np.pi / 4
 # tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.2)
 # add fibers orientation vectors
@@ -58,7 +58,7 @@ tissue.fibers = np.zeros([n, n, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
 tissue.fibers[:, :, 1] = np.sin(alpha)
 
-diffusion_model = fw.GridAssembler()
+diffusion_model = fw.GridModel()
 diffusion_model.stencil = fw.AsymmetricStencil()
 
 # set up stimulation parameters:
@@ -69,7 +69,6 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.dr = 0.25
 simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue

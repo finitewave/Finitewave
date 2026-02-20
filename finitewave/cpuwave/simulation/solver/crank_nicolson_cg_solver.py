@@ -1,8 +1,8 @@
 import numpy as np
 import warnings
 
-from ..solver import Solver
-from .numba_linalg import cg_numba, matvec_numba, ax_p_y_numba
+from .solver import Solver
+from finitewave.cpuwave.numerics.linalg.numba_linalg import cg_numba, matvec_numba, ax_p_y_numba
 
 
 class CrankNicolsonCGSolver(Solver):

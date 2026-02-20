@@ -84,10 +84,18 @@ class StimCurrentCoord(StimCoord):
         simulation.cardiac_model.u.flat[self.stim_indexes] += (
             simulation.dt * self.curr_value
             )
+        
+        simulation.solver.u_new.flat[self.stim_indexes] += (
+            simulation.dt * self.curr_value
+            )
 
         if self.u_max is not None:
             u = simulation.cardiac_model.u.flat[self.stim_indexes]
 
             simulation.cardiac_model.u.flat[self.stim_indexes] = (
                 np.where(u > self.u_max, self.u_max, u)
+                )
+            u_new = simulation.solver.u_new.flat[self.stim_indexes]
+            simulation.solver.u_new.flat[self.stim_indexes] = (
+                np.where(u_new > self.u_max, self.u_max, u_new)
                 )

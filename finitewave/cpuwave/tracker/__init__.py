@@ -22,6 +22,7 @@ Each tracker class has basic attributes such as ``start_time``, ``end_time``,
 """
 
 from .action_potential_grid_tracker import ActionPotentialGridTracker
+from .activation_time_tracker import ActivationTimeTracker
 from .variable_grid_tracker import VariableGridTracker
 from .multi_variable_grid_tracker import MultiVariableGridTracker
 from .ecg_grid_tracker import ECGGridTracker

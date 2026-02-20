@@ -4,7 +4,7 @@ import numpy as np
 from finitewave.core.tracker.tracker import Tracker
 
 
-class ActivationTimeTrackerFDM(Tracker):
+class ActivationTimeTracker(Tracker):
     """
     A class to track and record the activation time of each cell in a 2D
     cardiac tissue model.
@@ -24,16 +24,16 @@ class ActivationTimeTrackerFDM(Tracker):
 
     """
 
-    def __init__(self):
+    def __init__(self, threshold=-40, file_name="act_time"):
         """
-        Initializes the ActivationTimeTrackerFDM with default parameters.
+        Initializes the ActivationTimeTracker with default parameters.
         """
         Tracker.__init__(self)
         self.act_t = np.ndarray         # Array to store activation times
-        self.threshold = -40            # Threshold for activation (in mV)
-        self.file_name = "act_time_fdm"  # Default file name for saving data
+        self.threshold = threshold            # Threshold for activation (in mV)
+        self.file_name = file_name  # Default file name for saving data
 
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Initializes the tracker with the simulation model, setting up
         the activation time array.
@@ -44,9 +44,9 @@ class ActivationTimeTrackerFDM(Tracker):
             The cardiac tissue model object that contains the grid (`u`) of
             membrane potentials.
         """
-        self.model = model
+        self.simulation = simulation
         # Initialize activation time array with -1 to indicate unactivated cells
-        self.act_t = - np.ones_like(self.model.u)
+        self.act_t = - np.ones_like(self.simulation.cardiac_model.u)
 
     def _track(self):
         """
@@ -59,8 +59,8 @@ class ActivationTimeTrackerFDM(Tracker):
         # Update activation times where they are still -1 and the membrane
         # potential exceeds the threshold
         self.act_t = np.where((self.act_t < 0)
-                              & (self.model.u > self.threshold),
-                              self.model.t, self.act_t)
+                              & (self.simulation.cardiac_model.u > self.threshold),
+                              self.simulation.t, self.act_t)
 
     @property
     def output(self):

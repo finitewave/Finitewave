@@ -7,11 +7,9 @@ import numba
 from finitewave.core.simulation.cardiac_simulation_base import (
     CardiacSimulationBase
 )
-from finitewave.cpuwave.diffusion.diffusion_model import DiffusionModel
-from finitewave.cpuwave.solver.numba import (
-    ForwardEulerSolver,
-    CrankNicolsonCGSolver
-)
+from .diffusion.diffusion_model import DiffusionModel
+from .solver.forward_euler_solver import ForwardEulerSolver
+from .solver.crank_nicolson_cg_solver import CrankNicolsonCGSolver
 
 
 class CardiacSimulation(CardiacSimulationBase):

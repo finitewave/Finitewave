@@ -59,7 +59,7 @@ n_j = 128
 n_k = 50
 
 # set up the cardiac tissue:
-tissue = fw.CardiacTissueGrid((n_i, n_j, n_k))
+tissue = fw.CardiacTissueGrid((n_i, n_j, n_k), dr=0.25)
 # orientation of fibers changes along the z-axis from -pi/3 to pi/3
 phi_k = np.linspace(- np.pi / 3, np.pi / 3, n_k)
 # add fibers orientation vectors
@@ -80,7 +80,6 @@ stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
 simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
-simulation.dr = 0.25
 simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue

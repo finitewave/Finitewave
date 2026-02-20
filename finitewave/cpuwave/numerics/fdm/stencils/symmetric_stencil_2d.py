@@ -1,5 +1,5 @@
 import numpy as np
-from .asymmetric_stencil import AsymmetricStencil
+from ..asymmetric_stencil import AsymmetricStencil
 
 
 class SymmetricStencil2D(AsymmetricStencil):
