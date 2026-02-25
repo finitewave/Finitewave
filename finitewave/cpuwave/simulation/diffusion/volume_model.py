@@ -56,14 +56,16 @@ class VolumeModel(DiffusionModelBase):
         tissue = self.simulation.cardiac_tissue
 
         coords = tissue.myo_coords
-        elems = self.reindex_elems(tissue.coords,
-                                   tissue.myo_elems,
-                                   tissue.myo_indexes)
+        elems = tissue.myo_elems
+        indexes = tissue.myo_indexes
 
         diffusion = self.compute_diffusion(self.simulation, tissue)
         diffusion = diffusion[tissue.myo_elems_indexes]
 
-        self.weights = self.compute_system_matrices(coords, elems, diffusion, reindex=True)
+        self.weights = self.assembler.compute_system_matrices(coords, elems,
+                                                              diffusion,
+                                                              indexes,
+                                                              reindex=True)
         return self.weights
 
     def compute_diffusion(self, simulation, tissue):

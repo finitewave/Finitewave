@@ -68,8 +68,8 @@ class AsymmetricStencil(Stencil):
             A tuple containing the rows, cols, and weights for the flux.
         """
         ijk_major = self.build_neighbor(ijk, shift=1, axis=major_axis)
-        m_center = self.is_valid_index(ijk, mesh)
-        m_major = self.is_valid_index(ijk_major, mesh)
+        m_center = self.is_valid_index(ijk, mesh).astype(diffusion.dtype)
+        m_major = self.is_valid_index(ijk_major, mesh).astype(diffusion.dtype)
         
         ijk_list, w_list = self.major_flux_weights(diffusion, dr,
                                                     ijk, ijk_major,
@@ -89,7 +89,7 @@ class AsymmetricStencil(Stencil):
         return ijk_major, ijk_list, w_list
     
     def major_flux_weights(self, diffusion, dr, ijk, ijk_major, m_center, m_major, major_axis):
-        valid_connection = m_major & m_center
+        valid_connection = (m_major > 0) & (m_center > 0)
         w_major = - self.average_diffusion(diffusion, ijk, ijk_major, major_axis,
                                            major_axis, valid_connection) / dr
 
@@ -159,10 +159,10 @@ class AsymmetricStencil(Stencil):
         ijk_3 = self.build_neighbor(ijk_center, 1, minor_axis)
         ijk_4 = self.build_neighbor(ijk_major, 1, minor_axis)
 
-        m1 = self.is_valid_index(ijk_1, mesh)
-        m2 = self.is_valid_index(ijk_2, mesh)
-        m3 = self.is_valid_index(ijk_3, mesh)
-        m4 = self.is_valid_index(ijk_4, mesh)
+        m1 = self.is_valid_index(ijk_1, mesh).astype(diffusion.dtype)
+        m2 = self.is_valid_index(ijk_2, mesh).astype(diffusion.dtype)
+        m3 = self.is_valid_index(ijk_3, mesh).astype(diffusion.dtype)
+        m4 = self.is_valid_index(ijk_4, mesh).astype(diffusion.dtype)
 
         weights = self.minor_component(d_minor, dr, m_center, m_major, m1, m2, m3, m4)
         ijk_list = [ijk_center, ijk_major, ijk_1, ijk_2, ijk_3, ijk_4]

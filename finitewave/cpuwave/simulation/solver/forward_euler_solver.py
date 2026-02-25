@@ -1,3 +1,4 @@
+import numpy as np
 from finitewave.cpuwave.numerics.linalg.numba_linalg import forward_euler
 from .solver import Solver
 
@@ -59,9 +60,11 @@ class ForwardEulerSolver(Solver):
             Time step for the simulation.
         """
         stiff, mass = self.simulation.diffusion_model.weights
+        # stiff, mass, nonzero_rows = self.remove_zeros(stiff, mass)
         mass_lumped = mass.sum(axis=1).A.ravel()
         self.mass_inv = 1 / mass_lumped
         self.stiff = stiff
+        # self.myo_indexes = self.myo_indexes[nonzero_rows]
 
     def run(self):
         """Performs a single time step using the Forward Euler method.
@@ -82,3 +85,28 @@ class ForwardEulerSolver(Solver):
         self.u, self.u_new = self.u_new, self.u
         self.simulation.cardiac_model.u = self.u
         self.num_iterations.append(1)
+
+    def remove_zeros(self, stiff, mass):
+        """Removes zero rows from the stiffness and mass matrices to optimize
+        the system for the Forward Euler method.
+
+        Parameters
+        ----------
+        stiff : scipy.sparse.csr_matrix
+            The stiffness matrix to be modified.
+        mass : scipy.sparse.csr_matrix
+            The mass matrix to be modified.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            The modified stiffness matrix with zero rows removed.
+        scipy.sparse.csr_matrix
+            The modified mass matrix with zero rows removed.
+        np.ndarray
+            The indices of the non-zero rows in the original stiffness matrix.
+        """
+        nonzero_rows = np.where(stiff.getnnz(axis=1) > 0)[0]
+        stiff = stiff[nonzero_rows][:, nonzero_rows]
+        mass = mass[nonzero_rows][:, nonzero_rows]
+        return stiff, mass, nonzero_rows

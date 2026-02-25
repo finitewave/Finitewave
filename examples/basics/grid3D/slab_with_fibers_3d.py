@@ -76,6 +76,9 @@ stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
                                            n_j // 2 - 3, n_j // 2 + 3,
                                            #    n_k // 2 - 3, n_k // 2 + 3))
                                            0, n_k))
+
+diffusion_model = fw.GridModel()
+diffusion_model.stencil = fw.CellStencil()
 # create model object:
 simulation = fw.CardiacSimulation()
 # set up numerical parameters:
@@ -84,6 +87,7 @@ simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
+simulation.diffusion_model = diffusion_model
 simulation.stim_sequence = stim_sequence
 # initialize and run simulation: compute weights, add stimuls, trackers etc.
 simulation.run()

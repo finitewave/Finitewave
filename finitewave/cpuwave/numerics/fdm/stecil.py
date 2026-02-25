@@ -224,7 +224,7 @@ class Stencil:
             mask &= ((index[i] >= 0) & (index[i] < mesh.shape[i]))
 
         mask[mask] = mesh[tuple(index[:, mask])] == 1
-        return mask.astype(mesh.dtype)
+        return mask
     
     def reindex_matrix(self, mesh, rows, cols, indexes):
         """

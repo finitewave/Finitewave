@@ -62,8 +62,8 @@ tissue.fibers[:, :, :, 0] = np.cos(phi) * np.cos(theta)
 tissue.fibers[:, :, :, 1] = np.sin(phi) * np.cos(theta)
 tissue.fibers[:, :, :, 2] = np.sin(theta)
 
-diffusion_model = fw.GridAssembler()
-diffusion_model.stencil = fw.AsymmetricStencil()
+diffusion_model = fw.GridModel()
+diffusion_model.stencil = fw.CellStencil()
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -76,7 +76,7 @@ simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
 simulation.dr = 0.25
-simulation.t_max = 9
+simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()

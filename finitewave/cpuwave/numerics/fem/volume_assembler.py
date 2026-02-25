@@ -173,7 +173,7 @@ class VolumeAssembler:
         jacobian_inv = np.linalg.inv(jacobian)
         return jacobian_inv
    
-    def compute_system_matrices(self, coords, elems, diffusion, reindex=False):
+    def compute_system_matrices(self, coords, elems, diffusion, indexes, reindex=False):
         """
         Computes the stiffness and mass matrices.
         Parameters
@@ -193,7 +193,6 @@ class VolumeAssembler:
             The rows, columns, stiffness matrix, and mass matrix.
         """
         shape = (coords.shape[0], coords.shape[0])
-        indexes = self.simulation.cardiac_tissue.myo_indexes
         elem_mass = self.reference_element.elem_mass
 
         if reindex:
@@ -206,6 +205,29 @@ class VolumeAssembler:
         stiffness_matrix = sp.coo_matrix((stiff, (rows, cols)), shape=shape)
         mass_matrix = sp.coo_matrix((mass, (rows, cols)), shape=shape)
         return stiffness_matrix.tocsr(), mass_matrix.tocsr()
+    
+    def reindex_elems(self, coords, elems, indexes):
+        """
+        Reindexes the element connectivity array. Resulted indexes are
+        continuous and start from 0.
+
+        Parameters
+        ----------
+        coords : np.ndarray
+            The coordinates of the mesh nodes.
+        elems : np.ndarray
+            The connectivity of the mesh elements.
+        indexes : np.ndarray
+            The indexes of the nodes in the original mesh.
+
+        Returns
+        -------
+        np.ndarray
+            The reindexed element connectivity array.
+        """
+        new_indexes = - np.ones(coords.shape[0], dtype=int)
+        new_indexes[indexes] = np.arange(len(indexes))
+        return new_indexes[elems]
 
 
 @njit(parallel=True)

@@ -46,9 +46,9 @@ class GridModel(DiffusionModelBase):
         diffusion = self.compute_diffusion(mesh, tissue.conductivity,
                                            tissue.fibers, tissue.D_al,
                                            tissue.D_ac, model.D_model)
-        diffusion = diffusion.astype(self.simulation.npfloat)
+        self.diffusion = diffusion.astype(self.simulation.npfloat)
 
-        self.weights = self.stencil.compute_system_matrices(mesh, diffusion,
+        self.weights = self.stencil.compute_system_matrices(mesh, self.diffusion,
                                                             tissue.dr, tissue.myo_indexes,
                                                             reindex=True)
         return self.weights
@@ -80,13 +80,13 @@ class GridModel(DiffusionModelBase):
         # Isotropic case when fibers are not provided
         if fibers is None:
             ndim = mesh.ndim
-            diffusion = np.zeros(mesh.shape + (ndim, ndim), dtype=mesh.dtype)
+            diffusion = np.zeros(mesh.shape + (ndim, ndim), dtype=np.float64)
             for i in range(ndim):
                 diffusion[..., i, i] = conductivity * D_model
             return diffusion
 
         ndim = fibers.shape[-1]
-        diffusion = np.zeros(mesh.shape + (ndim, ndim), dtype=fibers.dtype)
+        diffusion = np.zeros(mesh.shape + (ndim, ndim), dtype=np.float64)
         for i in range(ndim):
             for j in range(ndim):
                 d_ij = self.compute_diffusion_components(fibers, i, j, D_al, D_ac)
