@@ -6,6 +6,25 @@ class CellStencil(Stencil):
     """Implements a cell based finite difference stencil for
     computing diffusion weights in cardiac simulations.
     The stencil is designed to handle non-uniform diffusion tensors.
+        
+         26 ------ 16 ------ 25
+        /   (5)    /   (4)   /
+      14 ------- 9 ------- 11
+     /   (6)    /   (7)    /
+    23 ------- 15 ------- 24
+
+         7 ------- 3 ------- 6
+        /         /         /
+       4 ------- 0 ------- 2
+      /         /         /
+     8 ------- 1 ------- 5
+
+            22 ------ 17 ------ 21
+          /   (1)    /   (0)   /
+        13 ------ 10 ------- 12
+      /   (2)    /   (3)    /
+    19 ------- 18 ------- 20
+
     
     References
     ----------

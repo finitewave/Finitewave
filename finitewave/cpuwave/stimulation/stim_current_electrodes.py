@@ -67,6 +67,9 @@ class StimCurrentElectrodes(StimElectrodes):
         simulation.cardiac_model.u.flat[self.stim_indexes] += (
             simulation.dt * self.curr_value
             )
+        simulation.solver.u_new.flat[self.stim_indexes] += (
+            simulation.dt * self.curr_value
+            )
 
         if self.u_max is not None:
             u = simulation.cardiac_model.u.flat[self.stim_indexes]

@@ -57,11 +57,11 @@ class StateLoader:
         if self.passed:
             return
 
-        for var in self.model.cell_model.state_vars:
+        for var in self.model.cardiac_model.state_vars:
             val = self._load_variable(Path(self.path), var)
-            setattr(self.model.cell_model, var, val)
+            setattr(self.model.cardiac_model, var, val)
 
-        self.model.update_state()
+        # self.model.update_state()
         self.passed = True
 
     def _load_variable(self, var_path, var_name):
@@ -80,11 +80,11 @@ class StateLoader:
         """
         val = np.load(var_path.joinpath(var_name + ".npy"))
 
-        if val.shape == self.model.u.shape:
+        if val.shape == self.model.cardiac_model.u.shape:
             return val
 
         if val.size == 1:
-            val_arr = np.zeros_like(self.model.u)
+            val_arr = np.zeros_like(self.model.cardiac_model.u)
             val_arr.flat[:] = val
             return val_arr
 

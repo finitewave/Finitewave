@@ -1,5 +1,5 @@
 import numpy as np
-from .stecil import Stencil
+from ..stecil import Stencil
 
 
 class SymmetricStencil(Stencil):

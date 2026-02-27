@@ -30,7 +30,7 @@ class CrankNicolsonCGSolver(Solver):
     """
     def __init__(self):
         self.maxiter = 100
-        self.atol = 1e-8
+        self.atol = 1e-6
         self.num_iterations = []
         self.b = None
         self.u = None
@@ -50,6 +50,7 @@ class CrankNicolsonCGSolver(Solver):
         self.num_iterations = []
         self.b = np.zeros_like(simulation.cardiac_model.u)
         self.u = simulation.cardiac_model.u
+        self.u_new = self.u
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.rhs = simulation.cardiac_model.rhs
         self.assemble_system()
@@ -97,4 +98,5 @@ class CrankNicolsonCGSolver(Solver):
 
         self.num_iterations.append(success)
         self.simulation.cardiac_model.u = self.u
+        self.u_new = self.u
         return self.u
