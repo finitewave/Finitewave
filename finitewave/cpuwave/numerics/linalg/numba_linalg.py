@@ -102,6 +102,8 @@ def dot_numba(x, y, indexes):
 
 @njit(parallel=True, fastmath=True, cache=True)
 def ay_p_x_numba(a, x, y, indexes):
+    """Computes y = a * y + x in place.
+    """
     n = len(indexes)
     for i in prange(n):
         ii = indexes[i]
@@ -111,6 +113,8 @@ def ay_p_x_numba(a, x, y, indexes):
 
 @njit(parallel=True, fastmath=True, cache=True)
 def ax_p_y_numba(a, x, y, indexes):
+    """Computes y = a * x + y in place.
+    """
     n = len(indexes)
     for i in prange(n):
         ii = indexes[i]
@@ -120,6 +124,9 @@ def ax_p_y_numba(a, x, y, indexes):
 
 @njit(parallel=True, fastmath=True, cache=True)
 def y_pm_ax_numba(a, xp, yp, xm, ym, indexes):
+    """
+    Computes yp = yp + a * xp and ym = ym - a * xm in place.
+    """
     n = len(indexes)
     for i in prange(n):
         ii = indexes[i]
@@ -128,7 +135,7 @@ def y_pm_ax_numba(a, xp, yp, xm, ym, indexes):
     return yp, ym
 
 
-def cg_numba(indptr, indices, data, b, x, indexes, atol=1e-6, maxiter=100):
+def cg_numba(indptr, indices, data, b, x, indexes, rtol=None, atol=1e-6, maxiter=100):
     """ Conjugate Gradient solver for Ax = b for x, where A is given by
     (indptr, indices, data) in CSR format.
 
@@ -158,9 +165,13 @@ def cg_numba(indptr, indices, data, b, x, indexes, atol=1e-6, maxiter=100):
     int
         Number of iterations performed, or -1 if not converged within maxiter.
     """
+    b_norm_2 = dot_numba(b, b, indexes)
 
-    if np.sqrt(dot_numba(b, b, indexes)) == 0:
+    if b_norm_2 == 0:
         return x, 0
+    
+    if rtol is not None:
+        atol = max(atol, rtol * np.sqrt(b_norm_2))
 
     b0 = np.empty_like(x)
     b0, _ = matvec_and_dot_numba(indptr, indices, data, x, b0, indexes)

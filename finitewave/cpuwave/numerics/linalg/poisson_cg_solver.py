@@ -4,100 +4,105 @@ from threadpoolctl import threadpool_limits
 from .numba_linalg import cg_numba
 
 
-class PoissonCGSolver:
-    def __init__(self):
-        pass
+def poisson_cg_solver(A, b, indexes, dirichlet_indexes=None, x0=None,
+                      rtol=None, atol=1e-8, maxiter=1000):
+    """
+    Solves the linear system Ax = b using the Conjugate Gradient method,
+    with support for Dirichlet boundary conditions.
+    
+    Parameters
+    ----------
+    A : scipy.sparse.csr_matrix
+        The sparse matrix representing the linear system.
+    b : np.ndarray
+        The right-hand side vector.
+    indexes : np.ndarray
+        The indexes of the nodes where the solution is computed
+        (including dirichlet nodes).
+    dirichlet_indexes : np.ndarray, optional
+        The indexes of the nodes where Dirichlet boundary conditions are applied.
+    x0 : np.ndarray, optional
+        The initial guess for the solution vector.
+        If None, it will be set to a copy of b.
+    atol : float, optional
+        The absolute tolerance for convergence. Default is 1e-8.
+    maxiter : int, optional
+        The maximum number of iterations for the Conjugate Gradient solver.
+        Default is 1000.
 
-    def run(self, A, b, indexes, dirichlet_indexes, x0=None, tol=1e-8,
-            max_iter=1000):
+    Returns
+    -------
+    np.ndarray
+        The solution vector x.
+    int
+        An integer flag indicating whether the solver converged (>0) or
+        not (<0).
+    """
 
-        if x0 is None:
-            x0 = b.copy()
+    if x0 is None:
+        x0 = b.copy()
 
-        if dirichlet_indexes is not None:
-            A, b = self.apply_dirichlet_bc(A, indexes, dirichlet_indexes, b)
+    if dirichlet_indexes is not None:
+        internal_idx = internal_indexes(A, dirichlet_indexes)
+        A, b = apply_dirichlet_bc(A, b, x0, internal_idx, dirichlet_indexes)
+        indexes = indexes[internal_idx]
 
-        x, success = cg_numba(A.indptr, A.indices, A.data, b, x0 if x0 is not None else b.copy(),
-                              indexes, atol=tol, maxiter=max_iter)
-        
+    x, success = cg_numba(A.indptr, A.indices, A.data, b, x0, indexes,
+                          rtol=rtol, atol=atol, maxiter=maxiter)
+    return x, success
+    
 
-    def internal_indexes(matrix, dirichlet_idx):
-        """
-        Computes the indexes of the internal nodes by excluding the Dirichlet
-        boundary nodes.
+def internal_indexes(matrix, dirichlet_idx):
+    """
+    Computes the indexes of the internal nodes by excluding the Dirichlet
+    boundary nodes.
 
-        Parameters
-        ----------
-        matrix : scipy.sparse.csr_matrix
-            The matrix to which Dirichlet boundary conditions will be applied.
-        dirichlet_idx : np.ndarray
-            The indexes of the nodes where Dirichlet boundary conditions are applied.
+    Parameters
+    ----------
+    matrix : scipy.sparse.csr_matrix
+        The matrix to which Dirichlet boundary conditions will be applied.
+    dirichlet_idx : np.ndarray
+        The indexes of the nodes where Dirichlet boundary conditions are applied.
 
-        Returns
-        -------
-        np.ndarray
-            The indexes of the internal nodes.
-        """
-        mask = np.ones(matrix.shape[0], dtype=bool)
-        mask[dirichlet_idx] = False
-        internal_idx = np.where(mask)[0]
-        return internal_idx
+    Returns
+    -------
+    np.ndarray
+        The indexes of the internal nodes.
+    """
+    mask = np.ones(matrix.shape[0], dtype=bool)
+    mask[dirichlet_idx] = False
+    internal_idx = np.where(mask)[0]
+    return internal_idx
 
-    def apply_dirichlet_bc(self, matrix, b, x0, internal_idx, dirichlet_idx):
-        """
-        Applies Dirichlet boundary conditions to the given matrix by removing
-        rows and columns corresponding to the specified indexes.
 
-        Parameters
-        ----------
-        matrix : scipy.sparse.csr_matrix
-            The matrix to which Dirichlet boundary conditions will be applied.
-        dirichlet_idx : np.ndarray
-            The indexes of the nodes where Dirichlet boundary conditions are applied.
+def apply_dirichlet_bc(matrix, b, x0, internal_idx, dirichlet_idx):
+    """
+    Applies Dirichlet boundary conditions to the given matrix by removing
+    rows and columns corresponding to the specified indexes.
 
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            The modified matrix with Dirichlet boundary conditions applied.
-        scipy.sparse.csr_matrix
-            The boundary matrix corresponding to Dirichlet nodes.
-        """
-        internal_matrix = matrix[internal_idx][:, internal_idx]
-        bounary_matrix = matrix[internal_idx][:, dirichlet_idx]
-        b = b - bounary_matrix @ x0[dirichlet_idx]
-        return internal_matrix, bounary_matrix
+    Parameters
+    ----------
+    matrix : scipy.sparse.csr_matrix
+        The matrix to which Dirichlet boundary conditions will be applied.
+    b : np.ndarray
+        The right-hand side vector.
+    x0 : np.ndarray
+        The initial guess for the solution vector.
+    internal_idx : np.ndarray
+        The indexes of the internal nodes, where the solution will be
+        computed.
+    dirichlet_idx : np.ndarray
+        The indexes of the nodes where Dirichlet boundary conditions
+        are applied.
 
-    @threadpool_limits.wrap(limits=1, user_api="blas")
-    def laplace_solver(K, dirichlet_idx, x0, atol=1e-8, maxiter=1000, **kwargs):
-        """
-        Solves the linear system Ax = b using the Conjugate Gradient method from SciPy.
-
-        Parameters
-        ----------
-        K : scipy.sparse.csr_matrix
-            The stiffness matrix.
-        dirichlet_idx : np.ndarray
-            The indexes of the nodes where Dirichlet boundary conditions are applied.
-        x0 : np.ndarray
-            The initial guess for the solution vector.
-        atol : float, optional
-            The absolute tolerance for convergence (default is 1e-8).
-        maxiter : int, optional
-            The maximum number of iterations (default is 1000).
-
-        Returns
-        -------
-        x : numpy.ndarray
-            The solution vector.
-        info : int
-            Convergence information (0 if successful).
-        """
-        internal_idx = internal_indexes(K, dirichlet_idx)
-        K_internal, K_boundary = apply_dirichlet_bc(K, internal_idx, dirichlet_idx)
-        b = b - K_boundary @ x0[dirichlet_idx]
-        x0_ = x0[internal_idx].copy()
-
-        x, info = sparse.linalg.cg(K_internal, b, x0=x0_, atol=atol, 
-                                maxiter=maxiter, **kwargs)
-        x0[internal_idx] = x
-        return x0, info
+    Returns
+    -------
+    scipy.sparse.csr_matrix
+        The modified matrix with Dirichlet boundary conditions applied.
+    scipy.sparse.csr_matrix
+        The boundary matrix corresponding to Dirichlet nodes.
+    """
+    internal_matrix = matrix[internal_idx][:, internal_idx]
+    boundary_matrix = matrix[internal_idx][:, dirichlet_idx]
+    b[internal_idx] -= boundary_matrix @ x0[dirichlet_idx]
+    return internal_matrix, b

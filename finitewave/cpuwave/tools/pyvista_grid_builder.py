@@ -63,10 +63,10 @@ class PyVistaGridBuilder:
         grid = pv.UnstructuredGrid(faces, cell_types, coords)
 
         if as_surface:
-            grid = grid.extract_surface()
+            grid = grid.extract_surface(algorithm="geometry")
 
         self.grid = grid
-        self.indices = self.grid.cell_data['idx']
+        self.indices = self.grid.cell_data['idx']   
 
         return grid
 
@@ -98,7 +98,7 @@ class PyVistaGridBuilder:
         self.grid = grid.threshold(0.5)
 
         if as_surface:
-            self.grid = self.grid.extract_surface()
+            self.grid = self.grid.extract_surface(algorithm="geometry")
 
         self.indices = np.unravel_index(self.grid.cell_data['idx'],
                                         mesh.shape, order='F')

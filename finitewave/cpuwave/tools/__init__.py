@@ -3,6 +3,7 @@ from .animation_3d_builder import Animation3DBuilder
 from .velocity_2d_calculation import Velocity2DCalculation
 from .velocity_3d_calculation import Velocity3DCalculation
 from .vis_mesh_builder_3d import VisMeshBuilder3D
+from .pyvista_grid_builder import PyVistaGridBuilder
 from .build_element_mesh import (
     build_quadrilateral_mesh,
     build_tetrahedral_mesh,
