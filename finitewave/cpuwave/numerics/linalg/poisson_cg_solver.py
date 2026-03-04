@@ -1,10 +1,8 @@
 import numpy as np
-from scipy import sparse
-from threadpoolctl import threadpool_limits
-from .numba_linalg import cg_numba
+from .solvers import cg_numba, preconditioned_cg_numba
 
 
-def poisson_cg_solver(A, b, indexes, dirichlet_indexes=None, x0=None,
+def poisson_cg_solver(A, b, indexes, M=None, dirichlet_indexes=None, x0=None,
                       rtol=None, atol=1e-8, maxiter=1000):
     """
     Solves the linear system Ax = b using the Conjugate Gradient method,
@@ -19,6 +17,8 @@ def poisson_cg_solver(A, b, indexes, dirichlet_indexes=None, x0=None,
     indexes : np.ndarray
         The indexes of the nodes where the solution is computed
         (including dirichlet nodes).
+    M : object, optional
+        The preconditioner to use. If None, no preconditioning is applied.
     dirichlet_indexes : np.ndarray, optional
         The indexes of the nodes where Dirichlet boundary conditions are applied.
     x0 : np.ndarray, optional
@@ -46,9 +46,13 @@ def poisson_cg_solver(A, b, indexes, dirichlet_indexes=None, x0=None,
         internal_idx = internal_indexes(A, dirichlet_indexes)
         A, b = apply_dirichlet_bc(A, b, x0, internal_idx, dirichlet_indexes)
         indexes = indexes[internal_idx]
-
-    x, success = cg_numba(A.indptr, A.indices, A.data, b, x0, indexes,
-                          rtol=rtol, atol=atol, maxiter=maxiter)
+    
+    if M is not None:
+        x, success = preconditioned_cg_numba(A, b, x0, indexes, M,
+                                            rtol=rtol, atol=atol, maxiter=maxiter)
+    else:
+        x, success = cg_numba(A.indptr, A.indices, A.data, b, x0, indexes,
+                              rtol=rtol, atol=atol, maxiter=maxiter)
     return x, success
     
 

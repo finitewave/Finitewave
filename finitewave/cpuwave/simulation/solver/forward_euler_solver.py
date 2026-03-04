@@ -1,5 +1,5 @@
 import numpy as np
-from finitewave.cpuwave.numerics.linalg.numba_linalg import forward_euler
+from finitewave.cpuwave.numerics.linalg.solvers import forward_euler
 from .solver import Solver
 
 
@@ -78,8 +78,7 @@ class ForwardEulerSolver(Solver):
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
-        forward_euler(self.stiff.indptr, self.stiff.indices,
-                      self.stiff.data, self.u, self.rhs, self.mass_inv,
+        forward_euler(self.stiff, self.u, self.rhs, self.mass_inv,
                       self.u_new, self.myo_indexes, self.simulation.dt)
 
         self.u, self.u_new = self.u_new, self.u

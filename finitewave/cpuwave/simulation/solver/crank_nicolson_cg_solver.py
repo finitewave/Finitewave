@@ -2,7 +2,8 @@ import numpy as np
 import warnings
 
 from .solver import Solver
-from finitewave.cpuwave.numerics.linalg.numba_linalg import cg_numba, matvec_numba, ax_p_y_numba
+from finitewave.cpuwave.numerics.linalg.numba_linalg import matvec_numba, ax_p_y_numba
+from finitewave.cpuwave.numerics.linalg.solvers import cg_numba
 
 
 class CrankNicolsonCGSolver(Solver):
@@ -88,9 +89,7 @@ class CrankNicolsonCGSolver(Solver):
                               self.a_rhs_matrix.indices,
                               self.a_rhs_matrix.data, self.u, self.b,
                               self.myo_indexes)
-        self.u, success = cg_numba(self.a_lhs_matrix.indptr,
-                                   self.a_lhs_matrix.indices,
-                                   self.a_lhs_matrix.data, self.b, self.u,
+        self.u, success = cg_numba(self.a_lhs_matrix, self.b, self.u,
                                    self.myo_indexes, atol=self.atol,
                                    maxiter=self.maxiter)
         if success < 0:

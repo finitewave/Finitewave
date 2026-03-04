@@ -93,19 +93,26 @@ stim_indexes = np.random.choice(coords.shape[0], size=10, replace=False)
 stim_coords = coords[stim_indexes, :]
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimCurrentElectrodes(0, 30, 0.1, coords[19600:19601], 1))
-stim_sequence.add_stim(fw.StimCurrentElectrodes(55, 15, 0.1, geodesic.points, 1))
-stim_sequence.add_stim(fw.StimCurrentElectrodes(100, 15, 0.1, coords[72902:72903], 1))
+# stim_sequence.add_stim(fw.StimCurrentElectrodes(0, 30, 0.1, coords[19600:19601], 1))
+# stim_sequence.add_stim(fw.StimCurrentElectrodes(55, 15, 0.1, geodesic.points, 1))
+# stim_sequence.add_stim(fw.StimCurrentElectrodes(100, 15, 0.1, coords[72902:72903], 1))
+
+
+for stim_time in [0, 26, 52, 78]:
+    stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 30, 0.1, coords[33128:33129], 3))
+    stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 30, 0.1, coords[30639:30640], 3))
+    # stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 15, 0.1, coords[13372:13373], 1))
+
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 10
+simulation.t_max = 40
 simulation.state_loader = fw.StateLoader(path)
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
-# simulation.stim_sequence = stim_sequence
+simulation.stim_sequence = stim_sequence
 # simulation.stencil = stencil
 
 # run the model:
@@ -129,7 +136,7 @@ def callback(point):
 
 # pickable plot
 plotter = pv.Plotter()
-plotter.add_mesh(mesh, show_edges=False, scalars=u, cmap="plasma")
+plotter.add_mesh(mesh, show_edges=False, scalars=u, cmap="jet")
 # plotter.add_mesh(geodesic, color="red", line_width=3)
 plotter.enable_point_picking(callback=callback, show_point=True)
 plotter.show()
