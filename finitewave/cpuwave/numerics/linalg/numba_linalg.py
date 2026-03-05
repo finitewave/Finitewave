@@ -109,4 +109,16 @@ def y_pm_ax_numba(a, xp, yp, xm, ym, indexes):
         yp.flat[ii] += a * xp.flat[ii]
         ym.flat[ii] -= a * xm.flat[ii]
     return yp, ym
+
+
+@njit(parallel=True, fastmath=True, cache=True)
+def copyto_numba(x, y, indexes):
+    """
+    Copies x to y in place for the given indexes.
+    """
+    n = len(indexes)
+    for i in prange(n):
+        ii = indexes[i]
+        y.flat[ii] = x.flat[ii]
+    return y
     

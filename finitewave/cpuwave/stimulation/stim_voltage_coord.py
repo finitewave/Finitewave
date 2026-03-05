@@ -69,4 +69,7 @@ class StimVoltageCoord(StimCoord):
         simulation : Simulation
             The simulation object to which the voltage stimulus is applied.
         """
+        # apply the stimulus to both `u` and `u_new` to ensure consistency
+        # in calculation of transmembrane current for ECG and EGM trackers:
         simulation.cardiac_model.u.flat[self.stim_indexes] = self.volt_value
+        simulation.solver.u_new.flat[self.stim_indexes] = self.volt_value

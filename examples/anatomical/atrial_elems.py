@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import pyvista as pv
+from scipy.spatial import cKDTree
 
 import finitewave as fw
 
@@ -49,62 +50,81 @@ tissue.fibers = fibers
 # print(tissue.mesh.shape)
 
 # create model object and set up parameters
-cardiac_model = fw.Courtemanche()
-# Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
-# with a visible plateau and realistic repolarization.
-# courtemanche.gkur_coeff *= 3
-cardiac_model.gkur_coeff *= 0.5
-cardiac_model.gto *= 0.5
-cardiac_model.gcal *= 0.3
 
 stim_indexes = np.random.choice(coords.shape[0], size=10, replace=False)
 stim_coords = coords[stim_indexes, :]
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
+stim_sequence.add_stim(fw.StimCurrentElectrodes(0, 15, 0.1, geodesic.points, 1))
 # stim_sequence.add_stim(fw.StimCurrentElectrodes(0, 30, 0.1, coords[19600:19601], 1))
 # stim_sequence.add_stim(fw.StimCurrentElectrodes(55, 15, 0.1, geodesic.points, 1))
 # stim_sequence.add_stim(fw.StimCurrentElectrodes(100, 15, 0.1, coords[72902:72903], 1))
 
 
-for stim_time in [0, 26, 52, 78]:
-    stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 30, 0.1, coords[33128:33129], 3))
-    stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 30, 0.1, coords[30639:30640], 3))
-    # stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 15, 0.1, coords[13372:13373], 1))
+# for stim_time in [0, 26, 52, 78]:
+#     stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 30, 0.1, coords[33128:33129], 3))
+#     stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 30, 0.1, coords[30639:30640], 3))
+#     # stim_sequence.add_stim(fw.StimCurrentElectrodes(stim_time, 15, 0.1, coords[13372:13373], 1))
 
+
+state_point = coords[75398]
+dist = np.linalg.norm(coords - state_point, axis=1)
+state_indexes = np.where(dist < 8)[0]
+state_coords = coords[state_indexes]
+
+
+cardiac_model = fw.AlievPanfilov()
+# cardiac_model.prepacing()
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 40
-simulation.state_loader = fw.StateLoader(path)
+simulation.t_max = 1
+# simulation.state_loader = fw.StateLoader(path)
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
-simulation.stim_sequence = stim_sequence
+simulation.cardiac_model = cardiac_model
+# simulation.stim_sequence = stim_sequence
 # simulation.stencil = stencil
 
+u = np.load(path / "u.npy")
+v = np.load(path / "v.npy")
+
+# u[state_indexes] = 0.
+# v[state_indexes] = 1.5
+
+simulation.initialize()
+simulation.cardiac_model.u = u
+simulation.cardiac_model.v = v
 # run the model:
-simulation.run(num_of_threads=6)
+simulation.run(num_of_threads=6, initialize=False)
 
 u = simulation.cardiac_model.u
 v = simulation.cardiac_model.v
-# np.save(path / "u.npy", u)
-# np.save(path / "v.npy", v)
+# np.save(path / "u_4.npy", u)
+# np.save(path / "v_4.npy", v)
 
-# # show the potential map at the end of calculations:
-faces = np.hstack([[3, *tri] for tri in elems])
-mesh = pv.PolyData(coords, faces)
-mesh.point_data["values"] = u
-# mesh.plot(cmap="RdBu_r", show_edges=True)
+plt.plot(simulation.solver.num_iterations)
+plt.xlabel("Time Step")
+plt.ylabel("Number of Iterations")
+plt.title("Convergence of CG Solver")
+plt.show()
 
-def callback(point):
-    # Get closest point ID
-    point_id = mesh.find_closest_point(point)
-    print("Picked point ID:", point_id)
+# # # show the potential map at the end of calculations:
+# faces = np.hstack([[3, *tri] for tri in elems])
+# mesh = pv.PolyData(coords, faces)
+# mesh.point_data["values"] = u
+# # mesh.plot(cmap="RdBu_r", show_edges=True)
 
-# pickable plot
-plotter = pv.Plotter()
-plotter.add_mesh(mesh, show_edges=False, scalars=u, cmap="jet")
-# plotter.add_mesh(geodesic, color="red", line_width=3)
-plotter.enable_point_picking(callback=callback, show_point=True)
-plotter.show()
+# def callback(point):
+#     # Get closest point ID
+#     point_id = mesh.find_closest_point(point)
+#     print("Picked point ID:", point_id)
+
+# # pickable plot
+# plotter = pv.Plotter()
+# plotter.add_mesh(mesh, show_edges=False, scalars=u, cmap="magma")
+# # plotter.add_mesh(geodesic, color="red", line_width=3)
+# # plotter.add_points(state_coords, color="blue", point_size=10)
+# plotter.enable_point_picking(callback=callback, show_point=True)
+# plotter.show()

@@ -19,8 +19,6 @@ class StimCurrentMatrix(StimMatrix):
         The indexes of the cardiac model where the current stimulus is applied.
     matrix : numpy.ndarray
         A 2D or 3D mask where the current stimulus is applied.
-    u_max : float, optional
-        The maximum value of the membrane potential. Default is None.
     """
 
     def __init__(self, time, curr_value, duration, matrix, u_max=None):
@@ -35,19 +33,16 @@ class StimCurrentMatrix(StimMatrix):
             The value of the stimulation current.
         duration : float
             The duration of the stimulation.
-        u_max : float, optional
-            The maximum value of the membrane potential. Default is None.
         """
         super().__init__(matrix)
         self.t = time
         self.curr_value = curr_value
         self.duration = duration
-        self.u_max = u_max
 
     def stimulate(self, simulation):
         """
-        Applies the stimulation current to the specified rectangular region of
-        the cardiac tissue model.
+        Applies the stimulation current to the specified region of the cardiac
+        tissue model.
 
         The stimulation is applied only if the current time is within the 
         stimulation period and the stimulation has not been previously applied.
@@ -62,9 +57,6 @@ class StimCurrentMatrix(StimMatrix):
             simulation.dt * self.curr_value
             )
 
-        if self.u_max is not None:
-            u = simulation.cardiac_model.u.flat[self.stim_indexes]
-
-            simulation.cardiac_model.u.flat[self.stim_indexes] = (
-                np.where(u > self.u_max, self.u_max, u)
-                )
+        simulation.solver.u_new.flat[self.stim_indexes] += (
+            simulation.dt * self.curr_value
+            )

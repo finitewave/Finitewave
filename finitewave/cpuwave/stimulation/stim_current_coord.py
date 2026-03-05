@@ -29,12 +29,10 @@ class StimCurrentCoord(StimCoord):
         The starting z-coordinate of the region of interest.
     z_max : int, optional
         The ending z-coordinate of the region of interest.
-    u_max : float, optional
-        The maximum value of the membrane potential. Default is None.
     """
 
     def __init__(self, time, curr_value, duration, x_min, x_max, y_min, y_max,
-                 z_min=None, z_max=None, u_max=None):
+                 z_min=None, z_max=None):
         """
         Initializes the StimCurrentCoord2D instance.
 
@@ -58,14 +56,11 @@ class StimCurrentCoord(StimCoord):
             The starting z-coordinate of the region of interest.
         z_max : int, optional
             The ending z-coordinate of the region of interest.
-        u_max : float, optional
-            The maximum value of the membrane potential. Default is None.
         """
         super().__init__(x_min, x_max, y_min, y_max, z_min, z_max)
         self.t = time
         self.curr_value = curr_value
         self.duration = duration
-        self.u_max = u_max
 
     def stimulate(self, simulation):
         """
@@ -88,14 +83,3 @@ class StimCurrentCoord(StimCoord):
         simulation.solver.u_new.flat[self.stim_indexes] += (
             simulation.dt * self.curr_value
             )
-
-        if self.u_max is not None:
-            u = simulation.cardiac_model.u.flat[self.stim_indexes]
-
-            simulation.cardiac_model.u.flat[self.stim_indexes] = (
-                np.where(u > self.u_max, self.u_max, u)
-                )
-            u_new = simulation.solver.u_new.flat[self.stim_indexes]
-            simulation.solver.u_new.flat[self.stim_indexes] = (
-                np.where(u_new > self.u_max, self.u_max, u_new)
-                )

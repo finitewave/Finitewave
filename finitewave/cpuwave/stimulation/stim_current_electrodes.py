@@ -21,8 +21,6 @@ class StimCurrentElectrodes(StimElectrodes):
         The coordinates of the center of the electrodes.
     size : float
         The radius around each coordinate to include in the stimulation.
-    u_max : float, optional
-        The maximum value of the membrane potential. Default is None.
     """
 
     def __init__(self, time, curr_value, duration, coords, size, u_max=None):
@@ -41,14 +39,11 @@ class StimCurrentElectrodes(StimElectrodes):
             The coordinates of the center of the electrodes.
         size : float
             The radius around each coordinate to include in the stimulation.
-        u_max : float, optional
-            The maximum value of the membrane potential. Default is None.
         """
         super().__init__(coords, size)
         self.t = time
         self.curr_value = curr_value
         self.duration = duration
-        self.u_max = u_max
 
     def stimulate(self, simulation):
         """
@@ -70,10 +65,4 @@ class StimCurrentElectrodes(StimElectrodes):
         simulation.solver.u_new.flat[self.stim_indexes] += (
             simulation.dt * self.curr_value
             )
-
-        if self.u_max is not None:
-            u = simulation.cardiac_model.u.flat[self.stim_indexes]
-
-            simulation.cardiac_model.u.flat[self.stim_indexes] = (
-                np.where(u > self.u_max, self.u_max, u)
-                )
+        

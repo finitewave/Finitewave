@@ -35,3 +35,4 @@ class StimVoltageElectrodes(StimElectrodes):
             The simulation object to which the voltage stimulus is applied.
         """
         simulation.cardiac_model.u.flat[self.stim_indexes] = self.volt_value
+        simulation.solver.u_new.flat[self.stim_indexes] = self.volt_value

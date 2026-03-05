@@ -2,7 +2,11 @@ import numpy as np
 import warnings
 
 from .solver import Solver
-from finitewave.cpuwave.numerics.linalg.numba_linalg import matvec_numba, ax_p_y_numba
+from finitewave.cpuwave.numerics.linalg.numba_linalg import (
+    matvec_numba,
+    ax_p_y_numba,
+    copyto_numba
+)
 from finitewave.cpuwave.numerics.linalg.solvers import cg_numba
 
 
@@ -51,7 +55,7 @@ class CrankNicolsonCGSolver(Solver):
         self.num_iterations = []
         self.b = np.zeros_like(simulation.cardiac_model.u)
         self.u = simulation.cardiac_model.u
-        self.u_new = self.u
+        self.u_new = self.u.copy()
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.rhs = simulation.cardiac_model.rhs
         self.assemble_system()
@@ -81,6 +85,8 @@ class CrankNicolsonCGSolver(Solver):
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
+        # Copy current solution to u_new for the trackers if needed
+        self.u_new = copyto_numba(self.u, self.u_new, self.myo_indexes)
         # Explicit step for the reaction term (rhs of ionic model)
         self.u = ax_p_y_numba(self.simulation.dt, self.rhs, self.u,
                               self.myo_indexes)
@@ -97,5 +103,4 @@ class CrankNicolsonCGSolver(Solver):
 
         self.num_iterations.append(success)
         self.simulation.cardiac_model.u = self.u
-        self.u_new = self.u
         return self.u
