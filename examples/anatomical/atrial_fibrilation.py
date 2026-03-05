@@ -1,25 +1,9 @@
 
-from pathlib import Path
-import numpy as np
-import matplotlib.pyplot as plt
-import pyvista as pv
-
-import finitewave as fw
-
-
-def load_mesh(path):
-    coords = np.genfromtxt(path.joinpath("mesh.pts"), skip_header=1,
-                           usecols=[0, 1, 2])
-    coords /= 1000
-
-    # print(coords.min(axis=0), coords.max(axis=0))
-    elems = np.genfromtxt(path.joinpath("mesh.elem"), skip_header=1,
-                          usecols=[1, 2, 3], dtype=int)
-    return coords, elems
-
 
 # path = Path("/Users/arstanbek/Projects/fibrosis/ElementalWave/data")
 path = Path("/Users/arstanbekokenov/Projects/Finitewave/examples/data/atrial_mesh")
+
+import pyvista as pv
 vtk_mesh = pv.read(path / "Mesh_10954794.vtk")
 
 iir = vtk_mesh.point_data['IIR']
@@ -42,6 +26,8 @@ geodesic = mesh.geodesic(19600, 72902)
 
 # coords, elems = load_mesh(path)
 tissue = fw.CardiacTissueElements(coords, elems, "Triangle")
+# tissue.mesh_elems += (np.random.random(elems.shape[0]) < 0.2).astype(tissue.mesh_elems.dtype)
+# tissue.mesh += (np.random.random(coords.shape[0]) < 0.1).astype(tissue.mesh.dtype)
 tissue.conductivity = conductivity
 tissue.fibers = fibers
 # tissue.mesh += (np.random.random(coords.shape[0]) < 0.2)
