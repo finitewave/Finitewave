@@ -92,7 +92,7 @@ def ionic_kernel_3d(u_new, u, v, w, indexes, dt,
 
         J_fi = calc_Jfi(u[i, j, k_], v[i, j, k_], u_c, tau_d)
         J_so = calc_Jso(u[i, j, k_], u_c, tau_o, tau_r)
-        J_si = calc_Jsi(u[i, j, k_], v[i, j, k_], k, uc_si, tau_si)
+        J_si = calc_Jsi(u[i, j, k_], w[i, j, k_], k, uc_si, tau_si)
 
         u_new[i, j, k_] += dt * (-J_fi - J_so - J_si)
 

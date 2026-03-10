@@ -40,11 +40,10 @@ class Courtemanche2D(CardiacModel):
         self.gcal = 0.1238
         self.gcab = 0.00113
 
-        self.gkur_coeff = 1
-
-        self.F = 96485.0
-        self.T = 310.0
-        self.R = 8314.0 
+        self.F  = 96485.0
+        self.T  = 310.0
+        self.R  = 8314.0 
+        self.Cm = 100.0
 
         self.Vc   = 20100
         self.Vj   = self.Vc*0.68      # (uL)
@@ -149,7 +148,7 @@ class Courtemanche2D(CardiacModel):
                         self.ui, self.xr, self.xs, self.fca, self.irel, self.vrel, self.urel, 
                         self.wrel, self.cardiac_tissue.myo_indexes, self.dt, 
                         self.gna, self.gnab, self.gk1, self.gkr, self.gks, self.gto, self.gcal,
-                        self.gcab, self.gkur_coeff, self.F, self.T, self.R, self.Vc, self.Vj, self.Vup,
+                        self.gcab, self.F, self.T, self.R, self.Cm, self.Vc, self.Vj, self.Vup,
                         self.Vrel, self.ibk, self.cao, self.nao, self.ko, self.caupmax,
                         self.kup, self.kmnai, self.kmko, self.kmnancx, self.kmcancx,
                         self.ksatncx, self.kmcmdn, self.kmtrpn, self.kmcsqn, self.trpnmax,
@@ -280,11 +279,11 @@ def calc_equilibrum_potentials(nai, nao, ki, ko, cai, cao, R, T, F):
     return ena, ek, eca
 
 @njit
-def calc_ina(u, m, h, j, gna, ena):
+def calc_ina(u, m, h, j, gna, ena, Cm):
     """
     Calculates the fast sodium current.
     """
-    ina = gna*(m**3)*h*j*(u - ena)
+    ina = Cm*gna*(m**3)*h*j*(u - ena)
     return ina
 
 @njit
@@ -338,15 +337,15 @@ def calc_gating_j(j, u, dt):
     return j
 
 @njit
-def calc_ik1(u, gk1, ek):
+def calc_ik1(u, gk1, ek, Cm):
     """
     Calculates the time-independent potassium current.
     """
-    ik1 = gk1*(u - ek)/(1 + np.exp(0.07*(u + 80)))
+    ik1 = Cm*gk1*(u - ek)/(1 + np.exp(0.07*(u + 80)))
     return ik1
 
 @njit
-def calc_ito(u, dt, kq10, oa, oi, gto, ek):
+def calc_ito(u, dt, kq10, oa, oi, gto, ek, Cm):
     """
     Calculates the transient outward potassium current.
     """
@@ -365,12 +364,12 @@ def calc_ito(u, dt, kq10, oa, oi, gto, ek):
     oa = calc_gating_variable(oa, o_inf, tau_o, dt)
     oi = calc_gating_variable(oi, oi_inf, tau_oi, dt)
 
-    ito = gto*(oa**3)*oi*(u - ek)  
+    ito = Cm*gto*(oa**3)*oi*(u - ek)  
 
     return ito, oa, oi
 
 @njit
-def calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff):
+def calc_ikur(u, dt, kq10, ua, ui, ek, Cm):
     """
     Calculates the ultra-rapid delayed rectifier potassium current.
     """
@@ -389,12 +388,12 @@ def calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff):
     ua = calc_gating_variable(ua, ua_inf, tau_ua, dt)
     ui = calc_gating_variable(ui, ui_inf, tau_ui, dt)
 
-    ikur = gkur_coeff*gkur*(ua**3)*ui*(u - ek)
+    ikur = Cm*gkur*(ua**3)*ui*(u - ek)
 
     return ikur, ua, ui
 
 @njit
-def calc_ikr(u, dt, xr, gkr, ek):
+def calc_ikr(u, dt, xr, gkr, ek, Cm):
     """
     Calculates the rapid delayed rectifier potassium current.
     """
@@ -407,12 +406,12 @@ def calc_ikr(u, dt, xr, gkr, ek):
 
     xr = calc_gating_variable(xr, xr_inf, tau_xr, dt)
 
-    ikr = (gkr*xr*(u - ek))/(1 + np.exp((u + 15)/22.4))
+    ikr = Cm*(gkr*xr*(u - ek))/(1 + np.exp((u + 15)/22.4))
 
     return ikr, xr
 
 @njit
-def calc_iks(u, dt, xs, gks, ek):
+def calc_iks(u, dt, xs, gks, ek, Cm):
     """
     Calculates the slow delayed rectifier potassium current.
     """
@@ -424,12 +423,12 @@ def calc_iks(u, dt, xs, gks, ek):
 
     xs = calc_gating_variable(xs, xs_inf, tau_xs, dt)
 
-    iks = gks*(xs**2)*(u - ek)
+    iks = Cm*gks*(xs**2)*(u - ek)
 
     return iks, xs
 
 @njit
-def calc_ical(u, dt, d, f, cai, gcal, fca, eca):
+def calc_ical(u, dt, d, f, cai, gcal, fca, eca, Cm):
     """
     Calculates the L-type calcium current.
     """
@@ -446,24 +445,24 @@ def calc_ical(u, dt, d, f, cai, gcal, fca, eca):
     f   = calc_gating_variable(f, f_inf, tau_f, dt)
     fca = calc_gating_variable(fca, fca_inf, tau_fca, dt)
 
-    ical = gcal*d*f*fca*(u - 65) 
+    ical = Cm*gcal*d*f*fca*(u - 65) 
 
     return ical, d, f, fca
 
 @njit
-def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T):
+def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm):
     """
     Calculates the sodium-potassium pump current.
     """
     s = (1/7.0)*(np.exp(nao/67.3) - 1)
     fnak = 1/(1 + 0.1245*np.exp(-0.1*(F*u)/(R*T)) + 0.0365*s*np.exp(-(F*u)/(R*T)))
 
-    inak = inakmax*fnak*(1/(1 + (kmnai/nai)**1.5))*(ko/(ko + kmko))
+    inak = Cm*inakmax*fnak*(1/(1 + (kmnai/nai)**1.5))*(ko/(ko + kmko))
 
     return inak
 
 @njit
-def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T):
+def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, Cm):
     """
     Calculates the sodium-calcium exchanger current.
     """
@@ -484,33 +483,33 @@ def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R,
     denominator = term1 * term2 * term3
 
     # Calculate INaCa
-    inaca = numerator / denominator
+    inaca = Cm*numerator / denominator
 
     return inaca
 
 
 @njit
-def calc_ibca(gcab, eca, u):
+def calc_ibca(gcab, eca, u, Cm):
     """
     Calculates the background calcium current.
     """
-    ibca = gcab*(u - eca)
+    ibca = Cm*gcab*(u - eca)
     return ibca
 
 @njit
-def calc_ibna(gnab, ena, u):
+def calc_ibna(gnab, ena, u, Cm):
     """
     Calculates the background sodium current.
     """
-    ibna = gnab*(u - ena)
+    ibna = Cm*gnab*(u - ena)
     return ibna
 
 @njit
-def calc_ipca(ipcamax, cai):
+def calc_ipca(ipcamax, cai, Cm):
     """
     Calculates the sarcolemmal calcium pump current.
     """
-    ipca = ipcamax*cai/(cai + 0.0005)
+    ipca = Cm*ipcamax*cai/(cai + 0.0005)
     return ipca
 
 @njit
@@ -567,7 +566,7 @@ def calc_iupleak(caup, caupmax, iupmax):
 
 @njit(parallel=True)
 def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs, xr, fca, irel, vrel, urel, wrel, indexes, dt, 
-                    gna, gnab, gk1, gkr, gks, gto, gcal, gcab, gkur_coeff, F, T, R, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup,
+                    gna, gnab, gk1, gkr, gks, gto, gcal, gcab, F, T, R, Cm, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup,
                     kmnai, kmko, kmnancx, kmcancx, ksatncx, kmcmdn, kmtrpn, kmcsqn, trpnmax, cmdnmax, csqnmax, inacamax,
                     inakmax, ipcamax, krel, iupmax, kq10):
     """
@@ -602,28 +601,28 @@ def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
         h[i, j] = calc_gating_h(h[i, j], u[i, j], dt)
         j_[i, j] = calc_gating_j(j_[i, j], u[i, j], dt)
 
-        ina = calc_ina(u[i, j], m[i, j], h[i, j], j_[i, j], gna, ena)
+        ina = calc_ina(u[i, j], m[i, j], h[i, j], j_[i, j], gna, ena, Cm)
 
-        ik1 = calc_ik1(u[i, j], gk1, ek)
+        ik1 = calc_ik1(u[i, j], gk1, ek, Cm)
 
-        ito, oa[i, j], oi[i, j] = calc_ito(u[i, j], dt, kq10, oa[i, j], oi[i, j], gto, ek)
+        ito, oa[i, j], oi[i, j] = calc_ito(u[i, j], dt, kq10, oa[i, j], oi[i, j], gto, ek, Cm)
 
-        ikur, ua[i, j], ui[i, j] = calc_ikur(u[i, j], dt, kq10, ua[i, j], ui[i, j], ek, gkur_coeff)
+        ikur, ua[i, j], ui[i, j] = calc_ikur(u[i, j], dt, kq10, ua[i, j], ui[i, j], ek, Cm)
 
-        ikr, xr[i, j] = calc_ikr(u[i, j], dt, xr[i, j], gkr, ek)
+        ikr, xr[i, j] = calc_ikr(u[i, j], dt, xr[i, j], gkr, ek, Cm)
 
-        iks, xs[i, j] = calc_iks(u[i, j], dt, xs[i, j], gks, ek)
+        iks, xs[i, j] = calc_iks(u[i, j], dt, xs[i, j], gks, ek, Cm)
 
-        ical, d[i, j], f[i, j], fca[i, j] = calc_ical(u[i, j], dt, d[i, j], f[i, j], cai[i, j], gcal, fca[i, j], eca)
+        ical, d[i, j], f[i, j], fca[i, j] = calc_ical(u[i, j], dt, d[i, j], f[i, j], cai[i, j], gcal, fca[i, j], eca, Cm)
 
-        inak = calc_inak(inakmax, nai[i, j], nao, ko, kmnai, kmko, F, u[i, j], R, T)
-        inaca = calc_inaca(inacamax, nai[i, j], nao, cai[i, j], cao, kmnancx, kmcancx, ksatncx, F, u[i, j], R, T)
+        inak = calc_inak(inakmax, nai[i, j], nao, ko, kmnai, kmko, F, u[i, j], R, T, Cm)
+        inaca = calc_inaca(inacamax, nai[i, j], nao, cai[i, j], cao, kmnancx, kmcancx, ksatncx, F, u[i, j], R, T, Cm)
 
-        ibca = calc_ibca(gcab, eca, u[i, j])
+        ibca = calc_ibca(gcab, eca, u[i, j], Cm)
 
-        ibna = calc_ibna(gnab, ena, u[i, j])
+        ibna = calc_ibna(gnab, ena, u[i, j], Cm)
 
-        ipca = calc_ipca(ipcamax, cai[i, j])
+        ipca = calc_ipca(ipcamax, cai[i, j], Cm)
 
         irel[i, j], urel[i, j], vrel[i, j], wrel[i, j] = calc_irel(dt, urel[i, j], vrel[i, j], irel[i, j], wrel[i, j], ical, inaca, krel, carel[i, j], cai[i, j], u[i, j], F, Vrel)
         itr = calc_itr(caup[i, j], carel[i, j])
@@ -638,4 +637,4 @@ def ionic_kernel_2d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
 
         carel[i, j] = calc_carel(carel[i, j], dt, itr, irel[i, j], csqnmax, kmcsqn)
 
-        u_new[i, j] -= dt * (ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)
+        u_new[i, j] -= dt * ((ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)/Cm)

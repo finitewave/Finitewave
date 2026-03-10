@@ -57,7 +57,7 @@ class Courtemanche3D(Courtemanche2D):
                         self.ui, self.xr, self.xs, self.fca, self.irel, self.vrel, self.urel, 
                         self.wrel, self.cardiac_tissue.myo_indexes, self.dt, 
                         self.gna, self.gnab, self.gk1, self.gkr, self.gks, self.gto, self.gcal,
-                        self.gcab, self.gkur_coeff, self.F, self.T, self.R, self.Vc, self.Vj, self.Vup,
+                        self.gcab, self.F, self.T, self.R, self.Cm, self.Vc, self.Vj, self.Vup,
                         self.Vrel, self.ibk, self.cao, self.nao, self.ko, self.caupmax,
                         self.kup, self.kmnai, self.kmko, self.kmnancx, self.kmcancx,
                         self.ksatncx, self.kmcmdn, self.kmtrpn, self.kmcsqn, self.trpnmax,
@@ -88,7 +88,7 @@ class Courtemanche3D(Courtemanche2D):
 
 @njit(parallel=True)
 def ionic_kernel_3d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs, xr, fca, irel, vrel, urel, wrel, indexes, dt, 
-                    gna, gnab, gk1, gkr, gks, gto, gcal, gcab, gkur_coeff, F, T, R, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup,
+                    gna, gnab, gk1, gkr, gks, gto, gcal, gcab, F, T, R, Cm, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup,
                     kmnai, kmko, kmnancx, kmcancx, ksatncx, kmcmdn, kmtrpn, kmcsqn, trpnmax, cmdnmax, csqnmax, inacamax,
                     inakmax, ipcamax, krel, iupmax, kq10):
     """
@@ -124,28 +124,28 @@ def ionic_kernel_3d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
         h[i, j, k] = calc_gating_h(h[i, j, k], u[i, j, k], dt)
         j_[i, j, k] = calc_gating_j(j_[i, j, k], u[i, j, k], dt)
 
-        ina = calc_ina(u[i, j, k], m[i, j, k], h[i, j, k], j_[i, j, k], gna, ena)
+        ina = calc_ina(u[i, j, k], m[i, j, k], h[i, j, k], j_[i, j, k], gna, ena, Cm)
 
-        ik1 = calc_ik1(u[i, j, k], gk1, ek)
+        ik1 = calc_ik1(u[i, j, k], gk1, ek, Cm)
 
-        ito, oa[i, j, k], oi[i, j, k] = calc_ito(u[i, j, k], dt, kq10, oa[i, j, k], oi[i, j, k], gto, ek)
+        ito, oa[i, j, k], oi[i, j, k] = calc_ito(u[i, j, k], dt, kq10, oa[i, j, k], oi[i, j, k], gto, ek, Cm)
 
-        ikur, ua[i, j, k], ui[i, j, k] = calc_ikur(u[i, j, k], dt, kq10, ua[i, j, k], ui[i, j, k], ek, gkur_coeff)
+        ikur, ua[i, j, k], ui[i, j, k] = calc_ikur(u[i, j, k], dt, kq10, ua[i, j, k], ui[i, j, k], ek, Cm)
 
-        ikr, xr[i, j, k] = calc_ikr(u[i, j, k], dt, xr[i, j, k], gkr, ek)
+        ikr, xr[i, j, k] = calc_ikr(u[i, j, k], dt, xr[i, j, k], gkr, ek, Cm)
 
-        iks, xs[i, j, k] = calc_iks(u[i, j, k], dt, xs[i, j, k], gks, ek)
+        iks, xs[i, j, k] = calc_iks(u[i, j, k], dt, xs[i, j, k], gks, ek, Cm)
 
-        ical, d[i, j, k], f[i, j, k], fca[i, j, k] = calc_ical(u[i, j, k], dt, d[i, j, k], f[i, j, k], cai[i, j, k], gcal, fca[i, j, k], eca)
+        ical, d[i, j, k], f[i, j, k], fca[i, j, k] = calc_ical(u[i, j, k], dt, d[i, j, k], f[i, j, k], cai[i, j, k], gcal, fca[i, j, k], eca, Cm)
 
-        inak = calc_inak(inakmax, nai[i, j, k], nao, ko, kmnai, kmko, F, u[i, j, k], R, T)
-        inaca = calc_inaca(inacamax, nai[i, j, k], nao, cai[i, j, k], cao, kmnancx, kmcancx, ksatncx, F, u[i, j, k], R, T)
+        inak = calc_inak(inakmax, nai[i, j, k], nao, ko, kmnai, kmko, F, u[i, j, k], R, T, Cm)
+        inaca = calc_inaca(inacamax, nai[i, j, k], nao, cai[i, j, k], cao, kmnancx, kmcancx, ksatncx, F, u[i, j, k], R, T, Cm)
 
-        ibca = calc_ibca(gcab, eca, u[i, j, k])
+        ibca = calc_ibca(gcab, eca, u[i, j, k], Cm)
 
-        ibna = calc_ibna(gnab, ena, u[i, j, k])
+        ibna = calc_ibna(gnab, ena, u[i, j, k], Cm)
 
-        ipca = calc_ipca(ipcamax, cai[i, j, k])
+        ipca = calc_ipca(ipcamax, cai[i, j, k], Cm)
 
         irel[i, j, k], urel[i, j, k], vrel[i, j, k], wrel[i, j, k] = calc_irel(dt, urel[i, j, k], vrel[i, j, k], irel[i, j, k], wrel[i, j, k], ical, inaca, krel, carel[i, j, k], cai[i, j, k], u[i, j, k], F, Vrel)
         itr = calc_itr(caup[i, j, k], carel[i, j, k])
@@ -160,4 +160,4 @@ def ionic_kernel_3d(u_new, u, nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi,
 
         carel[i, j, k] = calc_carel(carel[i, j, k], dt, itr, irel[i, j, k], csqnmax, kmcsqn)
 
-        u_new[i, j, k] -= dt * (ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)
+        u_new[i, j, k] -= dt * ((ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca)/Cm)

@@ -197,7 +197,7 @@ def test_fenton_karma():
     assert np.min(u) == pytest.approx(0.0, abs=0.01)
 
     apd = calculate_apd(u, model.dt, threshold=0.1)
-    assert 100 <= apd <= 200, f"Fenton-Karma APD90 is out of expected range {apd}"
+    assert 200 <= apd <= 300, f"Fenton-Karma APD90 is out of expected range {apd}"
 
 @pytest.mark.bueno_orovio_3d
 def test_bueno_orovio_3d():

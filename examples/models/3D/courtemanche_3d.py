@@ -47,10 +47,6 @@ courtemanche.dt = 0.01
 courtemanche.dr = 0.25
 courtemanche.t_max = 500
 
-# Here, we increase g_Kur by a factor of 3 to better match physiological AP shape
-# with a visible plateau and realistic repolarization.
-courtemanche.gkur_coeff *= 3
-
 # add the tissue and the stim parameters to the model object
 courtemanche.cardiac_tissue = tissue
 courtemanche.stim_sequence = stim_sequence
