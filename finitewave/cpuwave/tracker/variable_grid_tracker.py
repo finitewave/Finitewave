@@ -39,6 +39,7 @@ class VariableGridTracker(MultiVariableGridTracker):
         np.ndarray
             The values of the tracked variable at the specified grid point.
         """
+        print(self.var_list, self.vars.keys())
         return np.squeeze(self.vars[self.var_name])
 
     def write(self):

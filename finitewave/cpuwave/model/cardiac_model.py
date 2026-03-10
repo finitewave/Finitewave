@@ -95,3 +95,18 @@ class CardiacModel(CardiacModelBase):
 
         self.myo_indexes = cardiac_tissue.myo_indexes
         self.mesh_indexes = np.arange(cardiac_tissue.mesh.size)
+
+    def build_prepacing(self, dt, n_beats, bcl, stim_duration, stim_amplitude):
+        t_max = n_beats * bcl
+
+        stim_values = np.zeros(int(t_max / dt), dtype=np.float64)
+
+        for s in np.arange(n_beats):
+            stim_start = s * bcl
+            stim_end = stim_start + stim_duration
+            
+            start_idx = int(stim_start / dt)
+            end_idx = int(stim_end / dt)
+            stim_values[start_idx: end_idx] = dt * stim_amplitude
+
+        return stim_values

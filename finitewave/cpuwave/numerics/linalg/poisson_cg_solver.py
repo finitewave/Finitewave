@@ -51,8 +51,7 @@ def poisson_cg_solver(A, b, indexes, M=None, dirichlet_indexes=None, x0=None,
         x, success = preconditioned_cg_numba(A, b, x0, indexes, M,
                                             rtol=rtol, atol=atol, maxiter=maxiter)
     else:
-        x, success = cg_numba(A.indptr, A.indices, A.data, b, x0, indexes,
-                              rtol=rtol, atol=atol, maxiter=maxiter)
+        x, success = cg_numba(A, b, x0, indexes, rtol=rtol, atol=atol, maxiter=maxiter)
     return x, success
     
 
