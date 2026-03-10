@@ -27,4 +27,9 @@ aliev_panfilov.run()
 
 plt.imshow(aliev_panfilov.u, cmap='Spectral_r')
 plt.axis('off')
-plt.show()
+
+# show or save figure depending on the backend
+if "agg" in plt.get_backend().lower():
+    plt.savefig("figure.png", dpi=300)
+else:
+    plt.show()
