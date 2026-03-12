@@ -195,33 +195,26 @@ def ionic_kernel(u, rhs, indexes, dt,
     for ind in prange(len(indexes)):
         ii = indexes[ind]
 
-        # Fast sodium current:
+        E_Na = (R * T / F) * np.log(nao / nai)
+        E_K1 = (R * T / F) * np.log(ko / ki)
+
         m.flat[ii] += dt * calc_dm(u.flat[ii], m.flat[ii])
         h.flat[ii] += dt * calc_dh(u.flat[ii], h.flat[ii])
         j.flat[ii] += dt * calc_dj(u.flat[ii], j.flat[ii])
 
-        ina = calc_ina(u.flat[ii], m.flat[ii], h.flat[ii], j.flat[ii], E_Na, gna)
-
-        # Slow inward current:
         d.flat[ii] += dt * calc_dd(u.flat[ii], d.flat[ii])
         f.flat[ii] += dt * calc_df(u.flat[ii], f.flat[ii])
 
+        x.flat[ii] += dt * calc_dx(u.flat[ii], x.flat[ii])
+        
+        ina = calc_ina(u.flat[ii], m.flat[ii], h.flat[ii], j.flat[ii], E_Na, gna)
         isi = calc_isk(u.flat[ii], d.flat[ii], f.flat[ii], cai.flat[ii], gsi)
 
         cai.flat[ii] += dt * calc_dcai(cai.flat[ii], isi)
 
-        # Time-dependent potassium current:
-        x.flat[ii] += dt * calc_dx(u.flat[ii], x.flat[ii])
-        # Time-dependent potassium current:
         ik = calc_ik(u.flat[ii], x.flat[ii], ko, ki, nao, nai, PR_NaK, R, T, F, gk)
-
-        # Time-independent potassium current:
         ik1 = calc_ik1(u.flat[ii], ko, E_K1, gk1)
-
-        # Plateau potassium current:
         ikp = calc_ikp(u.flat[ii], E_K1, gkp)
-
-        # Background current:
         ib = calc_ib(u.flat[ii], gb)
 
         rhs.flat[ii] = calc_rhs(ina, isi, ik, ik1, ikp, ib)
@@ -234,6 +227,9 @@ def prepacing(dt, t_max, stim_values, u,
                  E_Na, E_K1):
     u_list = np.zeros((int(t_max/dt),), dtype=np.float64)
     u_list[0] = u
+
+    E_Na = (R * T / F) * np.log(nao / nai)
+    E_K1 = (R * T / F) * np.log(ko / ki)
     
     for i in range(1, int(t_max/dt)):
 

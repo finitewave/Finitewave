@@ -37,14 +37,14 @@ m = 10
 prepacing_protocol = [
     {"n_beats": 30,
      "cycle_length": 1000.,
-     "stim_duration": 1,
+     "stim_duration": 0.5,
      "stim_amplitude": 100.,
      "dt": 0.01},
-    # {"n_beats": 100,
-    #  "cycle_length": 500.,
-    #  "stim_duration": 0.5,
-    #  "stim_amplitude": 100.,
-    #  "dt": 0.01}
+    {"n_beats": 100,
+     "cycle_length": 500.,
+     "stim_duration": 0.5,
+     "stim_amplitude": 100.,
+     "dt": 0.01}
 ]
 # create mesh
 tissue = fw.CardiacTissueGrid((n, m), dr=0.1)
@@ -54,7 +54,7 @@ luo_rudy = fw.LuoRudy91()
 luo_rudy.prepacing(prepacing_protocol)
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimCurrentCoord(0, 10., 1., 0, 1, 0, m))
+stim_sequence.add_stim(fw.StimCurrentCoord(0, 100., 1, 0, 1, 0, m))
 
 action_pot_tracker = fw.ActionPotentialGridTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
@@ -67,7 +67,7 @@ tracker_sequence.add_tracker(action_pot_tracker)
 
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 5
+simulation.t_max = 500
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = luo_rudy
@@ -77,16 +77,16 @@ simulation.tracker_sequence = tracker_sequence
 # run the model:
 simulation.run()
 
-plt.plot(luo_rudy.u_pacing)
-plt.show()
-
-# # plot the action potential
-# plt.figure()
-# time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-# plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-# plt.legend(title='Luo-Rudy 1991')
-# plt.xlabel('Time (ms)')
-# plt.ylabel('Voltage (mV)')
-# plt.title('Action Potential')
-# plt.grid()
+# plt.plot(luo_rudy.u_pacing)
 # plt.show()
+
+# plot the action potential
+plt.figure()
+time = np.arange(len(action_pot_tracker.output)) * simulation.dt
+plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+plt.legend(title='Luo-Rudy 1991')
+plt.xlabel('Time (ms)')
+plt.ylabel('Voltage (mV)')
+plt.title('Action Potential')
+plt.grid()
+plt.show()
