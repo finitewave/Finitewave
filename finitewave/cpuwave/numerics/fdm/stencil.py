@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
 import numpy as np
 import scipy.sparse as sp
 
 
-class Stencil:
+class Stencil(ABC):
     """
     Base class for diffusion stencils.
     """
@@ -20,7 +21,7 @@ class Stencil:
         dr : float
             The grid spacing.
         indexes : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
+            The indexes of the non-empty nodes in the mesh.
 
         Returns
         -------
@@ -32,21 +33,23 @@ class Stencil:
         rows, cols, weights = self.compute_diffusion_weights(mesh, diffusion, dr, indexes)
         weights = weights.astype(diffusion.dtype)
 
+        size = mesh.size
+
         if reindex:
             rows, cols = self.reindex_matrix(mesh, rows, cols, indexes)
-
-        size = len(indexes)
+            size = len(indexes)
+        
         shape = (size, size)
         # make stiffness matrix with positive diagonal
         K_stiff = sp.csr_matrix((weights, (rows, cols)), shape=shape)
         M_mass = sp.diags(np.ones_like(indexes, dtype=weights.dtype),
                           offsets=0, format='csr')
         return K_stiff.tocsr(), M_mass.tocsr()
-
+    
+    @abstractmethod
     def compute_diffusion_weights(self, mesh, diffusion, dr, indexes):
         """
-        Computes the weights for the isotropic stencil with first-order
-        boundary conditions.
+        Computes the weights for calculating the diffusion operator.
 
         Parameters
         ----------
@@ -57,88 +60,18 @@ class Stencil:
         dr : float
             The grid spacing.
         indexes : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
+            The indexes of the non-empty nodes in the mesh.
 
         Returns
         -------
-        tuple of np.ndarray
-            The rows, columns, and weights for the sparse matrix.
+        rows : numpy.ndarray
+            The central node indexes.
+        cols : numpy.ndarray
+            The node indexes involved in diffusion calculation.
+        weights : numpy.ndarray
+            The weights for connections between central and neighboring nodes.
         """
-        rows = []
-        cols = []
-        weights = []
-
-        ijk = np.array(np.unravel_index(indexes, mesh.shape))
-        for axis in range(mesh.ndim):
-            res = self.compute_flux_weights(mesh, diffusion, dr, ijk, axis)
-            ijk_major, ijk_list, w_list = res
-            r, c, w = self.compute_diffusion_component(mesh, dr, ijk, ijk_major, (ijk_list, w_list))
-            rows.append(r)
-            cols.append(c)
-            weights.append(w)
-
-        rows = np.concatenate(rows)
-        cols = np.concatenate(cols)
-        weights = np.concatenate(weights)
-        return rows, cols, weights
-    
-    def compute_diffusion_component(self, mesh, dr, ijk, ijk_major, flux_weights):
-        """
-        Computes the diffusion weights from the flux weights.
-
-        Parameters
-        ----------
-        mesh : numpy.ndarray
-            The mesh of the simulation.
-        dr : float
-            The grid spacing.
-        ijk : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
-        flux_weights : list
-            A list of tuples containing the rows, cols, and weights for each
-            flux direction.
-
-        Returns
-        -------
-        rows : np.ndarray
-            The row indexes for the sparse matrix.
-        cols : np.ndarray
-            The column indexes for the sparse matrix.
-        weights : np.ndarray
-            The weights for the sparse matrix.
-        """
-        ijk_list, w_list = flux_weights
-        in_flux = self.nonzero_weights(mesh, ijk, ijk_list, w_list)
-        out_flux = self.nonzero_weights(mesh, ijk_major, ijk_list, w_list, direction=-1)
-
-        rows = np.concatenate(in_flux[0] + out_flux[0])
-        cols = np.concatenate(in_flux[1] + out_flux[1])
-        weights = np.concatenate(in_flux[2] + out_flux[2]) / dr
-        return rows, cols, weights
-
-    def compute_flux_weights(self, mesh, diffusion, dr, ijk, axis):
-        """
-        Computes the flux weights along the given axis.
-
-        Parameters
-        ----------
-        mesh : numpy.ndarray
-            The mesh of the simulation.
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
-        dr : float
-            The grid spacing.
-        ijk : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
-        axis : int
-            The axis along which to compute the flux weights.
-
-        Returns
-        -------
-        tuple of np.ndarray
-            The rows, columns, and weights for the flux computation.
-        """
-        pass
+        raise NotImplementedError()
 
     def nonzero_weights(self, mesh, ijk, ijk_list, w_list, direction=1):
         """
@@ -149,23 +82,22 @@ class Stencil:
         mesh : numpy.ndarray
             The mesh of the simulation.
         ijk : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
+            The indexes of the non-empty nodes in the mesh.
         ijk_list : list
-            The list of ijk coordinates of the involved points in the mesh.
+            The list of ijk coordinates of the neighboring nodes in the mesh.
         w_list : list
-            The list of weights for the involved points.
+            The list of weights for the neighboring nodes.
         direction : int, optional
             The direction of the flux (1 for major-to-center, -1 for center-to-major)
 
         Returns
         -------
-        tuple
-            A tuple containing the rows, cols, and weights for the non-zero
-            weights.
-
-        Notes
-        -----
-        This method applies to both major-to-center and center-to-major flows.
+        rows : list
+            The list of row indexes for the sparse matrix.
+        cols : list
+            The list of column indexes for the sparse matrix.
+        weights : list
+            The list of weights for the sparse matrix.
         """
         rows, cols, weights = [], [], []
 
@@ -209,7 +141,7 @@ class Stencil:
         Parameters
         ----------
         index : numpy.ndarray
-            The ijk coordinates of the points.
+            The ijk coordinates of the nodes.
         mesh : numpy.ndarray
             The mesh of the simulation.
 

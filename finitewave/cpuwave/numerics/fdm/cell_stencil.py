@@ -1,5 +1,5 @@
 import numpy as np
-from .stecil import Stencil
+from .stencil import Stencil
 
 
 class CellStencil(Stencil):
@@ -44,8 +44,8 @@ class CellStencil(Stencil):
         ----------
         mesh : numpy.ndarray
             The mesh of the simulation.
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        diffusion : numpy.ndarray [*mesh.shape, ndim, ndim]
+            The diffusion tensor at the center of each cell.
         dr : float
             The grid spacing.
         indexes : np.ndarray

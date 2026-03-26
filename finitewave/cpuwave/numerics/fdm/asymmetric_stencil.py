@@ -1,5 +1,5 @@
 import numpy as np
-from .stecil import Stencil
+from .stencil import Stencil
 
 
 class AsymmetricStencil(Stencil):
@@ -33,7 +33,86 @@ class AsymmetricStencil(Stencil):
     """
     def __init__(self):
         super().__init__()
-   
+
+    def compute_diffusion_weights(self, mesh, diffusion, dr, indexes):
+        """
+        Computes the weights for the isotropic stencil with first-order
+        boundary conditions.
+
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        diffusion : numpy.ndarray
+            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        dr : float
+            The grid spacing.
+        indexes : numpy.ndarray
+            The indexes of the non-empty points in the mesh.
+
+        Returns
+        -------
+        rows : numpy.ndarray
+            The central node indexes.
+        cols : numpy.ndarray
+            The node indexes involved in diffusion calculation.
+        weights : numpy.ndarray
+            The weights for connections between central and neighboring nodes.
+        """
+        rows = []
+        cols = []
+        weights = []
+
+        ijk = np.array(np.unravel_index(indexes, mesh.shape))
+        for axis in range(mesh.ndim):
+            r, c, w = self.compute_diffusion_along_axis(mesh, diffusion, dr, ijk, axis)
+            rows.append(r)
+            cols.append(c)
+            weights.append(w)
+
+        rows = np.concatenate(rows)
+        cols = np.concatenate(cols)
+        weights = np.concatenate(weights)
+        return rows, cols, weights
+    
+    def compute_diffusion_along_axis(self, mesh, diffusion, dr, ijk, axis):
+        """
+        Computes the diffusion weights along a given axis.
+
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        dr : float
+            The grid spacing.
+        ijk : numpy.ndarray
+            The indexes of the non-empty points in the mesh.
+        ijk_major : numpy.ndarray
+            The indexes of the major neighbor points.
+        ijk_list : list
+            A list of numpy arrays containing the indexes of the involved points.
+        w_list : list
+            A list of numpy arrays containing the flux weights for the involved points.
+
+        Returns
+        -------
+        rows : np.ndarray
+            The central node indexes.
+        cols : np.ndarray
+            The node indexes involved in diffusion calculation.
+        weights : np.ndarray
+            The weights for connections.
+        """
+        
+        ijk_major, ijk_list, w_list = self.compute_flux_weights(mesh, diffusion, dr, ijk, axis)
+        major_to_center = self.nonzero_weights(mesh, ijk, ijk_list, w_list)
+        center_to_major = self.nonzero_weights(mesh, ijk_major, ijk_list, w_list, direction=-1)
+
+        rows = np.concatenate(major_to_center[0] + center_to_major[0])
+        cols = np.concatenate(major_to_center[1] + center_to_major[1])
+        weights = np.concatenate(major_to_center[2] + center_to_major[2]) / dr
+        return rows, cols, weights
+    
     def compute_flux_weights(self, mesh, diffusion, dr, ijk, major_axis):
         """
         Computes the flux weights along major axis.
@@ -64,8 +143,12 @@ class AsymmetricStencil(Stencil):
 
         Returns 
         -------
-        tuple
-            A tuple containing the rows, cols, and weights for the flux.
+        ijk_major : numpy.ndarray
+            The indexes of the major neighbor cells.
+        ijk_list : list
+            The list of coordinates of the involved nodes in the mesh.
+        w_list : list
+            The list of weights for the involved nodes.
         """
         ijk_major = self.build_neighbor(ijk, shift=1, axis=major_axis)
         m_center = self.is_valid_index(ijk, mesh).astype(diffusion.dtype)
@@ -89,9 +172,37 @@ class AsymmetricStencil(Stencil):
         return ijk_major, ijk_list, w_list
     
     def major_flux_weights(self, diffusion, dr, ijk, ijk_major, m_center, m_major, major_axis):
+        """Computes the weights for the major component of the flux from
+        major to center.
+
+        q_x = - Dxx * (u_major - u_center) / dr
+        
+        Parameters
+        ----------
+        diffusion : numpy.ndarray
+            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        dr : float
+            The grid spacing.
+        ijk : numpy.ndarray
+            The indexes of the non-empty cells in the mesh.
+        ijk_major : numpy.ndarray
+            The indexes of the major neighbor cells.
+        m_center : numpy.ndarray
+            The validity mask of the center cell.
+        m_major : numpy.ndarray
+            The validity mask of the major neighbor.
+        major_axis : int
+            The axis of the major direction.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the ijk coordinates of the involved cells and
+            their flux weights.
+        """
         valid_connection = (m_major > 0) & (m_center > 0)
-        w_major = - self.average_diffusion(diffusion, ijk, ijk_major, major_axis,
-                                           major_axis, valid_connection) / dr
+        w_major = - self.diffusion_component(diffusion, ijk, major_axis,
+                                             major_axis, valid_connection) / dr
 
         ijk_list = [ijk, ijk_major]
         w_list = [-w_major, w_major]
@@ -151,8 +262,8 @@ class AsymmetricStencil(Stencil):
         the corresponding nodes.
         """
 
-        d_minor = self.average_diffusion(diffusion, ijk_center, ijk_major,
-                                         major_axis, minor_axis, m_major)
+        d_minor = self.diffusion_component(diffusion, ijk_center, major_axis, minor_axis, m_major)
+        d_major = self.diffusion_component(diffusion, ijk_center, minor_axis, minor_axis, m_major)
 
         ijk_1 = self.build_neighbor(ijk_center, -1, minor_axis)
         ijk_2 = self.build_neighbor(ijk_major, -1, minor_axis)
@@ -164,22 +275,20 @@ class AsymmetricStencil(Stencil):
         m3 = self.is_valid_index(ijk_3, mesh).astype(diffusion.dtype)
         m4 = self.is_valid_index(ijk_4, mesh).astype(diffusion.dtype)
 
-        weights = self.minor_component(d_minor, dr, m_center, m_major, m1, m2, m3, m4)
+        weights = self.minor_component(d_minor, d_major, dr, m_center, m_major, m1, m2, m3, m4)
         ijk_list = [ijk_center, ijk_major, ijk_1, ijk_2, ijk_3, ijk_4]
         return ijk_list, weights
 
-    def average_diffusion(self, diffusion, ijk_1, ijk_2, axis1, axis2, mask):
+    def diffusion_component(self, diffusion, ijk, axis1, axis2, mask):
         """
         Averages the diffusion coefficients between two sets of cells.
 
         Parameters
         ----------
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
-        ijk_1 : numpy.ndarray
-            The indexes of the first set of cells.
-        ijk_2 : numpy.ndarray
-            The indexes of the second set of cells.
+        diffusion : numpy.ndarray [*mesh.shape, ndim, ndim]
+            The diffusion tensor at the center of connections between nodes.
+        ijk : numpy.ndarray
+            The indexes of the central nodes.
         axis1 : int
             The first axis index.
         axis2 : int
@@ -193,8 +302,7 @@ class AsymmetricStencil(Stencil):
             The averaged diffusion coefficients.
         """
         d = np.zeros(mask.shape, dtype=diffusion.dtype)
-        d[mask > 0] = 0.5 * (diffusion[*ijk_1[:, mask > 0], axis1, axis2] +
-                             diffusion[*ijk_2[:, mask > 0], axis1, axis2])
+        d[mask > 0] = diffusion[*ijk[:, mask > 0], axis1, axis2]
         return d
 
     def major_component(self, d_major, dr, m_center, m_major):
@@ -233,7 +341,7 @@ class AsymmetricStencil(Stencil):
 
         return w_major
 
-    def minor_component(self, d_minor, dr, m, m0, m1, m2, m3, m4):
+    def minor_component(self, d_minor, d_major, dr, m, m0, m1, m2, m3, m4):
         """
         Calculates the minor component of the flux.
 
@@ -277,9 +385,9 @@ class AsymmetricStencil(Stencil):
         m_upper = m3 + m4 + m + m0
         m_lower = m1 + m2 + m + m0
 
-        mask = ((m == 0) | (m0 == 0) | (m_upper < 3) | (m_lower < 3))
+        # mask = ((m == 0) | (m0 == 0) | (m_upper < 3) | (m_lower < 3))
         # more stable version, but less precise
-        # mask = ((m == 0) | (m0 == 0) | (m_upper < 4) | (m_lower < 4))
+        mask = ((m == 0) | (m0 == 0) | (m_upper < 4) | (m_lower < 4))
 
         w = d_minor / dr * np.where(mask, 0, m / m_upper - m / m_lower)
         w0 = d_minor / dr * np.where(mask, 0, m0 / m_upper - m0 / m_lower)
@@ -287,5 +395,9 @@ class AsymmetricStencil(Stencil):
         w2 = d_minor / dr * np.where(mask, 0, - m2 / m_lower)
         w3 = d_minor / dr * np.where(mask, 0, m3 / m_upper)
         w4 = d_minor / dr * np.where(mask, 0, m4 / m_upper)
+       
+        # mask = ((m == 1) & (m0 == 1) & ((m1 + m2 + m3 + m4) < 4))
+        # w[mask] = - d_minor[mask] / d_major[mask]
+        # w0[mask] = d_minor[mask] / d_major[mask]
 
         return w, w0, w1, w2, w3, w4

@@ -52,7 +52,8 @@ n = 400
 # fiber orientation angle
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 alpha = np.pi / 4
-# tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.2)
+tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3).astype(int)
+# tissue.mesh[30:60,50:150] = 2
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, n, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
@@ -72,13 +73,17 @@ simulation.dt = 0.01
 simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.FentonKarma()
 simulation.cardiac_model.step = 1
 simulation.stim_sequence = stim_sequence
 simulation.diffusion_model = diffusion_model
 
 # run the model:
 simulation.run()
+
+# plt.imshow(simulation.diffusion_model.weights[0].toarray(), cmap='viridis', origin='lower')
+# plt.colorbar()
+# plt.show()
 
 # visualize the results:
 plt.imshow(simulation.cardiac_model.u, cmap='jet', origin='lower')

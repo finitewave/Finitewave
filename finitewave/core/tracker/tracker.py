@@ -47,15 +47,15 @@ class Tracker(ABC):
         self.step = 1
 
     @abstractmethod
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Abstract method to be implemented by subclasses for initializing
         the tracker with the simulation model.
 
         Parameters
         ----------
-        model : CardiacModel
-            The simulation model to which the tracker will be attached.
+        simulation : Simulation
+            The simulation object to which the tracker will be attached.
         """
         pass
 

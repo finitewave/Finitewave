@@ -4,7 +4,7 @@ from .stencil import Stencil
 
 class IsotropicStencil(Stencil):
     """
-    Isotropic stencil with second-order accuracy
+    4-point stencil with second-order accuracy for boundary conditions.
     """
 
     def __init__(self):
@@ -19,8 +19,8 @@ class IsotropicStencil(Stencil):
         ----------
         mesh : numpy.ndarray
             The mesh of the simulation.
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+        diffusion : numpy.ndarray [*mesh.shape, ndim, ndim]
+            The diffusion tensor at connections between nodes.
         dr : float
             The grid spacing.
         indexes : numpy.ndarray
@@ -37,8 +37,7 @@ class IsotropicStencil(Stencil):
 
         ijk = np.array(np.unravel_index(indexes, mesh.shape))
         for axis in range(mesh.ndim):
-            res = self.compute_flux_weights(mesh, diffusion, dr, ijk, axis)
-            r, c, w = self.compute_diffusion_component(mesh, dr, ijk, *res)
+            r, c, w = self.compute_diffusion_along_axis(mesh, diffusion, dr, ijk, axis)
             rows.append(r)
             cols.append(c)
             weights.append(w)
@@ -48,7 +47,7 @@ class IsotropicStencil(Stencil):
         weights = np.concatenate(weights)
         return rows, cols, weights
     
-    def compute_diffusion_component(self, mesh, dr, ijk, ijk_list, w_list):
+    def compute_diffusion_along_axis(self, mesh, diffusion, dr, ijk, axis):
         """
         Computes the diffusion weights from the flux weights.
 
@@ -56,14 +55,14 @@ class IsotropicStencil(Stencil):
         ----------
         mesh : numpy.ndarray
             The mesh of the simulation.
+        diffusion : numpy.ndarray [*mesh.shape, ndim, ndim]
+            The diffusion tensor at connections between nodes.
         dr : float
             The grid spacing.
         ijk : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
-        ijk_list : list
-            The list of ijk coordinates of the involved points in the mesh.
-        w_list : list
-            The list of weights for the involved points.
+            The indexes of the non-empty nodes in the mesh.
+        axis : int
+            The axis along which to compute the diffusion weights.
 
         Returns
         -------
@@ -74,6 +73,7 @@ class IsotropicStencil(Stencil):
         weights : np.ndarray
             The weights for the sparse matrix.
         """
+        ijk_list, w_list = self.compute_flux_weights(mesh, diffusion, dr, ijk, axis)
         rows, cols, weights = self.nonzero_weights(mesh, ijk, ijk_list, w_list)
 
         rows = np.concatenate(rows)
@@ -102,8 +102,10 @@ class IsotropicStencil(Stencil):
 
         Returns
         -------
-        tuple of np.ndarray
-            The rows, columns, and weights for the flux computation.
+        ijk_list : list
+            The list of coordinates of the involved nodes in the mesh.
+        w_list : list
+            The list of weights for the involved nodes.
         """
         ijk_pos = self.build_neighbor(ijk, shift=1, axis=axis)
         ijk_neg = self.build_neighbor(ijk, shift=-1, axis=axis)
@@ -131,4 +133,5 @@ class IsotropicStencil(Stencil):
 
         ijk_list = [ijk, ijk_pos, ijk, ijk_neg]
         w_list = [d_pos, - d_pos, d_neg, - d_neg]
+
         return ijk_list, w_list

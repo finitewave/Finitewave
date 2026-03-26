@@ -27,3 +27,4 @@ from .variable_grid_tracker import VariableGridTracker
 from .multi_variable_grid_tracker import MultiVariableGridTracker
 from .ecg_grid_tracker import ECGGridTracker
 from .frame_tracker import FrameTracker
+from .local_activation_time_tracker import LocalActivationTimeTracker

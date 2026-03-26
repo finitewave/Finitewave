@@ -32,6 +32,8 @@ class CardiacTissueGrid(CardiacTissue):
         self.meta["dr"] = dr
         self.mesh = np.ones(shape, dtype=np.int8)
         self.conductivity = 1.0
+        self.connectivity = 1.0
+        self.element_conductivity = 1.0
         self.dr = dr
         self.fibers = None
 

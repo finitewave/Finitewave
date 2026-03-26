@@ -62,43 +62,44 @@ import finitewave as fw
 
 # number of nodes on the side
 n = 200
-tissue = fw.CardiacTissueFDM([n, n])
+tissue = fw.CardiacTissueGrid([n, n], dr=0.3)
 
-# create model object:
-aliev_panfilov = fw.AlievPanfilovFDM()
-# set up numerical parameters:
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.3
-aliev_panfilov.t_max = 200
+model = fw.AlievPanfilov()
 
 # induce spiral wave:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoordFDM(time=0, volt_value=1, x1=0, x2=n,
-                                              y1=0, y2=5))
-stim_sequence.add_stim(fw.StimVoltageCoordFDM(time=50, volt_value=1, x1=n//2,
-                                              x2=n, y1=0, y2=n))
+stim_sequence.add_stim(
+    fw.StimVoltageCoord(time=0, volt_value=1, x_min=0, x_max=n, y_min=0, y_max=5)
+    )
+stim_sequence.add_stim(
+    fw.StimVoltageCoord(time=50, volt_value=1, x_min=n//2, x_max=n, y_min=0, y_max=n)
+    )
 
 # set up the tracker:
-tracker_sequence = fw.TrackerSequence()
-act_time_tracker = fw.LocalActivationTimeTrackerFDM()
-act_time_tracker.threshold = 0.5
-act_time_tracker.step = 10
-act_time_tracker.start_time = 100
-act_time_tracker.end_time = 200
-tracker_sequence.add_tracker(act_time_tracker)
+lat_tracker = fw.LocalActivationTimeTracker()
+lat_tracker.threshold = 0.5
+lat_tracker.step = 10
+lat_tracker.start_time = 100
+lat_tracker.end_time = 200
 
-# connect model with tissue, stim and tracker:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
-aliev_panfilov.tracker_sequence = tracker_sequence
+tracker_sequence = fw.TrackerSequence()
+tracker_sequence.add_tracker(lat_tracker)
+
+# set up the simulation:
+simulation = fw.CardiacSimulation()
+simulation.dt = 0.01
+simulation.t_max = 200
+simulation.cardiac_tissue = tissue
+simulation.cardiac_model = model
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
 # run the simulation:
-aliev_panfilov.run()
+simulation.run()
 
 # plot the activation time map:
 time_bases = [150, 170]  # time bases to plot the activation time map
-lats = act_time_tracker.output
-print(f'Number of LATs: {len(act_time_tracker.output)}')
+print(f'Number of LATs: {len(lat_tracker.output)}')
 
 X, Y = np.mgrid[0:n:1, 0:n:1]
 
@@ -108,22 +109,13 @@ if len(time_bases) == 1:
     axs = [axs]
 
 for i, ax in enumerate(axs):
-    # Select the activation times next closest to the time base
-    mask = np.any(lats >= time_bases[i], axis=0)
-    ids = np.argmax(lats >= time_bases[i], axis=0)
-    ids = tuple((ids[mask], *np.where(mask)))
+    time_min = time_bases[i]
+    time_max = time_bases[i] + 30
 
-    act_time = np.full([n, n], np.nan)
-    act_time[mask] = lats[ids]
+    lat_map = lat_tracker.activation_map(time_min, time_max)
 
-    act_time_min = time_bases[i]
-    act_time_max = time_bases[i] + 30
-
-    ax.imshow(act_time,
-              vmin=act_time_min,
-              vmax=act_time_max,
-              cmap='viridis')
-    ax.set_title(f'Activation time: {time_bases[i]} ms')
+    ax.imshow(lat_map, cmap='viridis', origin='lower', vmin=time_min, vmax=time_max)
+    ax.set_title(f'Activation time: {time_bases[i]} time units')
     cbar = fig.colorbar(ax.images[0], ax=ax, orientation='vertical')
-    cbar.set_label('Activation Time (ms)')
+    cbar.set_label('Activation Time (time units)')
 plt.show()

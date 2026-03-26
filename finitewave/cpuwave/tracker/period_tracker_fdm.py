@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import json
-from .local_activation_time_tracker_fdm import LocalActivationTimeTrackerFDM
+from .local_activation_time_tracker import LocalActivationTimeTrackerFDM
 
 
 class PeriodTrackerFDM(LocalActivationTimeTrackerFDM):

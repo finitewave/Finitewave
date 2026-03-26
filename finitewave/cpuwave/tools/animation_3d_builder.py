@@ -70,7 +70,8 @@ class Animation3DBuilder(Animation2DBuilder):
                     scalars=scalar_name, show_scalar_bar=scalar_bar)
 
         if format == "mp4":
-            pl.open_movie(path_save, **kwargs)
+            print(f"Saving animation to {path_save}")
+            pl.open_movie(path_save, format='FFMPEG', **kwargs)
         elif format == "gif":
             pl.open_gif(path_save, **kwargs)
         else:
