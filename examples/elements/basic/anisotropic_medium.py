@@ -6,27 +6,30 @@ import finitewave as fw
 
 # create a tissue of size 50x50 with 200x200 points:
 n = 200
-size = 50
+size = 25
 coords, elems = fw.build_triangulated_mesh(n, n, (0, size), (0, size))
 
 # create cardiac tissue object:
-tissue = fw.CardiacTissueElements(coords, elems, elem_type='Triangle')
+tissue = fw.CardiacTissueElements(coords, elems, elem_type=fw.ElementType.TRIANGLE)
+# define fiber directions for anisotropic conduction:
+tissue.fibers = np.zeros((elems.shape[0], 2))
+tissue.fibers[:, 0] = np.cos(np.pi / 6)  # set fiber direction at 30 degrees
+tissue.fibers[:, 1] = np.sin(np.pi / 6)  # set fiber direction at 30 degrees
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, size, 0, 1))
-stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
+                                           size//2 - 1, size//2 + 1,
+                                           size//2 - 1, size//2 + 1))
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 100
+simulation.t_max = 25
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.Courtemanche()
 simulation.stim_sequence = stim_sequence
-# set up the solver:
-# simulation.solver = fw.ForwardEulerSolver()
 
 # run the model:
 simulation.run()
@@ -34,11 +37,13 @@ simulation.run()
 # get the resulting potential at the element centers:
 u = simulation.cardiac_model.u
 elems_u = np.mean(u[elems], axis=1)
+coords_3d = np.hstack([coords, np.zeros((coords.shape[0], 1))])
 
 # show the potential map at the end of calculations:
 faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
-mesh = pv.PolyData(tissue.coords, faces)
-mesh.cell_data["values"] = elems_u
+mesh = pv.PolyData(coords_3d, faces)
+# mesh.cell_data["values"] = elems_u
+mesh.point_data["values"] = u
 
 pl = pv.Plotter()
 pl.add_mesh(mesh, cmap="RdBu_r", show_edges=False)

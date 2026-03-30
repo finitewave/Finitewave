@@ -1,3 +1,2 @@
-from .surface_assembler import SurfaceAssembler
-from .volume_assembler import VolumeAssembler
+from .element_assembler import ElementAssembler
 from .elements import *

@@ -5,3 +5,4 @@ from .stim_voltage_collection import StimVoltageCollection
 from .stim_current_coord import StimCurrentCoord
 from .stim_current_electrodes import StimCurrentElectrodes
 from .stim_current_matrix import StimCurrentMatrix
+from .stim_prepacing import StimPrepacing

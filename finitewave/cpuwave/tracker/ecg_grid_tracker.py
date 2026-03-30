@@ -49,14 +49,14 @@ class ECGGridTracker(Tracker):
 
         mesh_shape = self.simulation.cardiac_tissue.mesh.shape
         myo_indexes = self.simulation.cardiac_model.myo_indexes
-        mesh_indexes = self.simulation.cardiac_model.mesh_indexes
+        tissue_indexes = self.simulation.cardiac_model.tissue_indexes
 
-        self.myo_coords = self.build_myo_coords(myo_indexes, mesh_indexes,
+        self.myo_coords = self.build_myo_coords(myo_indexes, tissue_indexes,
                                                 mesh_shape)
-        self.myo_mask = self.build_myo_mask(myo_indexes, mesh_indexes)
+        self.myo_mask = self.build_myo_mask(myo_indexes, tissue_indexes)
 
-    def build_myo_coords(self, myo_indexes, mesh_indexes, mesh_shape):
-        global_myo_indexes = mesh_indexes[myo_indexes]
+    def build_myo_coords(self, myo_indexes, tissue_indexes, mesh_shape):
+        global_myo_indexes = tissue_indexes[myo_indexes]
         myo_coords = np.unravel_index(global_myo_indexes, mesh_shape)
 
         if len(myo_coords) == 2:
@@ -69,8 +69,8 @@ class ECGGridTracker(Tracker):
                                               3 - coords.shape[1]))))
         return coords.astype(self.simulation.npfloat)
 
-    def build_myo_mask(self, myo_indexes, mesh_indexes):
-        myo_mask = np.zeros_like(mesh_indexes, dtype=bool)
+    def build_myo_mask(self, myo_indexes, tissue_indexes):
+        myo_mask = np.zeros_like(tissue_indexes, dtype=bool)
         myo_mask[myo_indexes] = True
         return myo_mask
 

@@ -30,13 +30,27 @@ class LocalActivationTimeTracker(Tracker):
 
     """
 
-    def __init__(self):
+    def __init__(self, threshold=-40, step=1, start_time=0, end_time=np.inf):
         """
         Initializes the LocalActivationTimeTracker with default parameters.
+
+        Parameters
+        ----------
+        threshold : float, optional
+            The potential threshold to determine cell activation. Default is -40.
+        step : float, optional
+            The time step for tracking activation times. Default is 1.
+        start_time : float, optional
+            The time after which the tracker starts recording activation times. Default is 0.
+        end_time : float, optional
+            The time after which the tracker stops recording activation times. Default is infinity.
         """
         Tracker.__init__(self)
         self.act_t = []
-        self.threshold = -40
+        self.threshold = threshold
+        self.step = step
+        self.start_time = start_time
+        self.end_time = end_time
         self.file_name = "lat"
         self.activated = False
 
@@ -163,7 +177,7 @@ class LocalActivationTimeTracker(Tracker):
         lat_array = self.output
         closest_indices = np.argmax(lat_array >= time_min, axis=0)
 
-        lat_map = np.take_along_axis(lat_array, closest_indices[None, :, :],
+        lat_map = np.take_along_axis(lat_array, closest_indices[None, ...],
                                      axis=0)[0]
         lat_map[lat_map > time_max] = np.nan
         return lat_map

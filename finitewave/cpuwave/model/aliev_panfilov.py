@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit, prange
+from numba import njit, prange, typed
 
 from .cardiac_model import CardiacModel
 from ._registry import load_ops
@@ -104,27 +104,14 @@ class AlievPanfilov(CardiacModel):
         ionic_kernel(self.u, self.rhs, self.myo_indexes, dt, self.v, self.a,
                      self.k, self.eps, self.mu1, self.mu2)
         
-    def prepacing(self, stim_sequence):
-        stim_values = []
-        t_max = 0
-
-        for stim in stim_sequence:
-            n_beats = stim["n_beats"]
-            dt = stim["dt"]
-            bcl = stim["cycle_length"]
-            duration = stim["stim_duration"]
-            stim_amplitude = stim["stim_amplitude"]
-
-            stim_val = self._build_prepacing(dt, n_beats, bcl, duration, stim_amplitude)
-            stim_values.append(stim_val)
-            t_max += dt * len(stim_val)
-
-        stim_values = np.concatenate(stim_values)
+    def prepacing(self, stim_prepacing):
+        """Executes the prepacing sequence for the Aliev-Panfilov model."""
+        dt = stim_prepacing.dt
+        stim_values = stim_prepacing.stim_sequence
         self.u_pacing, state_vars = prepacing(
-            dt, t_max, stim_values, self.init_u, self.init_v, self.a,
+            dt, stim_values, self.init_u, self.init_v, self.a,
             self.k, self.eps, self.mu1, self.mu2)
         
-        # print(state_vars)
         # initial conditions
         for var, val in state_vars.items():
             if var == "j":
@@ -171,7 +158,7 @@ def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2):
 
 
 @njit
-def prepacing(dt, t_max, stim_values, u, v, a, k, eps, mu1, mu2):
+def prepacing(dt, stim_values, u, v, a, k, eps, mu1, mu2):
     """
     Computes the ionic kernel for the Aliev-Panfilov 2D model.
 
@@ -179,8 +166,6 @@ def prepacing(dt, t_max, stim_values, u, v, a, k, eps, mu1, mu2):
     ----------
     dt : float
         Time step for the simulation.
-    t_max : float
-        Total time for the pre-pacing simulation.
     stim_values : np.ndarray
         Array of stimulus values to be applied at each time step.
     u : float
@@ -198,10 +183,10 @@ def prepacing(dt, t_max, stim_values, u, v, a, k, eps, mu1, mu2):
     mu2 : float
         Recovery rate offset (modulates u-dependence of recovery).
     """
-    u_list = np.zeros((int(t_max/dt),), dtype=np.float64)
+    u_list = np.zeros(len(stim_values), dtype=np.float64)
     u_list[0] = u
 
-    for i in range(1, int(t_max/dt)):
+    for i in range(1, len(stim_values)):
         u += stim_values[i]
 
         v += dt * calc_dv(v, u, a, k, eps, mu1, mu2)

@@ -1,6 +1,6 @@
 import numpy as np
 
-from .volume_assembler import VolumeAssembler
+from .element_assembler import VolumeAssembler
 
 
 class SurfaceAssembler(VolumeAssembler):

@@ -4,9 +4,8 @@ from finitewave.cpuwave.numerics.fem.elements.triangle_element import LinearTria
 from finitewave.cpuwave.numerics.fem.elements.quadrilateral_element import LinearQuadrilateralElement
 from finitewave.cpuwave.numerics.fem.elements.tetrahedral_element import LinearTetrahedralElement
 
-from .surface_model import SurfaceModel
-from .volume_model import VolumeModel
-from .grid_model import GridModel
+from .grid_diffusion_model import GridDiffusionModel
+from .element_diffusion_model import ElementDiffusionModel
 
 
 class DiffusionModel(DiffusionModelBase):
@@ -60,25 +59,27 @@ class DiffusionModel(DiffusionModelBase):
             The selected assembler instance.
         """
         if self.simulation.cardiac_tissue.meta['type'] == 'Grid':
-            return GridModel()
+            return GridDiffusionModel()
 
         if self.simulation.cardiac_tissue.meta['type'] == 'Elements':
             return self._default_assembler()
+        
+        raise ValueError(f"Unknown tissue type: {self.simulation.cardiac_tissue.meta['type']}")
 
     def _default_assembler(self):
         if self.simulation.cardiac_tissue.meta['shape'] == 'Triangle':
-            assembler = SurfaceModel()
+            assembler = ElementDiffusionModel()
             assembler.reference_element = LinearTriangleElement()
             return assembler
 
         if self.simulation.cardiac_tissue.meta['shape'] == 'Quadrilateral':
-            assembler = SurfaceModel()
+            assembler = ElementDiffusionModel()
             assembler.reference_element = LinearQuadrilateralElement()
             return assembler
 
         if self.simulation.cardiac_tissue.meta['shape'] == 'Tetrahedral':
-            assembler = VolumeModel()
+            assembler = ElementDiffusionModel()
             assembler.reference_element = LinearTetrahedralElement()
             return assembler
 
-        raise ValueError("Unknown element type")
+        raise ValueError(f"Unknown element type: {self.simulation.cardiac_tissue.meta['shape']}")

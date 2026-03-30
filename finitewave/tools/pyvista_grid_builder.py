@@ -124,6 +124,30 @@ class PyVistaGridBuilder:
         self.grid.cell_data[name] = scalars[self.indices]
         self.grid.set_active_scalars(name)
         return self.grid
+    
+    def add_masked_scalar(self, scalars, mask, name='Scalars'):
+        """Add a scalar field to the mesh. The scalars assumed to be
+        values where mask is True.
+
+        Parameters
+        ----------
+        scalars : np.array
+            Flat scalar field.
+        mask : np.array
+            Boolean mask where scalars are defined.
+        name : str, optional
+            Name of the scalar. Default is 'Scalars'.
+
+        Returns
+        -------
+        grid : pv.UnstructuredGrid
+            Grid with the scalar field added as active cell scalars.
+        """
+        scalars_mesh = np.zeros_like(mask, dtype=scalars.dtype)
+        scalars_mesh[mask] = scalars
+        self.grid.cell_data[name] = scalars_mesh[self.indices]
+        self.grid.set_active_scalars(name)
+        return self.grid
 
     def add_vector(self, vectors, name='Vectors'):
         """

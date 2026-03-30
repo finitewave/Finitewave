@@ -4,7 +4,7 @@ import scipy.sparse as sp
 from numba import njit, prange
 
 
-class VolumeAssembler:
+class ElementAssembler:
     """
     Class for assembling volume element diffusion models.
 
@@ -18,142 +18,152 @@ class VolumeAssembler:
 
     def compute_metrics(self, coords, elems):
         """
-        Computes volume and global gradients for 3D elements
+        Computes area/volume and global gradients for 3D elements
         using the Jacobian from the reference element.
 
-        Parameters:
+        Parameters
         ----------
-        coords: (N_nodes, 3)
+        coords : (N_nodes, dim_phys)
             Coordinates of the mesh nodes.
-        elems: (N_elems, N_points)
+        elems : (N_elems, N_points)
             Element connectivity (node indices for each element).
 
-        Returns:
-        -------
-        volumes: (N_elems,)
-            Volume of each element.
-        grads: (N_elems, 3, 3)
+        Returns
+        --------
+        elements_size : (N_elems,)
+            Area or volume of each element.
+        grads : (N_elems, N_points, dim_phys)
             Gradient of shape functions in global coordinates for each element.
         """
         jacobian = self.build_jacobian(coords, elems)
-        volumes = self._compute_volumes(jacobian)
+        elements_size = self._compute_elements_size(jacobian)
         grads = self._compute_gradients(jacobian)
 
-        return volumes, grads
+        return elements_size, grads
 
     def build_jacobian(self, coords, elems):
         """
-        Build Jacobian matrices for quadrilateral elements.
+        Build Jacobian matrices for elements.
 
-        Parameters:
+        Parameters
         ----------
-        coords: (N_nodes, 3)
+        coords : (N_nodes, dim_phys)
             Coordinates of the mesh nodes.
-        elems: (N_elems, N_points)
-            Element connectivity (node indices for each quadrilateral).
+        elems : (N_elems, N_points)
+            Element connectivity (node indices for each element).
 
-        Returns:
+        Returns
         -------
-        jacobian: (N_elems, 3, 3)
-            Jacobian matrices for each quadrilateral element.
+        jacobian : (N_elems, dim_ref, dim_phys)
+            Jacobian matrices for each element.
         """
         n_elems = elems.shape[0]
-        jacobian = np.zeros((n_elems, 3, 3))
+        dim_ref = len(self.reference_element.dN)
+        dim_phys = coords.shape[1]
+        jacobian = np.zeros((n_elems, dim_ref, dim_phys))
 
         for i in range(self.reference_element.n_points):
-            jacobian[:, 0, :] += (self.reference_element.dN_dxi[i] *
-                                  coords[elems[:, i]])
-            jacobian[:, 1, :] += (self.reference_element.dN_deta[i] *
-                                  coords[elems[:, i]])
-            jacobian[:, 2, :] += (self.reference_element.dN_dzeta[i] *
-                                  coords[elems[:, i]])
-
+            for j in range(len(self.reference_element.dN)):
+                jacobian[:, j, :] += (self.reference_element.dN[j][i] *
+                                      coords[elems[:, i]])
         return jacobian
     
     def compute_gradients(self, coords, elems):
         """
-        Compute global gradients for quadrilateral elements.
+        Compute global gradients for elements.
 
         Parameters:
         ----------
-        jacobian: (N_elems, 3, 3)
-            Jacobian matrices for N quadrilateral elements.
+        coords : (N_nodes, dim_phys)
+            Coordinates of the mesh nodes.
+        elems : (N_elems, N_points)
+            Element connectivity (node indices for each element).
 
         Returns:
         -------
-            grads: (N_elems, 3, N_points)
+            grads: (N_elems, dim_phys, N_points)
                 Gradient of shape functions in global coordinates for each
                 element.
         """
         jacobian = self.build_jacobian(coords, elems)
         grads = self._compute_gradients(jacobian)
-        grads = np.transpose(grads, (0, 2, 1)).copy()  # Transpose to (N_elems, 3, N_points)
+        # Transpose to (N_elems, dim_phys, N_points)
+        grads = np.transpose(grads, (0, 2, 1)).copy() 
         return grads
     
-    def compute_volumes(self, coords, elems):
+    def compute_elements_size(self, coords, elems):
         """
-        Compute volumes of quadrilateral elements from their Jacobian matrices.
+        Compute area/volume of elements.
 
         Parameters:
         ----------
-        jacobian: (N_elems, 3, 3)
-            Jacobian matrices for N quadrilateral elements.
+        jacobian: (N_elems, dim_ref, dim_phys)
+            Jacobian matrices for N elements.
 
         Returns:
         -------
-            volumes: (N_elems,)
-                Volume of each element.
+            elements_size: (N_elems,)
+                Area or volume of each element.
         """
         jacobian = self.build_jacobian(coords, elems)
-        return self._compute_volumes(jacobian)
+        return self._compute_elements_size(jacobian)
 
     def _compute_gradients(self, jacobian):
         """Compute global gradients for triangle elements.
 
         Parameters:
         ----------
-        jacobian: (N_elems, 3, 3)
+        jacobian: (N_elems, dim_ref, dim_phys)
             Jacobian matrices for N triangle elements.
 
         Returns:
         -------
-            grads: (N_elems, N_points, 3)
+            grads: (N_elems, N_points, dim_phys)
                 Gradient of shape functions in global coordinates for each
                 element.
 
         Note:
-            The output shape is (N_elems, N_points, 3) to match the expected format
+            The output shape is (N_elems, N_points, dim_phys) to match the expected format
             for subsequent computations.
         """
+        n_elems, dim_ref, dim_phys = jacobian.shape
         jacobian_inv = self.invert_jacobian(jacobian)
-        n_elems = jacobian_inv.shape[0]
         n_points = self.reference_element.n_points
-        grads = np.zeros((n_elems, n_points, 3))
+        grads = np.zeros((n_elems, n_points, dim_phys))
 
         for i in range(n_points):
             dN_ref = np.stack(
-                [np.full(n_elems, self.reference_element.dN_dxi[i]),
-                 np.full(n_elems, self.reference_element.dN_deta[i]),
-                 np.full(n_elems, self.reference_element.dN_dzeta[i])], axis=1
-                )
-            grads[:, i, :] = np.matmul(jacobian_inv, dN_ref[:, :, np.newaxis]
-                                       ).squeeze()
+                [np.full(n_elems, self.reference_element.dN[j][i]) for j in range(dim_ref)],
+                axis=1
+            )
+            grads[:, i, :] = (jacobian_inv @ dN_ref[..., None])[..., 0]
 
         return grads
 
-    def _compute_volumes(self, jacobian):
-        """Compute volumes of elements from their Jacobian matrices.
+    def _compute_elements_size(self, jacobian):
+        """Compute areas/volumes of elements from their Jacobian matrices.
 
         Parameters:
         ----------
-        jacobian: (N_elems, 3, 3)
+        jacobian: (N_elems, dim_ref, dim_phys)
             Jacobian matrices for N elements.
 
         Returns:
         -------
-            volumes: (N_elems,)
-                Volume of each element.
+            elements_size: (N_elems,)
+                Area or volume of each element.
         """
+        if jacobian.shape[1] == 2:
+            v1 = jacobian[:, 0, :]
+            v2 = jacobian[:, 1, :]
+            if v1.shape[1] != 3:
+                v1 = np.hstack([v1, np.zeros((v1.shape[0], 1))])
+            if v2.shape[1] != 3:
+                v2 = np.hstack([v2, np.zeros((v2.shape[0], 1))])
+
+            cross_prod = np.linalg.norm(np.cross(v1, v2), axis=1)
+            return self.reference_element.quad_weights * cross_prod
+        
         jacobian_det = np.abs(np.linalg.det(jacobian))
         return self.reference_element.quad_weights * jacobian_det
 
@@ -162,16 +172,23 @@ class VolumeAssembler:
 
         Parameters:
         ----------
-        jacobian: (N_elems, 3, 3)
+        jacobian: (N_elems, dim_ref, dim_phys)
             Jacobian matrices for N elements.
 
         Returns:
         -------
-            jacobian_inv: (N_elems, 3, 3)
+            jacobian_inv: (N_elems, dim_phys, dim_ref)
                 Inverted Jacobian matrices for N elements.
         """
-        jacobian_inv = np.linalg.inv(jacobian)
-        return jacobian_inv
+        if jacobian.shape[1] == jacobian.shape[2]:
+            return np.linalg.inv(jacobian)
+        
+        # pseudo-inverse for non-square Jacobian (e.g., for surface elements)
+        JT = np.transpose(jacobian, (0, 2, 1))  # (N, 3, 2)
+        G = np.matmul(jacobian, JT)             # (N, 2, 2)
+        invG = np.linalg.inv(G)
+        Jplus = np.matmul(JT, invG)             # (N, 3, 2) — right pseudoinverse
+        return Jplus
    
     def compute_system_matrices(self, coords, elems, diffusion, indexes, reindex=False):
         """
@@ -192,14 +209,16 @@ class VolumeAssembler:
         Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
             The rows, columns, stiffness matrix, and mass matrix.
         """
+
+        print(diffusion.shape)
         shape = (coords.shape[0], coords.shape[0])
         elem_mass = self.reference_element.elem_mass
 
         if reindex:
             elems = self.reindex_elems(coords, elems, indexes)
 
-        volumes, grads = self.compute_metrics(coords, elems)
-        rows, cols, stiff, mass = stiffness_and_mass_matrix(elems, volumes,
+        elements_size, grads = self.compute_metrics(coords, elems)
+        rows, cols, stiff, mass = stiffness_and_mass_matrix(elems, elements_size,
                                                             grads, diffusion,
                                                             elem_mass)
         stiffness_matrix = sp.coo_matrix((stiff, (rows, cols)), shape=shape)

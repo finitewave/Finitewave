@@ -15,11 +15,13 @@ The resulting potential distribution is visualized with Finitewave's
 Geometry Setup:
 ---------------
 - Domain size: 200×200×200 grid
+- Space step (dr): 0.25 (50x50x50 model units)
 - Geometry: Spherical shell created using a binary mask
     - Outer radius: 95 voxels
     - Inner radius: 90 voxels
     - Mesh values: 1 inside the shell, 0 outside
 - The sphere is centered in the domain
+- The top of the sphere is clipped to mimic an anatomical hole.
 
 Stimulation Protocol:
 ---------------------
@@ -34,9 +36,12 @@ Stimulation Protocol:
 Model:
 ------
 - Aliev-Panfilov 3D reaction-diffusion model
+- Model uses the memory-saving option to reduce memory usage for state variables.
+
+Simulation
+----------
 - Time step (dt): 0.01
-- Space step (dr): 0.25
-- Total simulation time: 100
+- Total simulation time: 200
 
 Visualization:
 --------------
@@ -55,8 +60,7 @@ import numpy as np
 import finitewave as fw
 
 
-# Create a spherical mask within a 100x100x100 cube
-def create_sphere_mask(shape, radius, center):
+def build_sphere_mask(shape, radius, center):
     z, y, x = np.indices(shape)
     distance = np.sqrt((x - center[0])**2 +
                        (y - center[1])**2 +
@@ -65,21 +69,21 @@ def create_sphere_mask(shape, radius, center):
     return mask
 
 
-def create_sphere(shape, radius, center):
+def build_sphere(shape, radius, center):
     mesh = np.zeros(shape)
-    mesh[create_sphere_mask(mesh.shape, radius, center)] = 1
-    mesh[create_sphere_mask(mesh.shape, radius-5, center)] = 0
-    mesh = mesh[:shape[0] - n//8, :, :]
+    mesh[build_sphere_mask(mesh.shape, radius, center)] = 1
+    mesh[build_sphere_mask(mesh.shape, radius-5, center)] = 0
+    mesh[- n//8:, :, :] = 0
     return mesh
 
 
 # set up the cardiac tissue:
-n = 150
+n = 200
 shape = (n, n, n)
-mesh = create_sphere(shape, n//2-5, (n//2, n//2, n//2))
+mesh = build_sphere(shape, n//2-5, (n//2, n//2, n//2))
 n, m, k = mesh.shape
 
-tissue = fw.CardiacTissueGrid((n, m, k))
+tissue = fw.CardiacTissueGrid((n, m, k), dr=0.25)
 tissue.mesh = mesh
 
 # set up stimulation parameters:
@@ -102,8 +106,7 @@ stim_sequence.add_stim(stim2)
 simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
-simulation.dr = 0.25
-simulation.t_max = 200
+simulation.t_max = 2
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_model = fw.AlievPanfilov(memory_save=True)
 simulation.cardiac_tissue = tissue
@@ -111,13 +114,14 @@ simulation.stim_sequence = stim_sequence
 
 simulation.run()
 
+# u is the flattened array of the action potential values at the tissue points.
+# We need to reshape it back to the original grid shape for visualization.
 u = simulation.cardiac_model.u
+u_full = np.zeros(tissue.mesh.shape, dtype=float)
+u_full.flat[tissue.tissue_indexes] = u
 
 # visualize the potential map in 3D
-vis_mesh = tissue.mesh.copy()
-# vis_mesh[n//2:, n//2:, n//2:] = 0
-
-mesh_builder = fw.VisMeshBuilder3D()
-grid = mesh_builder.build_mesh(vis_mesh, as_surface=True)
-grid = mesh_builder.add_masked_scalar(u, 'u')
+mesh_builder = fw.PyVistaGridBuilder()
+grid = mesh_builder.build_from_grid(tissue.mesh)
+grid = mesh_builder.add_scalar(u_full, 'u')
 grid.plot(cmap='RdBu_r')

@@ -163,7 +163,7 @@ class Courtemanche(CardiacModel):
 
         stim_values = np.concatenate(stim_values)
         self.u_pacing, state_vars = prepacing(
-            dt, t_max, stim_values, self.init_u,
+            dt, stim_values, self.init_u,
             self.init_nai, self.init_ki,
             self.init_cai, self.init_caup, self.init_carel, self.init_m, self.init_h, self.init_j_,
             self.init_d, self.init_f, self.init_oa, self.init_oi, self.init_ua, self.init_ui,
@@ -201,6 +201,32 @@ class Courtemanche(CardiacModel):
             stim_values[start_idx: end_idx] = dt * stim_amplitude
 
         return stim_values
+    
+    def collect_states(self, dt, t_max, stim_duration, stim_amplitude):
+        stim_values = []
+        
+        stim_val = self._build_prepacing(dt, 1, t_max, stim_duration, stim_amplitude)
+        stim_values.append(stim_val)
+        stim_values = np.concatenate(stim_values)
+        t_max = dt * len(stim_values)
+
+        state_vars = collect_states(
+            dt, stim_values, self.init_u,
+            self.init_nai, self.init_ki,
+            self.init_cai, self.init_caup, self.init_carel, self.init_m, self.init_h, self.init_j_,
+            self.init_d, self.init_f, self.init_oa, self.init_oi, self.init_ua, self.init_ui,
+            self.init_xr, self.init_xs, self.init_fca, self.init_irel, self.init_vrel,
+            self.init_urel, self.init_wrel,
+            self.gna, self.gnab, self.gk1, self.gkr, self.gks,
+            self.gto, self.gcal, self.gcab, self.gkur_coeff, self.F,
+            self.T, self.R, self.Vc, self.Vj, self.Vup, self.Vrel,
+            self.ibk, self.cao, self.nao, self.ko, self.caupmax,
+            self.kup, self.kmnai, self.kmko, self.kmnancx,
+            self.kmcancx, self.ksatncx, self.kmcmdn, self.kmtrpn,
+            self.kmcsqn, self.trpnmax, self.cmdnmax, self.csqnmax,
+            self.inacamax, self.inakmax, self.ipcamax, self.krel,
+            self.iupmax, self.kq10)
+        return dict(state_vars)
 
 
 @njit(parallel=True, fastmath=True, cache=True)
@@ -302,7 +328,7 @@ def ionic_kernel(u, rhs, indexes, dt,
 
 
 @njit
-def prepacing(dt, t_max, stim_values, u,
+def prepacing(dt, stim_values, u,
               nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs,
               xr, fca, irel, vrel, urel, wrel,
               gna, gnab, gk1, gkr, gks, gto, gcal, gcab, gkur_coeff, F, T,
@@ -311,10 +337,10 @@ def prepacing(dt, t_max, stim_values, u,
               trpnmax, cmdnmax, csqnmax, inacamax, inakmax, ipcamax, krel,
               iupmax, kq10):
         
-    u_list = np.zeros((int(t_max/dt),), dtype=np.float64)
+    u_list = np.zeros((len(stim_values),), dtype=np.float64)
     u_list[0] = u
     
-    for i in range(1, int(t_max/dt)):
+    for i in range(1, len(stim_values)):
 
         u += stim_values[i]
 
@@ -386,3 +412,133 @@ def prepacing(dt, t_max, stim_values, u,
     state_vars['wrel'] = wrel
 
     return u_list, state_vars
+
+
+@njit
+def collect_states(dt, stim_values, u,
+                   nai, ki, cai, caup, carel, m, h, j_, d, f, oa, oi, ua, ui, xs,
+                   xr, fca, irel, vrel, urel, wrel,
+                   gna, gnab, gk1, gkr, gks, gto, gcal, gcab, gkur_coeff, F, T,
+                   R, Vc, Vj, Vup, Vrel, ibk, cao, nao, ko, caupmax, kup, kmnai,
+                   kmko, kmnancx, kmcancx, ksatncx, kmcmdn, kmtrpn, kmcsqn,
+                   trpnmax, cmdnmax, csqnmax, inacamax, inakmax, ipcamax, krel,
+                   iupmax, kq10):
+    
+    state_vars = typed.Dict()
+
+    state_vars['u'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['nai'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['ki'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['cai'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['caup'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['carel'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['m'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['h'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['j_'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['d'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['f'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['oa'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['oi'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['ua'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['ui'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['xr'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['xs'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['fca'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['irel'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['vrel'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['urel'] = np.zeros(len(stim_values), dtype=np.float64)
+    state_vars['wrel'] = np.zeros(len(stim_values), dtype=np.float64)
+
+    state_vars['u'][0] = u
+    state_vars['nai'][0] = nai
+    state_vars['ki'][0] = ki
+    state_vars['cai'][0] = cai
+    state_vars['caup'][0] = caup
+    state_vars['carel'][0] = carel
+    state_vars['m'][0] = m
+    state_vars['h'][0] = h
+    state_vars['j_'][0] = j_
+    state_vars['d'][0] = d
+    state_vars['f'][0] = f
+    state_vars['oa'][0] = oa
+    state_vars['oi'][0] = oi
+    state_vars['ua'][0] = ua
+    state_vars['ui'][0] = ui
+    state_vars['xr'][0] = xr
+    state_vars['xs'][0] = xs
+    state_vars['fca'][0] = fca
+    state_vars['irel'][0] = irel
+    state_vars['vrel'][0] = vrel
+    state_vars['urel'][0] = urel
+    state_vars['wrel'][0] = wrel
+
+    for i in range(1, len(stim_values)):
+
+        u += stim_values[i]
+
+        ena, ek, eca = calc_equilibrum_potentials(nai, nao, ki, ko, cai, cao,
+                                                  R, T, F, where=calc_where)
+
+        m = calc_gating_m(m, u, dt, where=calc_where)
+        h = calc_gating_h(h, u, dt, where=calc_where)
+        j_ = calc_gating_j(j_, u, dt, where=calc_where)
+
+        ina = calc_ina(u, m, h, j_, gna, ena)
+        ik1 = calc_ik1(u, gk1, ek)
+        ito, oa, oi = calc_ito(u, dt, kq10, oa, oi, gto, ek)
+        ikur, ua, ui = calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff)
+        ikr, xr = calc_ikr(u, dt, xr, gkr, ek)
+        iks, xs = calc_iks(u, dt, xs, gks, ek)
+        ical, d, f, fca = calc_ical(u, dt, d, f, cai, gcal, fca)
+        inak = calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T)
+        inaca = calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx,
+                            ksatncx, F, u, R, T)
+        ibca = calc_ibca(gcab, eca, u)
+        ibna = calc_ibna(gnab, ena, u)
+        ipca = calc_ipca(ipcamax, cai)
+        irel, urel, vrel, wrel = calc_irel(dt, urel, vrel, irel, wrel,
+                                            ical, inaca, krel, carel, cai, u,
+                                            F, Vrel)
+        itr = calc_itr(caup, carel)
+        iup = calc_iup(iupmax, cai, kup)
+        iupleak = calc_iupleak(caup, caupmax, iupmax)
+
+        caup += dt * calc_dcaup(iup, iupleak, itr, Vrel, Vup)
+        nai += dt * calc_dnai(inak, inaca, ibna, ina, F, Vj)
+
+        ki += dt * calc_dki(inak, ik1, ito, ikur, ikr, iks, ibk, F, Vj)
+        cai += dt * calc_dcai(cai, inaca, ipca, ical, ibca, iup, iupleak,
+                                irel, Vrel, Vup, trpnmax, kmtrpn, cmdnmax,
+                                kmcmdn, F, Vj)
+
+        carel += dt * calc_dcarel(carel, itr, irel, csqnmax, kmcsqn)
+
+        rhs = (- calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak,
+                            inaca, ibna, ibca))
+        
+        u = u + dt * rhs
+
+        state_vars['u'][i] = u
+        state_vars['nai'][i] = nai
+        state_vars['ki'][i] = ki
+        state_vars['cai'][i] = cai
+        state_vars['caup'][i] = caup
+        state_vars['carel'][i] = carel
+        state_vars['m'][i] = m
+        state_vars['h'][i] = h
+        state_vars['j_'][i] = j_
+        state_vars['d'][i] = d
+        state_vars['f'][i] = f
+        state_vars['oa'][i] = oa
+        state_vars['oi'][i] = oi
+        state_vars['ua'][i] = ua
+        state_vars['ui'][i] = ui
+        state_vars['xr'][i] = xr
+        state_vars['xs'][i] = xs
+        state_vars['fca'][i] = fca
+        state_vars['irel'][i] = irel
+        state_vars['vrel'][i] = vrel
+        state_vars['urel'][i] = urel
+        state_vars['wrel'][i] = wrel
+
+    return state_vars

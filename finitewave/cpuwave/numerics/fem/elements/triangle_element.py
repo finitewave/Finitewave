@@ -14,10 +14,8 @@ class LinearTriangleElement:
         Coefficient for mass matrix calculation.
     elem_mass: (3, 3) ndarray
         Element mass matrix.
-    dN_dxi: (3,) ndarray
-        Derivative of shape functions with respect to xi.
-    dN_deta: (3,) ndarray
-        Derivative of shape functions with respect to eta.
+    dN: list of (3,) ndarray
+        Derivative of shape functions with respect to xi and eta.
     quad_weights: (1,) ndarray
         Quadrature weights for the element.
     n_points: int
@@ -30,7 +28,7 @@ class LinearTriangleElement:
                                                           [1, 2, 1],
                                                           [1, 1, 2]])
 
-        self.dN_dxi = np.array([-1.0, 1.0, 0.0])
-        self.dN_deta = np.array([-1.0, 0.0, 1.0])
+        self.dN = [np.array([-1.0, 1.0, 0.0]),
+                   np.array([-1.0, 0.0, 1.0])]
         self.quad_weights = np.array([1/2])
         self.n_points = 3

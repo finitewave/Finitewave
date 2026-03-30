@@ -5,7 +5,7 @@ from finitewave.core.tissue.cardiac_tissue import CardiacTissue
 
 class CardiacTissueGrid(CardiacTissue):
     """
-    This class represents a cardiac tissue.
+    Class representing a cardiac tissue on a regular grid.
 
     Attributes
     ----------
@@ -25,6 +25,17 @@ class CardiacTissueGrid(CardiacTissue):
     """
 
     def __init__(self, shape, dr=1.0):
+        """
+        Initializes the CardiacTissueGrid instance.
+
+        Parameters
+        ----------
+        shape : tuple
+            The shape of the tissue grid.
+        dr : float
+            The spatial resolution of the grid
+            (distance between adjacent points).
+        """
         super().__init__()
         self.meta["dim"] = len(shape)
         self.meta["shape"] = shape
@@ -40,8 +51,6 @@ class CardiacTissueGrid(CardiacTissue):
     @property
     def coords(self):
         """
-        Gets the coordinates of all points in the tissue mesh.
-
         Returns
         -------
         numpy.ndarray
@@ -52,8 +61,6 @@ class CardiacTissueGrid(CardiacTissue):
     @property
     def myo_coords(self):
         """
-        Gets the coordinates of the myocytes in the tissue mesh.
-
         Returns
         -------
         numpy.ndarray
@@ -64,8 +71,6 @@ class CardiacTissueGrid(CardiacTissue):
     @property
     def tissue_coords(self):
         """
-        Gets the coordinates of the tissue in the tissue mesh.
-
         Returns
         -------
         numpy.ndarray
@@ -76,8 +81,6 @@ class CardiacTissueGrid(CardiacTissue):
     @property
     def myo_indexes(self):
         """
-        Gets the flat indices of the myocytes in the tissue mesh.
-
         Returns
         -------
         numpy.ndarray
@@ -88,8 +91,6 @@ class CardiacTissueGrid(CardiacTissue):
     @property
     def myo_on_tissue_indexes(self):
         """
-        Gets the flat indices of the myocytes on the ``tissue_indexes``.
-
         Returns
         -------
         numpy.ndarray
@@ -101,8 +102,6 @@ class CardiacTissueGrid(CardiacTissue):
     @property
     def tissue_indexes(self):
         """
-        Gets the flat indices of the tissue in the tissue mesh.
-
         Returns
         -------
         numpy.ndarray

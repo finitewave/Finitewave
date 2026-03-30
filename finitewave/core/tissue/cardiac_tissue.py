@@ -20,33 +20,6 @@ class CardiacTissue(ABC):
         self.D_ac = 1/9
         self.D_al = 1
 
-    @property
-    def mesh(self):
-        """
-        Gets the tissue mesh array.
-
-        Returns
-        -------
-        numpy.ndarray
-            The tissue mesh array.
-        """
-        return self._mesh
-
-    @mesh.setter
-    def mesh(self, mesh):
-        """
-        Sets the tissue mesh array.
-
-        Parameters
-        ----------
-        mesh : numpy.ndarray
-            The tissue mesh array.
-        """
-        if mesh.ndim != self.meta['dim']:
-            raise ValueError("Mesh dimension must match the tissue dimension.")
-
-        self._mesh = mesh
-
     def add_pattern(self, fibro_pattern):
         """
         Applies a fibrosis pattern to the tissue mesh.

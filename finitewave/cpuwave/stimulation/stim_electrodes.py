@@ -41,8 +41,8 @@ class StimElectrodes(Stim):
             The simulation instance containing the cardiac model data.
         """
         myo_indexes = simulation.cardiac_model.myo_indexes
-        mesh_index = simulation.cardiac_model.mesh_indexes
-        myo_coords = simulation.cardiac_tissue.coords[mesh_index[myo_indexes]]
+        tissue_indexes = simulation.cardiac_model.tissue_indexes
+        myo_coords = simulation.cardiac_tissue.coords[tissue_indexes[myo_indexes]]
         self.stim_indexes = self.select_nodes(myo_coords, myo_indexes)
 
     def select_nodes(self, myo_coords, myo_indexes):

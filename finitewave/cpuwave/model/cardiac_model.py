@@ -1,4 +1,5 @@
 import numpy as np
+from warnings import warn
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
 
@@ -23,10 +24,10 @@ class CardiacModel(CardiacModelBase):
     myo_indexes : np.ndarray
         Array of myocyte indices corresponding to cardiac model arrays.
         If memory saving is enabled, the indexes correspond to
-        ``mesh.flat[mesh_indexes] == 1``.
-    mesh_indexes : np.ndarray
+        ``mesh.flat[tissue_indexes] == 1``.
+    tissue_indexes : np.ndarray
         Array of indices corresponding to the full tissue mesh.
-        State variables and rhs correspond to mesh.flat[mesh_indexes]
+        State variables and rhs correspond to mesh.flat[tissue_indexes]
     """
 
     def __init__(self, memory_save=False):
@@ -58,6 +59,13 @@ class CardiacModel(CardiacModelBase):
 
         if self.memory_save:
             shape = (len(simulation.cardiac_tissue.tissue_indexes), )
+        
+        if not self.memory_save:
+            tissue_fraction = (len(simulation.cardiac_tissue.tissue_indexes) /
+                               simulation.cardiac_tissue.mesh.size)
+            if tissue_fraction < 0.5:
+                warn(f"Tissue fraction is only {tissue_fraction:.2f}. " +
+                     "Consider enabling memory saving for better performance.")
 
         self.init_state_vars(shape, simulation.npfloat)
         self.rhs = np.zeros_like(self.u)
@@ -90,11 +98,11 @@ class CardiacModel(CardiacModelBase):
         """
         if self.memory_save:
             self.myo_indexes = cardiac_tissue.myo_on_tissue_indexes
-            self.mesh_indexes = cardiac_tissue.tissue_indexes
+            self.tissue_indexes = cardiac_tissue.tissue_indexes
             return
 
         self.myo_indexes = cardiac_tissue.myo_indexes
-        self.mesh_indexes = np.arange(cardiac_tissue.mesh.size)
+        self.tissue_indexes = np.arange(cardiac_tissue.mesh.size)
 
     def build_prepacing(self, dt, n_beats, bcl, stim_duration, stim_amplitude):
         t_max = n_beats * bcl

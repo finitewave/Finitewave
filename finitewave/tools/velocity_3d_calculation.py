@@ -2,9 +2,7 @@ import numpy as np
 from scipy import spatial
 from skimage import measure
 
-from finitewave.cpuwave.tools.velocity_2d_calculation import (
-    Velocity2DCalculation
-)
+from .velocity_2d_calculation import Velocity2DCalculation
 
 
 class Velocity3DCalculation(Velocity2DCalculation):

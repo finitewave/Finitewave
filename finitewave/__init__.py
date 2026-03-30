@@ -16,3 +16,4 @@ specific research needs.
 """
 from .cpuwave import *
 from .core import *
+from .tools import *

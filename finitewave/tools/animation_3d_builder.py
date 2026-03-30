@@ -25,6 +25,7 @@ class Animation3DBuilder(Animation2DBuilder):
               scalar_name="Scalar",
               scalar_bar=False,
               camera_position="iso",
+              step=1,
               **kwargs):
         """Write the animation to a file.
 
@@ -56,7 +57,7 @@ class Animation3DBuilder(Animation2DBuilder):
             Additional keyword arguments for the movie/gif writer.
         """
 
-        files = self.collect_frames(self.path)[:-10:2]
+        files = self.collect_frames(self.path)[::step]
         path_save = self.make_path_save(format)
 
         scalar = self.load_scalar(files[0], self.scalar_mask, nan_mask)
@@ -64,6 +65,9 @@ class Animation3DBuilder(Animation2DBuilder):
         grid = self.build_grid(coords, elems, mesh, elem_type)
         scalar = self.calc_cell_scalars(scalar, elems, mesh)
         grid = self.mesh_builder.add_scalar(scalar, scalar_name)
+
+        if clim is not None:
+            clim = [np.nanmin(scalar), np.nanmax(scalar)]
 
         pl = pv.Plotter(notebook=False, off_screen=True, window_size=window_size)
         pl.add_mesh(grid, cmap=cmap, show_edges=False, clim=clim,

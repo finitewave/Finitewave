@@ -3,7 +3,7 @@ from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 from finitewave.cpuwave.numerics.fdm.asymmetric_stencil import AsymmetricStencil
 
 
-class GridModel(DiffusionModelBase):
+class GridDiffusionModel(DiffusionModelBase):
     """
     Diffusion model for grid-based simulations.
 
@@ -13,7 +13,14 @@ class GridModel(DiffusionModelBase):
 
     Attributes
     ----------
-    Inherits all attributes from DiffusionModelBase.
+    stencil : Stencil
+        The stencil used for computing diffusion weights.
+    simulation : CardiacSimulation
+        The simulation instance associated with this diffusion model.
+    diffusion : np.ndarray
+        The diffusion tensor        
+    weights : tuple
+        Stiffness and mass matrices
     """
     def __init__(self):
         super().__init__()

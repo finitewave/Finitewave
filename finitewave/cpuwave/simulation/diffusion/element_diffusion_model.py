@@ -1,14 +1,16 @@
 import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
-from finitewave.cpuwave.numerics.fem.volume_assembler import VolumeAssembler
+from finitewave.cpuwave.numerics.fem.element_assembler import ElementAssembler
 
-
-class VolumeModel(DiffusionModelBase):
+class ElementDiffusionModel(DiffusionModelBase):
     """
     Class for assembling element-based diffusion models.
 
     Attributes
     ----------
+    assembler : ElementAssembler
+        The assembler used to compute the stiffness and mass matrices for
+        the element-based model.
     reference_element : ReferenceElement
         The reference element used for numerical integration.
     simulation : Simulation
@@ -18,7 +20,7 @@ class VolumeModel(DiffusionModelBase):
     """
     def __init__(self):
         super().__init__()
-        self.assembler = VolumeAssembler()
+        self.assembler = ElementAssembler()
         self.simulation = None
 
     @property
@@ -55,9 +57,9 @@ class VolumeModel(DiffusionModelBase):
         """
         tissue = self.simulation.cardiac_tissue
 
-        coords = tissue.myo_coords
-        elems = tissue.myo_elems
         indexes = tissue.myo_indexes
+        coords = tissue.coords[indexes]
+        elems = tissue.myo_elements
 
         diffusion = self.compute_diffusion(self.simulation, tissue)
         diffusion = diffusion[tissue.myo_elems_indexes]
@@ -88,10 +90,12 @@ class VolumeModel(DiffusionModelBase):
         d_al = tissue.D_al
         d_model = simulation.cardiac_model.D_model
 
-        diffusion = np.eye(3, dtype=simulation.npfloat)
+        dim_tissue = tissue.coords.shape[1]
+
+        diffusion = np.eye(dim_tissue, dtype=simulation.npfloat)
 
         if tissue.fibers is not None:
-            diffusion = (d_ac * np.eye(3)[np.newaxis, :, :] +
+            diffusion = (d_ac * np.eye(dim_tissue)[np.newaxis, :, :] +
                          ((d_al - d_ac) *
                           tissue.fibers[:, :, np.newaxis] @
                           tissue.fibers[:, np.newaxis, :]))

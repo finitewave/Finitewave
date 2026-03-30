@@ -33,7 +33,7 @@ class StimMatrix(Stim):
                              "match the shape of the cardiac tissue mesh.")
 
         self.simulation = simulation
-        mesh_indexes = simulation.cardiac_model.mesh_indexes
-        mesh_mask = self.matrix.flat[mesh_indexes] > 0
+        tissue_indexes = simulation.cardiac_model.tissue_indexes
+        mesh_mask = self.matrix.flat[tissue_indexes] > 0
         myo_indexes = simulation.cardiac_model.myo_indexes
         self.stim_indexes = myo_indexes[mesh_mask[myo_indexes] > 0]

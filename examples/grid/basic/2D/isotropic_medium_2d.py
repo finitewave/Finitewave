@@ -41,16 +41,12 @@ import numpy as np
 # create a tissue of size 400x400 with cardiomycytes:
 n = 400
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
-# tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3).astype(tissue.mesh.dtype)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            x_min=n//2 - 3, x_max=n//2 + 3,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
-
-diffusion_model = fw.GridModel()
-diffusion_model.stencil = fw.IsotropicStencil()
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
@@ -59,7 +55,6 @@ simulation.t_max = 30
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
-simulation.diffusion_model = diffusion_model
 
 # run the model:
 simulation.run()

@@ -29,7 +29,7 @@ class AsymmetricStencil(Stencil):
     Finite-difference schemes for anisotropic diffusion,
     Journal of Computational Physics,
     Volume 272, 2014, Pages 526-549, ISSN 0021-9991,
-    https://doi.org/10.1016/j.jcp.2014.04.046.
+    https://doi.org/10.1016/j.jcp.2014.04.046
     """
     def __init__(self):
         super().__init__()
@@ -201,11 +201,11 @@ class AsymmetricStencil(Stencil):
             their flux weights.
         """
         valid_connection = (m_major > 0) & (m_center > 0)
-        w_major = - self.diffusion_component(diffusion, ijk, major_axis,
-                                             major_axis, valid_connection) / dr
+        w_major = self.diffusion_component(diffusion, ijk, major_axis,
+                                           major_axis, valid_connection)
 
         ijk_list = [ijk, ijk_major]
-        w_list = [-w_major, w_major]
+        w_list = [w_major / dr, -w_major / dr]
         return ijk_list, w_list
 
     def minor_flux_weights(self, mesh, diffusion, dr, ijk_center, ijk_major,
@@ -213,9 +213,9 @@ class AsymmetricStencil(Stencil):
         """
         Calculates the minor flux weights.
 
-        qy = Dxy * (du/dy)
-           = Dxy * ((minor_3 + minor_4 + center + major) / 4 -
-                    (minor_1 + minor_2 + center + major) / 4)
+        qy = - Dxy * (du/dy)
+           = - Dxy * ((minor_3 + minor_4 + center + major) / 4 -
+                      (minor_1 + minor_2 + center + major) / 4)
 
         .. code-block:: text
              minor_3 ----------- minor_4
@@ -263,7 +263,6 @@ class AsymmetricStencil(Stencil):
         """
 
         d_minor = self.diffusion_component(diffusion, ijk_center, major_axis, minor_axis, m_major)
-        d_major = self.diffusion_component(diffusion, ijk_center, minor_axis, minor_axis, m_major)
 
         ijk_1 = self.build_neighbor(ijk_center, -1, minor_axis)
         ijk_2 = self.build_neighbor(ijk_major, -1, minor_axis)
@@ -275,9 +274,9 @@ class AsymmetricStencil(Stencil):
         m3 = self.is_valid_index(ijk_3, mesh).astype(diffusion.dtype)
         m4 = self.is_valid_index(ijk_4, mesh).astype(diffusion.dtype)
 
-        weights = self.minor_component(d_minor, d_major, dr, m_center, m_major, m1, m2, m3, m4)
+        w_list = self.minor_component(d_minor, dr, m_center, m_major, m1, m2, m3, m4)
         ijk_list = [ijk_center, ijk_major, ijk_1, ijk_2, ijk_3, ijk_4]
-        return ijk_list, weights
+        return ijk_list, [-w for w in w_list]
 
     def diffusion_component(self, diffusion, ijk, axis1, axis2, mask):
         """
@@ -305,43 +304,7 @@ class AsymmetricStencil(Stencil):
         d[mask > 0] = diffusion[*ijk[:, mask > 0], axis1, axis2]
         return d
 
-    def major_component(self, d_major, dr, m_center, m_major):
-        """
-        Calculates the major component of the flux.
-
-        .. code-block:: text
-            minor_3 ------------ minor_4
-                |                   |
-                |                   |
-                |                   |
-              center ------ d ---- major
-                |                   |
-                |                   |
-                |                   |
-             minor_1 ------------ minor_2
-
-        Parameters
-        ----------
-        d_major : numpy.ndarray
-            The major diffusion coefficients.
-        dr : float
-            The grid spacing.
-        m_center : numpy.ndarray
-            The validity mask of the center cell.
-        m_major : numpy.ndarray
-            The validity mask of the major neighbor.
-
-        Returns
-        -------
-        tuple
-            A tuple containing the weights for the center and major neighbors.
-        """
-        # d_major = 0.5 * (d_major + np.roll(d_major, major_shift))
-        w_major = d_major * m_major * m_center / dr
-
-        return w_major
-
-    def minor_component(self, d_minor, d_major, dr, m, m0, m1, m2, m3, m4):
+    def minor_component(self, d_minor, dr, m, m0, m1, m2, m3, m4):
         """
         Calculates the minor component of the flux.
 
@@ -381,7 +344,6 @@ class AsymmetricStencil(Stencil):
             A tuple containing the weights for the center, major, and minor
             neighbors.
         """
-        # d_minor = 0.5 * (d_minor + np.roll(d_minor, major_shift))
         m_upper = m3 + m4 + m + m0
         m_lower = m1 + m2 + m + m0
 
@@ -396,8 +358,4 @@ class AsymmetricStencil(Stencil):
         w3 = d_minor / dr * np.where(mask, 0, m3 / m_upper)
         w4 = d_minor / dr * np.where(mask, 0, m4 / m_upper)
        
-        # mask = ((m == 1) & (m0 == 1) & ((m1 + m2 + m3 + m4) < 4))
-        # w[mask] = - d_minor[mask] / d_major[mask]
-        # w0[mask] = d_minor[mask] / d_major[mask]
-
         return w, w0, w1, w2, w3, w4

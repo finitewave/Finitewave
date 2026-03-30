@@ -77,8 +77,6 @@ stim_sequence.add_stim(fw.StimVoltageCoord(0, 1,
                                            #    n_k // 2 - 3, n_k // 2 + 3))
                                            0, n_k))
 
-diffusion_model = fw.GridModel()
-diffusion_model.stencil = fw.CellStencil()
 # create model object:
 simulation = fw.CardiacSimulation()
 # set up numerical parameters:
@@ -87,7 +85,6 @@ simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
-simulation.diffusion_model = diffusion_model
 simulation.stim_sequence = stim_sequence
 # initialize and run simulation: compute weights, add stimuls, trackers etc.
 simulation.run()
@@ -96,7 +93,7 @@ u = simulation.cardiac_model.u
 mesh = tissue.mesh
 # visualize the wavefront at the end of calculations:
 mesh_builder = fw.VisMeshBuilder3D()
-grid = mesh_builder.build_mesh(u > 0.95)
+grid = mesh_builder.build_mesh(u > 0.1)
 grid = mesh_builder.add_scalar(u, 'u')
 # Create full mesh for context
 full_mesh_builder = fw.VisMeshBuilder3D()
@@ -104,6 +101,6 @@ full_grid = full_mesh_builder.build_mesh(mesh)
 full_grid = full_mesh_builder.add_scalar(u, 'u')
 
 pl = pv.Plotter()
-pl.add_mesh(grid, scalars='u', cmap='RdBu_r')
+pl.add_mesh(grid, scalars='u', cmap='RdBu_r', clim=[0, 1])
 pl.add_mesh(full_grid, scalars='u', cmap='RdBu_r', opacity=0.3)
 pl.show()

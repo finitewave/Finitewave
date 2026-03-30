@@ -1,4 +1,3 @@
 from .diffusion_model import DiffusionModel
-from .grid_model import GridModel
-from .surface_model import SurfaceModel
-from .volume_model import VolumeModel
+from .grid_diffusion_model import GridDiffusionModel
+from .element_diffusion_model import ElementDiffusionModel
