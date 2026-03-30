@@ -37,7 +37,9 @@ related fields.
    * - .. image:: images/sphere.gif
           :width: 200px
           :alt: Image 4
-     - (no image)
+     - .. image:: images/atrium.gif
+          :width: 200px
+          :alt: Image 4
      - (no image)
 
 Installation
