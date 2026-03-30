@@ -1,231 +1,105 @@
+import math
 import numpy as np
-from numba import njit, prange
 
-from .cardiac_model import CardiacModel
+from finitewave.core.model.cardiac_model import CardiacModel
+from finitewave.core.model.ionic_kernel_generator import IonicKernelGenerator
+
+from finitewave.cpuwave.stencil.sten2D.asymmetric_stencil_2d import (
+    AsymmetricStencil2D
+)
+from finitewave.cpuwave.stencil.sten2D.isotropic_stencil_2d import (
+    IsotropicStencil2D
+)
+from finitewave.cpuwave.stencil.sten3D.asymmetric_stencil_3d import (
+    AsymmetricStencil3D
+)
+from finitewave.cpuwave.stencil.sten3D.isotropic_stencil_3d import (
+    IsotropicStencil3D
+)
+
+from finitewave.cpuwave.model._registry import load_ops, wrap_calc
+from finitewave.cpuwave.model._kernel_builder import build_kernel
+
+
+try:
+    ops = load_ops("fenton_karma")
+    jit_ops = wrap_calc(ops)
+except KeyError as e:
+    raise ImportError(
+        "Fenton-Karma model ops not found. "
+        # "Install model package: pip install finitewave-model-fenton-karma"
+    ) from e
+
+
+class FentonKarmaKernel(IonicKernelGenerator):
+    def __init__(self):
+        super().__init__()
+        self.args_order = [
+            "u", "v", "w", "tau_d", "tau_o", "tau_r", "tau_si", "tau_v_m", "tau_v_p",
+            "tau_w_m", "tau_w_p", "k", "u_c", "uc_si"
+        ]
+
+    def generate_body(self) -> str:
+        model = {var: self._indexing(var) for var in (self.arrays + self.scalars)}
+        u_new = f"u_new{self._raw_indexing()}"
+        
+        return f"""\
+        J_fi = calc_Jfi({model['u']}, {model['v']}, 
+                            {model['u_c']}, {model['tau_d']})
+        J_so = calc_Jso({model['u']}, {model['u_c']},
+                            {model['tau_o']}, {model['tau_r']})
+        J_si = calc_Jsi({model['u']}, {model['w']},
+                            {model['k']}, {model['uc_si']}, {model['tau_si']})
+
+        {u_new} += dt * calc_rhs(J_fi, J_so, J_si)
+
+        {model['v']} += dt * calc_dv({model['v']} , {model['u']} , 
+                                          {model['u_c']} , {model['tau_v_m']} , {model['tau_v_p']} )
+        {model['w']}  += dt * calc_dw({model['w']} , {model['u']} , 
+                                          {model['u_c']} , {model['tau_w_m']} , {model['tau_w_p']})
+
+"""
 
 
 class FentonKarma(CardiacModel):
-    def __init__(self):
-        super().__init__()
-        self.v = np.ndarray
-        self.w = np.ndarray
-
-        self.D_model = 1.
-
-        self.state_vars = ["u", "v", "w"]
-        self.npfloat    = 'float64'
-
-        # model parameters (MLR-I)
-        self.tau_r   = 130
-        self.tau_o   = 12.5
-        self.tau_d   = 0.172
-        self.tau_si  = 127
-        self.tau_v_m = 18.2
-        self.tau_v_p = 10
-        self.tau_w_m = 80
-        self.tau_w_p = 1020
-        self.k       = 10
-        self.u_c     = 0.13
-        self.uc_si   = 0.85
-
-        # initial conditions
-        self.init_u = 0.0
-        self.init_v = 1.0
-        self.init_w = 1.0
-
-    def run(self, dt):
-        """
-        Executes the ionic kernel for the Fenton-Karma model.
-        """
-        self.counter += 1
-        if (self.counter - 1) % self.step != 0:
-            return
-
-        ionic_kernel(self.u, self.rhs, self.myo_indexes, dt,
-                     self.v, self.w, self.tau_d, self.tau_o, self.tau_r, self.tau_si, 
-                        self.tau_v_m, self.tau_v_p, self.tau_w_m, self.tau_w_p,
-                        self.k, self.u_c, self.uc_si)
-    
-@njit
-def calc_Jfi(u, v, u_c, tau_d):
     """
-    Computes the fast inward current (J_fi) for the Fenton-Karma model.
+    Implementation of the Fenton-Karma model of cardiac electrophysiology.
 
-    This current is responsible for the rapid depolarization of the membrane
-    potential. It is active only when the membrane potential exceeds a threshold `u_c`.
+    The Fenton-Karma model is a minimal three-variable model designed to reproduce
+    essential features of human ventricular action potentials, including restitution, 
+    conduction velocity dynamics, and spiral wave behavior. It captures the interaction 
+    between fast depolarization, slow repolarization, and calcium-mediated effects 
+    through simplified phenomenological equations.
 
-    Parameters
+    This implementation corresponds to the MLR-I parameter set described in the original paper
+    and supports isotropic and anisotropic tissue simulations with diffusion.
+
+    Attributes
     ----------
-    u : float
-        Current membrane potential (dimensionless).
-    v : float
-        Fast recovery gate (sodium channel inactivation).
-    u_c : float
-        Activation threshold for the inward current.
-    tau_d : float
-        Time constant for depolarization.
+    D_model : float
+        Baseline diffusion coefficient used in the diffusion stencil.
+    npfloat : str
+        Floating point precision (default is 'float64').
 
-    Returns
-    -------
-    float
-        Value of the fast inward current at this point.
-    """
-    H = 1.0 if (u - u_c) >= 0 else 0.0
-    return -(v*H*(1-u)*(u - u_c))/tau_d
-
-@njit
-def calc_Jso(u, u_c, tau_o, tau_r):
-    """
-    Computes the slow outward current (J_so) for repolarization.
-
-    This current contains two parts:
-    - a linear repolarizing component active below threshold `u_c`
-    - a constant repolarizing component above threshold
-
-    Parameters
-    ----------
-    u : float
-        Membrane potential.
-    u_c : float
-        Activation threshold.
-    tau_o : float
-        Time constant for subthreshold repolarization.
-    tau_r : float
-        Time constant for suprathreshold repolarization.
-
-    Returns
-    -------
-    float
-        Value of the outward repolarizing current.
-    """
-    H1 = 1.0 if (u_c - u) >= 0 else 0.0
-    H2 = 1.0 if (u - u_c) >= 0 else 0.0
-
-    return u*H1/tau_o + H2/tau_r
-
-@njit
-def calc_Jsi(u, w, k, uc_si, tau_si):
-    """
-    Computes the slow inward (calcium-like) current (J_si).
-
-    This current is responsible for the plateau phase of the action potential
-    and depends on the gating variable `w` and a smoothed activation threshold.
-
-    Parameters
-    ----------
-    u : float
-        Membrane potential.
-    w : float
-        Slow recovery gate.
-    k : float
-        Steepness of the tanh activation curve.
-    uc_si : float
-        Activation threshold for the slow inward current.
-    tau_si : float
-        Time constant for the slow inward current.
-
-    Returns
-    -------
-    float
-        Value of the slow inward current.
-    """
-    return -w*(1 + np.tanh(k*(u - uc_si)))/(2*tau_si)
-
-@njit
-def calc_v(v, u, dt, u_c, tau_v_m, tau_v_p):
-    """
-    Updates the fast recovery gate `v` over time.
-
-    This gate controls sodium channel availability and changes depending on
-    whether the membrane potential is below or above a critical threshold.
-
-    Parameters
-    ----------
-    v : float
-        Current value of the recovery variable.
-    u : float
-        Membrane potential.
-    dt : float
-        Time step.
-    u_c : float
-        Activation threshold.
-    tau_v_m : float
-        Time constant below threshold.
-    tau_v_p : float
-        Time constant above threshold.
-
-    Returns
-    -------
-    float
-        Updated value of `v`.
-    """
-    H1 = 1.0 if (u_c - u) >= 0 else 0.0
-    H2 = 1.0 if (u - u_c) >= 0 else 0.0
-    v += dt*(H1*(1 - v)/tau_v_m - H2*v/tau_v_p)
-    return v
-
-@njit
-def calc_w(w, u, dt, u_c, tau_w_m, tau_w_p):
-    """
-    Updates the slow recovery gate `w` over time.
-
-    This gate represents the calcium channel recovery and decays similarly to `v`,
-    depending on whether the membrane potential is above or below threshold `u_c`.
-
-    Parameters
-    ----------
-    w : float
-        Current value of the recovery variable.
-    u : float
-        Membrane potential.
-    dt : float
-        Time step.
-    u_c : float
-        Activation threshold.
-    tau_w_m : float
-        Time constant below threshold.
-    tau_w_p : float
-        Time constant above threshold.
-
-    Returns
-    -------
-    float
-        Updated value of `w`.
-    """
-    H1 = 1.0 if (u_c - u) >= 0 else 0.0
-    H2 = 1.0 if (u - u_c) >= 0 else 0.0
-    w += dt*(H1*(1 - w)/tau_w_m - H2*w/tau_w_p)
-    return w
-
-@njit(parallel=True, fastmath=True, cache=True)
-def ionic_kernel(u, rhs, indexes, dt,
-                 v, w, tau_d, tau_o, tau_r, tau_si, 
-                 tau_v_m, tau_v_p, tau_w_m, tau_w_p, k, u_c, uc_si):
-    """
-    Computes the ionic kernel for the Fenton-Karma 2D model.
-
-    Parameters
-    ----------
+    Model Variables
+    ---------------
     u : np.ndarray
-        Current action potential array.
-    rhs : np.ndarray
-        Array to store the updated action potential values.
-    indexes : np.ndarray
-        Array of indices where the kernel should be computed (``mesh == 1``).
-    dt : float
-        Time step for the simulation.
+        Transmembrane potential (normalized, dimensionless).
     v : np.ndarray
-        Fast recovery variable array.
+        Fast recovery variable, representing sodium channel inactivation.
     w : np.ndarray
-        Slow recovery variable array.
-    tau_d : float
-        Time constant for depolarization.
-    tau_o : float
-        Time constant for subthreshold repolarization.
+        Slow recovery variable, representing calcium channel dynamics.
+    
+    Model Parameters
+    ----------------
     tau_r : float
-        Time constant for suprathreshold repolarization.
+        Time constant for repolarization (outward current).
+    tau_o : float
+        Time constant for the open-state decay of fast sodium channels.
+    tau_d : float
+        Time constant for depolarization (fast inward current).
     tau_si : float
-        Time constant for the slow inward current.
+        Time constant for the slow inward (calcium-like) current.
     tau_v_m : float
         Time constant for inactivation gate v (membrane below threshold).
     tau_v_p : float
@@ -240,17 +114,98 @@ def ionic_kernel(u, rhs, indexes, dt,
         Activation threshold for recovery dynamics.
     uc_si : float
         Activation threshold for the slow inward current.
+    
+    Paper
+    -----
+    Fenton, F., & Karma, A. (1998).
+    Vortex dynamics in three-dimensional continuous myocardium 
+    with fiber rotation: Filament instability and fibrillation.
+    Chaos, 8(1), 20-47.
+    https://doi.org/10.1063/1.166311
+            
     """
 
-    for i in prange(len(indexes)):
-        ii = indexes[i]
+    def __init__(self):
+        """
+        Initializes the Fenton-Karma instance with default parameters.
+        """
+        super().__init__()
+        self.D_model = 1.
+        self.npfloat    = 'float64'
 
-        v.flat[ii] = calc_v(v.flat[ii], u.flat[ii], dt, u_c, tau_v_m, tau_v_p)
-        w.flat[ii] = calc_w(w.flat[ii], u.flat[ii], dt, u_c, tau_w_m, tau_w_p)
+        self._initialize_variables_and_parameters(ops)
 
-        J_fi = calc_Jfi(u.flat[ii], v.flat[ii], u_c, tau_d)
-        J_so = calc_Jso(u.flat[ii], u_c, tau_o, tau_r)
-        J_si = calc_Jsi(u.flat[ii], v.flat[ii], k, uc_si, tau_si)
+    def initialize(self):
+        """
+        Initializes the model for simulation.
+        """
+        super().initialize()
 
-        rhs.flat[ii] = (-J_fi - J_so - J_si)
+        self._allocate_state_arrays()
+
+        gen = self._initialize_kernel(FentonKarmaKernel)
+        
+        glb = {
+            "calc_dv": jit_ops["calc_dv"], 
+            "calc_dw": jit_ops["calc_dw"],
+            "calc_Jfi": jit_ops["calc_Jfi"],
+            "calc_Jso": jit_ops["calc_Jso"],
+            "calc_Jsi": jit_ops["calc_Jsi"],
+            "calc_rhs": jit_ops["calc_rhs"]
+        }
+
+        self._kernel, _ = build_kernel(
+            gen=gen,
+            glb=glb,
+            dimensions=self.cardiac_tissue.dimensions,
+            observers=self.observers,
+        )
+
+        self._buffs = self._form_and_verify_observers()
+        
+    def run_ionic_kernel(self):
+        """
+        Executes the ionic kernel for the Fenton-Karma model.
+        """
+        args = [getattr(self, name) for name in self._kernel_args_order]
+        self._kernel(
+            self.u_new,
+            self.cardiac_tissue.myo_indexes,
+            self.dt,
+            self.step,
+            *args,
+            *self._buffs,
+        )
+
+    def select_stencil(self, cardiac_tissue):
+        """
+        Selects the appropriate stencil for diffusion based on the tissue
+        properties. If the tissue has fiber directions, an asymmetric stencil
+        is used; otherwise, an isotropic stencil is used.
+
+        Parameters
+        ----------
+        cardiac_tissue : CardiacTissue
+            A tissue object representing the cardiac tissue.
+
+        Returns
+        -------
+        Stencil
+            The stencil object to use for diffusion computations.
+        """
+        if cardiac_tissue.fibers is None:
+            if cardiac_tissue.dimensions == 2:
+                return IsotropicStencil2D()
+            elif cardiac_tissue.dimensions == 3:
+                return IsotropicStencil3D()
+            else:
+                raise ValueError("Unsupported number of dimensions")
+        else:
+            if cardiac_tissue.dimensions == 2:
+                return AsymmetricStencil2D()
+            elif cardiac_tissue.dimensions == 3:
+                return AsymmetricStencil3D()
+            else:
+                raise ValueError("Unsupported number of dimensions")
+
 

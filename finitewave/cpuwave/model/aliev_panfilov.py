@@ -1,21 +1,45 @@
 import numpy as np
-from numba import njit, prange, typed
 
-from .cardiac_model import CardiacModel
-from ._registry import load_ops
-from ._jitwrap import wrap_calc
+from finitewave.core.model.cardiac_model_base import CardiacModelBase
+from finitewave.core.model.ionic_kernel_generator import IonicKernelGenerator
 
-ops = load_ops("aliev_panfilov")
-jit_ops = wrap_calc(ops)
+from finitewave.cpuwave.model._registry import load_ops, wrap_calc
+from finitewave.cpuwave.model._kernel_builder import build_kernel
 
-calc_dv = jit_ops["calc_dv"]
-calc_rhs = jit_ops["calc_rhs"]
+
+try:
+    ops = load_ops("aliev_panfilov")
+    jit_ops = wrap_calc(ops)
+except KeyError as e:
+    raise ImportError(
+        "Aliev-Panfilov model ops not found. "
+        "Install model package: pip install finitewave-model-aliev-panfilov"
+    ) from e
+
+
+class AlievPanfilovKernel(IonicKernelGenerator):
+    def __init__(self):
+        super().__init__()
+        self.args_order = [
+            "u", "v", "a", "k", "mu1", "mu2", "eps"
+        ]
+
+    def generate_body(self) -> str:
+        model = {var: self._indexing(var) for var in (self.arrays + self.scalars)}
+        u_new = f"u_new{self._raw_indexing()}"
+        
+        return f"""\
+
+        {u_new} += dt * calc_rhs({model['u']}, {model['v']}, {model['a']}, {model['k']})
+
+        {model['v']} += dt * calc_dv({model['v']}, {model['u']}, 
+            {model['a']}, {model['k']}, {model['eps']}, {model['mu1']}, {model['mu2']})
+"""
 
 
 class AlievPanfilov(CardiacModel):
     """
-    Implementation of the Aliev–Panfilov model of cardiac excitation for
-    regular grids.
+    Implementation of the Aliev–Panfilov model of cardiac excitation.
 
     The Aliev–Panfilov model is a phenomenological two-variable model designed to
     reproduce basic features of cardiac excitation, including wave propagation and
@@ -25,15 +49,15 @@ class AlievPanfilov(CardiacModel):
 
     Attributes
     ----------
-    state_vars : list of str
-        Names of the state variables to be saved and restored.
-    memory_save : bool
-        Whether to save memory by only storing the indexes of the tissue
-        (``mesh > 0``).
     D_model : float
         Diffusion coefficient used for simulating spatial propagation.
+    npfloat : str
+        Floating-point precision used in the simulation (default: 'float64').
+
+    Model Variables
+    ---------------
     u : np.ndarray
-        Transmembrane potential (dimensionless, normalized to [0, 1]).
+        Transmembrane potential (dimensionless, normalized to [0,1]).
     v : np.ndarray
         Recovery variable describing refractoriness.
 
@@ -43,16 +67,12 @@ class AlievPanfilov(CardiacModel):
         Excitability threshold parameter.
     k : float
         Strength of the nonlinear source term (governs spike shape).
-    eap : float
+    eps : float
         Baseline recovery rate.
-    mu_1 : float
+    mu1 : float
         Recovery rate coefficient (scales v feedback).
-    mu_2 : float
+    mu2 : float
         Recovery rate offset (modulates u-dependence of recovery).
-
-    Source Model
-    ---------------
-    https://github.com/finitewave/Aliev-Panfilov-finitewave-model/
 
     Paper
     -----
@@ -66,137 +86,50 @@ class AlievPanfilov(CardiacModel):
     https://doi.org/10.1016/0960-0779(95)00089-5.
     """
 
-    def __init__(self, memory_save=False):
+    def __init__(self):
         """
-        Initializes the AlievPanfilovGrid instance with default parameters.
-
-        Parameters
-        ----------
-        memory_save : bool
-            Whether to save memory by only storing the indexes of the tissue
-            (``mesh > 0``).
+        Initializes the AlievPanfilov instance with default parameters.
         """
-        super().__init__(memory_save)
-        self.state_vars = ["u", "v"]
+        super().__init__()
         self.D_model = 1.
+        self.npfloat = 'float64'
 
-        # model parameters
-        parameters = ops.get_parameters()
-        self.a = parameters["a"]
-        self.k = parameters["k"]
-        self.eps = parameters["eps"]
-        self.mu1 = parameters["mu1"]
-        self.mu2 = parameters["mu2"]
+        self._initialize_variables_and_parameters(ops)
 
-        # initial conditions
-        variables = ops.get_variables()
-        for var, val in variables.items():
-            setattr(self, "init_" + var, val)
+    def initialize(self):
+        """
+        Initializes the model for simulation.
+        """
+        super().initialize()
 
-    def run(self, dt):
+        self._allocate_state_arrays()
+
+        gen = self._initialize_kernel(AlievPanfilovKernel)
+
+        glb = {
+            "calc_dv": jit_ops["calc_dv"], 
+            "calc_rhs": jit_ops["calc_rhs"]
+        }
+
+        self._kernel, _ = build_kernel(
+            gen=gen,
+            glb=glb,
+            dimensions=self.cardiac_tissue.dimensions,
+            observers=self.observers,
+        )
+
+        self._buffs = self._form_and_verify_observers()
+        
+    def run_ionic_kernel(self):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
-        self.counter += 1
-        if (self.counter - 1) % self.step != 0:
-            return
-
-        ionic_kernel(self.u, self.rhs, self.myo_indexes, dt, self.v, self.a,
-                     self.k, self.eps, self.mu1, self.mu2)
-        
-    def prepacing(self, stim_prepacing):
-        """Executes the prepacing sequence for the Aliev-Panfilov model."""
-        dt = stim_prepacing.dt
-        stim_values = stim_prepacing.stim_sequence
-        self.u_pacing, state_vars = prepacing(
-            dt, stim_values, self.init_u, self.init_v, self.a,
-            self.k, self.eps, self.mu1, self.mu2)
-        
-        # initial conditions
-        for var, val in state_vars.items():
-            if var == "j":
-                var += "_"
-            setattr(self, "init_" + var, val)
-
-
-@njit(parallel=True)
-def ionic_kernel(u, rhs, indexes, dt, v, a, k, eps, mu1, mu2):
-    """
-    Computes the ionic kernel for the Aliev-Panfilov 2D model.
-
-    Parameters
-    ----------
-    u : np.ndarray
-        Current action potential array.
-    rhs : np.ndarray
-        Array to store the updated action potential values.
-    diffusion_indexes : np.ndarray
-        Array of myocyte indices corresponding to diffusion model arrays
-        (``u``, ``rhs``).
-    reaction_indexes : np.ndarray
-        Array of myocyte indices corresponding to cardiac model arrays
-        (``v``).
-    dt : float
-        Time step for the simulation.
-    v : np.ndarray
-        Recovery variable array.
-    a : float
-        Excitability threshold parameter.
-    k : float
-        Strength of the nonlinear source term (governs spike shape).
-    eps : float
-        Baseline recovery rate.
-    mu1 : float
-        Recovery rate coefficient (scales v feedback).
-    mu2 : float
-        Recovery rate offset (modulates u-dependence of recovery).
-    """
-    for i in prange(len(indexes)):
-        ii = indexes[i]
-        v.flat[ii] += dt * calc_dv(v.flat[ii], u.flat[ii], a, k, eps, mu1, mu2)
-        rhs.flat[ii] = calc_rhs(u.flat[ii], v.flat[ii], a, k)
-
-
-@njit
-def prepacing(dt, stim_values, u, v, a, k, eps, mu1, mu2):
-    """
-    Computes the ionic kernel for the Aliev-Panfilov 2D model.
-
-    Parameters
-    ----------
-    dt : float
-        Time step for the simulation.
-    stim_values : np.ndarray
-        Array of stimulus values to be applied at each time step.
-    u : float
-        Initial action potential value.
-    v : float
-        Initial recovery variable value.
-    a : float
-        Excitability threshold parameter.
-    k : float
-        Strength of the nonlinear source term (governs spike shape).
-    eps : float
-        Baseline recovery rate.
-    mu1 : float
-        Recovery rate coefficient (scales v feedback).
-    mu2 : float
-        Recovery rate offset (modulates u-dependence of recovery).
-    """
-    u_list = np.zeros(len(stim_values), dtype=np.float64)
-    u_list[0] = u
-
-    for i in range(1, len(stim_values)):
-        u += stim_values[i]
-
-        v += dt * calc_dv(v, u, a, k, eps, mu1, mu2)
-        rhs = calc_rhs(u, v, a, k)
-
-        u = u + dt * rhs
-        u_list[i] = u
-
-    state_vars = typed.Dict()
-    state_vars['u'] = u
-    state_vars['v'] = v
-
-    return u_list, state_vars
+        args = [getattr(self, name) for name in self._kernel_args_order]
+        self._kernel(
+            self.u_new,
+            self.cardiac_tissue.myo_indexes,
+            self.dt,
+            self.step,
+            *args,
+            *self._buffs,
+        )
