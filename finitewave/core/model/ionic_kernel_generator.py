@@ -25,13 +25,12 @@ class IonicKernelGenerator:
     """
 
     def __init__(self):
+        self.kernel_func_name = "ionic_kernel"
         self.arrays = []
         self.scalars = []
-        self.args_order = [] # does not include rhs, indexes, dt, step and observers
+        self.common_args = ["rhs", "indexes", "dt", "step"]
+        self.ordered_args = []
         self.observers = []
-
-        self.names = ["u"]
-        self.param_fields = set()
 
     def _indexing(self, name):
         if name in self.arrays:
@@ -72,7 +71,7 @@ class IonicKernelGenerator:
                     f"Observer #{idx}: invalid name '{name}'. Must be a valid Python identifier."
                 )
             
-            if name in set(self.kernel_base_args()):
+            if name in set(self.kernel_base_args):
                 raise ValueError(f"Observer name '{name}' collides with kernel arg name.")
 
             if name in seen:
@@ -113,24 +112,31 @@ class IonicKernelGenerator:
             args.append(name)
             lines.append(expr)
 
-        return args, "\n        ".join(lines) # 8 spaces for indentation
-
-    def kernel_func_name(self) -> str:
-        return "ionic_kernel"
-
+        return args, "\n".join(lines) # 8 spaces for indentation
+    
+    @property
     def kernel_base_args(self) -> list[str]:
-        # common arguments: output, indexes, dt, step
-        args = ["rhs", "indexes", "dt", "step"]
-        args.extend(self.args_order)
-
-        return args
-
-    def generate_loop_header(self) -> str:
-        loop_header = """
-    for i in prange(len(indexes)):
-        idx = indexes[i]
         """
-        return textwrap.dedent(loop_header).strip()
+        Returns
+        -------
+        list
+            The ordered list of kernel argument names, combining common args
+            and model-specific args.
+        """
+        return self.common_args + self.model_args
+    
+    def generate_loop(self) -> str:
+        """
+        Returns
+        -------
+        str
+            The header for the loop that iterates over the indexes.
+        """
+        loop = """\
+            for i in prange(len(indexes)):
+                idx = indexes[i]
+        """
+        return textwrap.dedent(loop).strip()
 
     def generate_body(self) -> str:
         """
@@ -138,26 +144,39 @@ class IonicKernelGenerator:
         Must end with state updates.
         """
         raise NotImplementedError
-
-    def generate_cpu_numba(self) -> str:
-        args = ", ".join(self.kernel_base_args())
-        loop = self.generate_loop_header()
-
-        # double check required body args
-        missing = set(self.args_order)  - set(self.arrays) - set(self.scalars)
+    
+    def check_args(self):
+        """
+        Validates that all required args are included in the arrays and scalars.
+        """
+        missing = set(self.model_args) - set(self.arrays) - set(self.scalars)
         if missing:
             raise ValueError(f"Kernel args missing: {sorted(missing)}")
-        body = self.generate_body()
-        
-        obs_args, obs = self.generate_observers()
 
-        src =f"""
-        @njit(parallel=True, fastmath=True)
-        def {self.kernel_func_name()}({args + (', ' + ', '.join(obs_args) if obs_args else '')}):
-        {loop}
-        {body}
-        {obs}
-        """
+    def generate_cpu_numba(self) -> str:
+        """Generate numba CPU kernel."""
+        self.check_args()
+
+        loop = self.generate_loop()
+        body = self.generate_body()
+        obs_args, obs = self.generate_observers()
+        
+        # add empty line to ignore indentation in src
+        # remove original indentation and add new one for the whole block
+        loop = textwrap.indent("\n" + textwrap.dedent(loop).strip(), " " * (12 + 4))
+        body = textwrap.indent("\n" + textwrap.dedent(body).strip(), " " * (12 + 8))
+        obs = textwrap.indent("\n" + textwrap.dedent(obs).strip(), " " * (12 + 8)) if obs else ""
+        
+        args = ", ".join(self.kernel_base_args)
+        args += (", " + ", ".join(obs_args) if obs_args else "")
+
+        src =f"""\
+            @njit(parallel=True, fastmath=True)
+            def {self.kernel_func_name}({args + (', ' + ', '.join(obs_args) if obs_args else '')}):
+                {loop}
+                    {body}
+                    {obs}
+            """
         return textwrap.dedent(src).strip()
     
 
@@ -166,13 +185,18 @@ class FooKernelGenerator(IonicKernelGenerator):
         super().__init__()
         self.arrays = ["u", "v"]
         self.scalars = ["a", "b"]
-        self.args_order = ["u", "v", "a", "b"]
+        self.model_args = ["u", "v", "a", "b"]
+        self.observers = [
+            {"name": "obs1", "expr": "obs1[step] = u.flat[idx] * v.flat[idx]"},
+            {"name": "obs2", "expr": "obs2[step] = u.flat[idx] + v.flat[idx]"},
+        ]
 
     def generate_body(self) -> str:
-        body = """
-            u_new = u.flat[idx] + a * v.flat[idx]
-            v.flat[idx] += b * u.flat[idx]
-            rhs.flat[idx] = u_new
+        model = {var: self._indexing(var) for var in (self.arrays + self.scalars)}
+        rhs = f"rhs{self._raw_indexing()}"
+        body = f"""\
+            {model["v"]} += {model["b"]} * {model["u"]}
+            {rhs} = {model["v"]} * (1 - {model["u"]}) * ({model["u"]} - {model["a"]})
         """
         return textwrap.dedent(body).strip()
 
