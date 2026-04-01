@@ -92,6 +92,32 @@ class StepKernelGenerator(KernelGenerator):
     def generate_body(self, step_func):
         body = self.extract_func_body(step_func)
         return body
+    
+    def generate_observers(self, observers, kernel_args):
+        if len(observers) == 0:
+            return [], ""
+        
+
+        seen = set()
+        args = []
+        lines = []
+
+        for obs in observers:
+            
+            name, expr = obs.generate()
+            
+            if name in set(kernel_args):
+                raise ValueError(f"Observer name '{name}' collides with kernel arg name.")
+
+            if name in seen:
+                raise ValueError(f"Duplicate observer name '{name}'.")
+
+            seen.add(name)
+
+            args.append(name)
+            lines.append(expr)
+
+        return args, "\n".join(lines)
 
     def generate_kernel(self, step_func, arrays, scalars, state_vars, observers=[], output_args=[]) -> str:
         """Generate numba CPU kernel."""
@@ -132,82 +158,93 @@ class StepKernelGenerator(KernelGenerator):
             """
         return textwrap.dedent(src).strip()
     
-    def generate_observers(self, observers) -> tuple:
+
+class Observer:
+    """
+    Class representing an observer that can be added to the kernel.
+    
+    Attributes
+    ----------
+    target : str
+        The name of the output variable that the observer writes to.
+    expr : str
+        The expression that computes the observer's value.
+    expr_args : list of str, optional
+        The names of the variables used in the observer's expression.
+    kernel_args : list of str, optional
+        The names of the kernel arguments that the observer depends on.
+    """
+    def __init__(self, target, expr, expr_args, kernel_args=None):
+        """
+        Parameters
+        ----------
+        target : str
+            The name of the output variable that the observer writes to.
+        expr : str
+            The expression that computes the observer's value.
+        expr_args : list of str, optional
+            The names of the variables used in the observer's expression.
+        kernel_args : list of str, optional
+            The names of the kernel arguments that the observer depends on.
+            If None, it is assumed the observer depends on existing kernel args.
+        """
+        self.target = target
+        self.expr = expr
+        self.expr_args = expr_args
+        self.kernel_args = kernel_args
+
+    def generate(self) -> tuple[str, str, list, list]:
         """
         Validates and generates code for observers.
         """
         ident = re.compile(r"^[A-Za-z_]\w*$")
 
-        if not observers:
-            return [], ""
+        if self.target is None or self.expr is None:
+            raise ValueError("Observer must have 'target' and 'expr' defined.")
 
-        if not isinstance(observers, (list, tuple)):
-            raise TypeError("observers must be a list of dicts with keys: 'name', 'expr'.")
+        if not isinstance(self.target, str) or not self.target.strip():
+            raise ValueError(f"Observer #{self.target}: 'target' must be a non-empty string.")
 
-        seen = set()
-        args = []
-        lines = []
+        target = self.target.strip()
 
-        for idx, obs in enumerate(observers):
-            if not isinstance(obs, dict):
-                raise TypeError(f"Observer #{idx} must be a dict.")
-            if "name" not in obs or "expr" not in obs:
-                raise ValueError(f"Observer #{idx} must have keys 'name' and 'expr'.")
+        if not ident.match(target):
+            raise ValueError(
+                f"Observer #{target}: invalid name '{target}'. Must be a valid Python identifier."
+            )
+        
+        if not isinstance(self.expr, str) or not self.expr.strip():
+            raise ValueError(f"Observer '{target}': 'expr' must be a non-empty string.")
 
-            name = obs["name"]
-            expr = obs["expr"]
+        expr = self.expr.strip()
 
-            if not isinstance(name, str) or not name.strip():
-                raise ValueError(f"Observer #{idx}: 'name' must be a non-empty string.")
-            name = name.strip()
+        if "append(" in expr or ".append(" in expr:
+            warnings.warn(
+                f"Observer '{target}': 'append' in expr is unsafe in numba-parallel kernels. "
+                f"Use preallocated arrays like {target}[step, ...] = value.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        if "import " in expr:
+            warnings.warn(
+                f"Observer '{target}': imports in expr are not allowed/expected.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        if target not in expr:
+            warnings.warn(
+                f"Observer '{target}': expr does not reference its output buffer '{target}'. "
+                f"Did you forget to write into it?",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        if "=" not in expr and not expr.lstrip().startswith("if "):
+            warnings.warn(
+                f"Observer '{target}': expr has no '='; it may not store anything.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
-            if not ident.match(name):
-                raise ValueError(
-                    f"Observer #{idx}: invalid name '{name}'. Must be a valid Python identifier."
-                )
-            
-            if name in set(self.kernel_base_args):
-                raise ValueError(f"Observer name '{name}' collides with kernel arg name.")
-
-            if name in seen:
-                raise ValueError(f"Duplicate observer name '{name}'.")
-            seen.add(name)
-
-            if not isinstance(expr, str) or not expr.strip():
-                raise ValueError(f"Observer '{name}': 'expr' must be a non-empty string.")
-            expr = expr.strip()
-
-            if "append(" in expr or ".append(" in expr:
-                warnings.warn(
-                    f"Observer '{name}': 'append' in expr is unsafe in numba-parallel kernels. "
-                    f"Use preallocated arrays like {name}[step, ...] = value.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-            if "import " in expr:
-                warnings.warn(
-                    f"Observer '{name}': imports in expr are not allowed/expected.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-            if name not in expr:
-                warnings.warn(
-                    f"Observer '{name}': expr does not reference its output buffer '{name}'. "
-                    f"Did you forget to write into it?",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-            if "=" not in expr and not expr.lstrip().startswith("if "):
-                warnings.warn(
-                    f"Observer '{name}': expr has no '='; it may not store anything.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-
-            args.append(name)
-            lines.append(expr)
-
-        return args, "\n".join(lines)
+        return target, expr, self.expr_args, self.kernel_args
     
 
 class SingleCellKernelGenerator(StepKernelGenerator):
