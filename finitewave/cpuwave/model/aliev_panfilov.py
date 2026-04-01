@@ -1,7 +1,11 @@
+import textwrap
 import numpy as np
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
-from finitewave.core.model.ionic_kernel_generator import IonicKernelGenerator
+from .kernel_generators import (
+    StepKernelGenerator,
+    SingleCellKernelGenerator
+)
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
 from finitewave.cpuwave.model._kernel_builder import build_kernel
@@ -17,24 +21,35 @@ except KeyError as e:
     ) from e
 
 
-class AlievPanfilovKernel(IonicKernelGenerator):
+class AlievPanfilovStepKernel(StepKernelGenerator):
     def __init__(self):
         super().__init__()
         self.args_order = [
             "u", "v", "a", "k", "mu1", "mu2", "eps"
         ]
+        self.state_vars = ["u", "v"]
 
     def generate_body(self) -> str:
-        model = {var: self._indexing(var) for var in (self.arrays + self.scalars)}
-        u_new = f"u_new{self._raw_indexing()}"
-        
-        return f"""\
+        asign_vars = "\n".join(f"{var}_old = {self._indexing(var)}" for var in self.arrays)
+        step_body = "\n" + self.extract_func_body(ops.step)
+        update_vars = "\n".join(f"{var}_new = {var}_old" for var in self.state_vars)
 
-        {u_new} += dt * calc_rhs({model['u']}, {model['v']}, {model['a']}, {model['k']})
-
-        {model['v']} += dt * calc_dv({model['v']}, {model['u']}, 
-            {model['a']}, {model['k']}, {model['eps']}, {model['mu1']}, {model['mu2']})
-"""
+        body = f"""\
+            {asign_vars}
+            {step_body}
+            {update_vars}
+        """
+        return textwrap.dedent(body).strip()
+    
+class AlievPanfilovPrepacingKernel(PrepacingKernelGenerator):
+    def __init__(self):
+        super().__init__()
+        self.kernel_func_name = "prepacing_kernel"
+        self.arrays = ["u"]
+        self.scalars = ["a", "k", "eps", "mu1", "mu2"]
+        self.common_args = ["rhs", "indexes", "dt", "step"]
+        self.model_args = self.arrays + self.scalars
+        self.observers = []
 
 
 class AlievPanfilov(CardiacModel):

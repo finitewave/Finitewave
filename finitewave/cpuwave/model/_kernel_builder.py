@@ -1,6 +1,6 @@
 from functools import lru_cache
 from numba import njit, prange
-from finitewave.core.model.ionic_kernel_generator import IonicKernelGenerator
+from finitewave.core.model.kernel_generator import KernelGenerator
 
 
 def _freeze_observers(observers):
@@ -25,7 +25,7 @@ def _build_cached(gen, dimensions, observers_key, glb_key):
 
     return loc[gen.kernel_func_name()], src
 
-def build_kernel(gen: IonicKernelGenerator, glb: dict, dimensions: int,
+def build_kernel(gen: KernelGenerator, glb: dict, dimensions: int,
                  observers=()):
     """
     gen: *instance* used only to pass class + defaults; build uses its class.
