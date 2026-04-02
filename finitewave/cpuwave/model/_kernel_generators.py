@@ -8,9 +8,9 @@ from finitewave.core.model.kernel_generator import KernelGenerator
 
 
 class StepKernelGenerator(KernelGenerator):
-    def __init__(self):
+    def __init__(self, kernel_func_name="ionic_kernel"):
         super().__init__()
-        self.kernel_func_name = "ionic_kernel"
+        self.kernel_func_name = kernel_func_name
         self.common_args = ["rhs", "u", "indexes", "dt"]
     
     def _update_indexing(self, name, arrays):
@@ -29,6 +29,20 @@ class StepKernelGenerator(KernelGenerator):
             return f"{name}.flat[idx]"
         return name
     
+    def _generate_args(self, vars, base="", suffix="", exclude=[]):
+
+        for var in vars:
+            if var in exclude:
+                continue
+
+            if base == "":
+                base += f"{var}{suffix}"
+                continue
+
+            base += f", {var}{suffix}"
+
+        return base
+
     def generate_loop(self, indent) -> str:
         """
         Returns
@@ -79,11 +93,17 @@ class StepKernelGenerator(KernelGenerator):
 
         func_name, body = self.extract_func_body(step_func)
 
-        input_args = 'dt, u, ' + ", ".join(f"{var}" for var in arrays if var not in self.common_args)
-        input_args += (", " + ", ".join(f"{var}" for var in scalars if var not in self.common_args))
+        input_args = "dt, u"
+        input_args = self._generate_args(arrays, input_args, exclude=self.common_args)
+        input_args = self._generate_args(scalars, input_args, exclude=self.common_args)
+
 
         output_args = "rhs, " + ", ".join(f"{var}_new" for var in state_vars if var not in self.common_args)
         output_args += (", " + ", ".join(obs_args) if obs_args else "")
+
+        output_args = "rhs"
+        output_args = self._generate_args(state_vars, output_args, suffix="_new", exclude=self.common_args)
+        output_args = self._generate_args(obs_args, output_args, exclude=self.common_args)
 
         body = textwrap.indent("\n" + textwrap.dedent(body).strip(), " " * (12 + 4))
 
@@ -96,11 +116,13 @@ class StepKernelGenerator(KernelGenerator):
 
         body_func = textwrap.dedent(body_func).strip()
 
-        signature_inputs = "dt, u_old, " + ", ".join(f"{var}_old" for var in arrays if var not in self.common_args)
-        signature_inputs += (", " + ", ".join(f"{var}" for var in scalars if var not in self.common_args))
+        signature_inputs = "dt, u_old"
+        signature_inputs = self._generate_args(arrays, signature_inputs, suffix="_old", exclude=self.common_args)
+        signature_inputs = self._generate_args(scalars, signature_inputs, exclude=self.common_args)
     
-        signature_returns = "rhs_new, " + ", ".join(f"{var}_new" for var in state_vars if var not in self.common_args)
-        signature_returns += (", " + ", ".join(obs_args) if obs_args else "")
+        signature_returns = "rhs_new"
+        signature_returns = self._generate_args(state_vars, signature_returns, suffix="_new", exclude=self.common_args)
+        signature_returns = self._generate_args(obs_args, signature_returns, exclude=self.common_args)
 
         func_signature = f"{signature_returns} = {func_name}({signature_inputs})"
         return func_name, func_signature, body_func
@@ -167,6 +189,11 @@ class StepKernelGenerator(KernelGenerator):
     def generate(self, step_func, arrays, scalars, state_vars, model_func, observers=[], output_args=[]):
         res = self.generate_body(step_func, arrays, scalars, state_vars, observers, output_args)
         step_func_name, step_func_body, kernel_func, kernel_args = res
+
+        # print("Generated step function:")
+        # print(step_func_body)
+        # print("\nGenerated kernel function:")
+        # print(kernel_func)
         
         sorted_model_func = tuple(sorted(model_func.items(), key=lambda kv: kv[0]))
 
@@ -188,35 +215,17 @@ class StepKernelGenerator(KernelGenerator):
 
 
 class SingleCellKernelGenerator(StepKernelGenerator):
-    def __init__(self):
-        super().__init__()
-        self.kernel_func_name = "single_cell_kernel"
-        self.arrays = ["u", "stim_values"]
-        self.common_args = ["u", "stim_values", "dt"]
-        self.output_args = ["u", "v"]
-        self.state_vars = ["u", "v"]
+    def __init__(self, kernel_func_name="single_cell_kernel"):
+        super().__init__(kernel_func_name)
+        self.common_args = ["u_history", "stim_values", "dt", "u"]
 
-    def _assign_indexing(self, name):
-        """Indexing that is used to assign state variables to temporary (old) value.
-
-        Parameters
-        ----------
-        name : str
-            Name of the variable to index.
-        """
-        if name in self.arrays:
+    def _assign_indexing(self, name, arrays):
+        if name in arrays:
             return f"{name}.flat[idx-1]"
         return name
         
-    def _update_indexing(self, name):
-        """Indexing that is used for updating state variables with new values.
-
-        Parameters
-        ----------
-        name : str
-            Name of the variable to index.
-        """
-        if name in self.arrays:
+    def _update_indexing(self, name, arrays):
+        if name in arrays:
             return f"{name}.flat[idx]"
         return name
     
@@ -228,10 +237,11 @@ class SingleCellKernelGenerator(StepKernelGenerator):
             The header for the loop that iterates over the indexes.
         """
         loop = """\
-            for idx in prange(1, len(stim_values)):
-                u.flat[idx-1] = u.flat[idx-1] + dt * stim_values.flat[idx-1]
+            u_history[0] = u
+            for idx in range(1, len(stim_values)):
+                u_old = u_history.flat[idx-1] + dt * stim_values.flat[idx-1]
         """
-        loop = textwrap.indent(textwrap.dedent(loop).strip(), " " * indent)
+        loop = textwrap.indent("\n" +textwrap.dedent(loop).strip(), " " * indent)
         return loop
 
     def generate_update_states(self, state_vars, arrays, indent) -> str:
@@ -241,51 +251,31 @@ class SingleCellKernelGenerator(StepKernelGenerator):
         str
             Code for updating state variables with new values after the step.
         """
-        update_vars = [var for var in state_vars if var not in self.common_args]
-        update_vars += ["u"]
-
-        update_vars = "\n".join(f"{self._update_indexing(var)} = {var}_new" for var in update_vars)
+        update_vars = "\n".join(f"{self._update_indexing(var, arrays)} = {var}_new" for var in state_vars if var != "u")
+        update_vars += "\nu = u_old + dt * rhs_new"
+        update_vars += "\nu_history.flat[idx] = u"
         return textwrap.indent("\n" + textwrap.dedent(update_vars).strip(), " " * (indent))
 
-    def generate_body(self, update_states, observers):
-        body = super().generate_body()
-        body += "\n" + "u_new = u_old + dt * rhs_new"
-        print("Generated body:\n", body)
-        return body
 
 
 # def ionic_step(dt, u, v, a, k, eps, mu1, mu2):
 #     dv = (- (eps + (mu1 * v) / (mu2 + u)) * (v + k * u * (u - a - 1.)))
-#     rhs_new = -k * u * (u - a) * (u - 1) - u * v
+#     rhs = -k * u * (u - a) * (u - 1) - u * v
 #     v_new = v + dt * dv
-#     return rhs_new, v_new
+#     return rhs, v_new
 
-# observers = ""
 # state_vars = ["u", "v"]
-# arrays = state_vars + ["a"]
+# arrays = []
 # parameters = ["a", "k", "eps", "mu1", "mu2"]
-# scalars = list(set(parameters) - set(arrays))
-# obs_args = ["dv"]
+# scalars = parameters + ["u", "v"]
+# # obs_args = ["dv"]
 
-# obs = Observer(
-#     target="dv_obs",
-#     expr="if idx == 100: dv_obs[ind_obs] = dv",
-#     expr_args=["dv"],
-#     kernel_args=["ind_obs"],
-# )
+# # obs = Observer(
+# #     target="dv_obs",
+# #     expr="if idx == 100: dv_obs[ind_obs] = dv",
+# #     expr_args=["dv"],
+# #     kernel_args=["ind_obs"],
+# # )
 
-# step_generator = StepKernelGenerator()
-# res = step_generator.generate(ionic_step, arrays, scalars, state_vars, {}, [obs])
-
-# kernel, kernel_args = res
-
-# print(kernel_args)
-
-# # print("Step func name:")
-# # print(step_func_name)
-# # print("\nStep func:")
-# # print(step_func)
-# # print("\nKernel func:")
-# # print(kernel_func)
-# # print("\nKernel args:")
-# # print(kernel_args)
+# step_generator = SingleCellKernelGenerator()
+# res = step_generator.generate(ionic_step, arrays, scalars, state_vars, {})

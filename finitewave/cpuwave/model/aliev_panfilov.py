@@ -5,7 +5,6 @@ from finitewave.core.model.cardiac_model_base import CardiacModelBase
 from finitewave.cpuwave.model._cardiac_model import CardiacModel
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
-from finitewave.cpuwave.model._kernel_builder import build_kernel
 
 
 try:
@@ -85,22 +84,10 @@ class AlievPanfilov(CardiacModel):
 
         self._initialize_ionic_kernel(ops.ionic_step, self.model_func)
         self.ionic_kernel_args = [getattr(self, name) for name in self.ionic_kernel_arg_names]
-        
-    def run(self, dt):
-        """
-        Executes the ionic kernel for the Aliev-Panfilov model.
-        """
-        self.counter += 1
-        if (self.counter - 1) % self.step != 0:
-            return
 
-        self.ionic_kernel(
-            self.rhs,
-            self.u,
-            self.myo_indexes,
-            dt,
-            *self.ionic_kernel_args,
-        )
+    def prepacing(self, stim_prepacing):
+        self._initialize_prepacing_kernel(ops.ionic_step)
+        return self._prepacing(stim_prepacing)
 
     def _initialize_model_func(self, jit_ops):
         """TODO: if jit_ops func is independent each other, we can directly use jit_ops"""

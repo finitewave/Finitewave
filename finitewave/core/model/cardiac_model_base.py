@@ -20,7 +20,7 @@ class CardiacModelBase(ABC):
         Model-specific diffusion coefficient.
     state_vars : list
         List of state variables used during simulation.
-    state_params : list
+    state_pars : list
         List of state parameters used during simulation.
     """
     def __init__(self):
@@ -29,7 +29,7 @@ class CardiacModelBase(ABC):
         self.D_model = None
 
         self.state_vars = []
-        self.state_params = []
+        self.state_pars = []
         self.simulation = None
 
     @abstractmethod

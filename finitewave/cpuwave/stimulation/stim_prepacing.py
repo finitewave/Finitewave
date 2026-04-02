@@ -40,7 +40,7 @@ class StimPrepacing:
             
             start_idx = int(stim_start / self.dt)
             end_idx = int(stim_end / self.dt)
-            stim_values[start_idx: end_idx] = self.dt * stim_amplitude
+            stim_values[start_idx: end_idx] = stim_amplitude
 
         self._stim_sequence.append(stim_values)
 
