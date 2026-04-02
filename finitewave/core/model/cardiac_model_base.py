@@ -19,7 +19,9 @@ class CardiacModelBase(ABC):
     D_model : float
         Model-specific diffusion coefficient.
     state_vars : list
-        List of state variables to save and load during simulation.
+        List of state variables used during simulation.
+    state_params : list
+        List of state parameters used during simulation.
     """
     def __init__(self):
         self.u = None
@@ -27,6 +29,7 @@ class CardiacModelBase(ABC):
         self.D_model = None
 
         self.state_vars = []
+        self.state_params = []
         self.simulation = None
 
     @abstractmethod
@@ -43,7 +46,7 @@ class CardiacModelBase(ABC):
 
         Returns
         -------
-        CardiacModel
+        CardiacModelBase
             A deep copy of the current CardiacModel instance.
         """
         return copy.deepcopy(self)

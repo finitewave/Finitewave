@@ -40,10 +40,10 @@ class KernelGenerator:
 
     def __init__(self):
         self.kernel_func_name = ""
-        # self.common_args = []
-        # self.arrays = []
-        # self.scalars = []
-        # self.model_args = []
+        self.common_args = []
+        self.arrays = []
+        self.scalars = []
+        self.model_args = []
         # self.state_vars = []
         # self.observers = []
         # self.output_args = []
@@ -61,7 +61,7 @@ class KernelGenerator:
         """
         raise NotImplementedError
     
-    def generate_kernel(self) -> str:
+    def generate(self) -> str:
         """
         Generates the complete kernel function source code as a string.
         """
@@ -91,6 +91,7 @@ class KernelGenerator:
         str
             The source code of the function body.
         """
+        func_name = func.__name__
         src = inspect.getsource(func)
         tree = ast.parse(src)
 
@@ -113,7 +114,8 @@ class KernelGenerator:
             new_body.append(node)
 
         module = ast.Module(body=new_body, type_ignores=[])
-        return ast.unparse(module)
+        func_body = ast.unparse(module)
+        return func_name, func_body
     
     def generate_observers(self) -> tuple:
         """

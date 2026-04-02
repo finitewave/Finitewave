@@ -2,10 +2,7 @@ import textwrap
 import numpy as np
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
-from .kernel_generators import (
-    StepKernelGenerator,
-    SingleCellKernelGenerator
-)
+from finitewave.cpuwave.model._cardiac_model import CardiacModel
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
 from finitewave.cpuwave.model._kernel_builder import build_kernel
@@ -19,37 +16,6 @@ except KeyError as e:
         "Aliev-Panfilov model ops not found. "
         "Install model package: pip install finitewave-model-aliev-panfilov"
     ) from e
-
-
-class AlievPanfilovStepKernel(StepKernelGenerator):
-    def __init__(self):
-        super().__init__()
-        self.args_order = [
-            "u", "v", "a", "k", "mu1", "mu2", "eps"
-        ]
-        self.state_vars = ["u", "v"]
-
-    def generate_body(self) -> str:
-        asign_vars = "\n".join(f"{var}_old = {self._indexing(var)}" for var in self.arrays)
-        step_body = "\n" + self.extract_func_body(ops.step)
-        update_vars = "\n".join(f"{var}_new = {var}_old" for var in self.state_vars)
-
-        body = f"""\
-            {asign_vars}
-            {step_body}
-            {update_vars}
-        """
-        return textwrap.dedent(body).strip()
-    
-class AlievPanfilovPrepacingKernel(PrepacingKernelGenerator):
-    def __init__(self):
-        super().__init__()
-        self.kernel_func_name = "prepacing_kernel"
-        self.arrays = ["u"]
-        self.scalars = ["a", "k", "eps", "mu1", "mu2"]
-        self.common_args = ["rhs", "indexes", "dt", "step"]
-        self.model_args = self.arrays + self.scalars
-        self.observers = []
 
 
 class AlievPanfilov(CardiacModel):
@@ -101,50 +67,44 @@ class AlievPanfilov(CardiacModel):
     https://doi.org/10.1016/0960-0779(95)00089-5.
     """
 
-    def __init__(self):
+    def __init__(self, memory_save=False):
         """
         Initializes the AlievPanfilov instance with default parameters.
         """
-        super().__init__()
+        super().__init__(memory_save)
         self.D_model = 1.
         self.npfloat = 'float64'
-
         self._initialize_variables_and_parameters(ops)
+        self._initialize_model_func(jit_ops)
 
-    def initialize(self):
+    def initialize(self, simulation):
         """
         Initializes the model for simulation.
         """
-        super().initialize()
+        super().initialize(simulation)
 
-        self._allocate_state_arrays()
-
-        gen = self._initialize_kernel(AlievPanfilovKernel)
-
-        glb = {
-            "calc_dv": jit_ops["calc_dv"], 
-            "calc_rhs": jit_ops["calc_rhs"]
-        }
-
-        self._kernel, _ = build_kernel(
-            gen=gen,
-            glb=glb,
-            dimensions=self.cardiac_tissue.dimensions,
-            observers=self.observers,
-        )
-
-        self._buffs = self._form_and_verify_observers()
+        self._initialize_ionic_kernel(ops.ionic_step, self.model_func)
+        self.ionic_kernel_args = [getattr(self, name) for name in self.ionic_kernel_arg_names]
         
-    def run_ionic_kernel(self):
+    def run(self, dt):
         """
         Executes the ionic kernel for the Aliev-Panfilov model.
         """
-        args = [getattr(self, name) for name in self._kernel_args_order]
-        self._kernel(
-            self.u_new,
-            self.cardiac_tissue.myo_indexes,
-            self.dt,
-            self.step,
-            *args,
-            *self._buffs,
+        self.counter += 1
+        if (self.counter - 1) % self.step != 0:
+            return
+
+        self.ionic_kernel(
+            self.rhs,
+            self.u,
+            self.myo_indexes,
+            dt,
+            *self.ionic_kernel_args,
         )
+
+    def _initialize_model_func(self, jit_ops):
+        """TODO: if jit_ops func is independent each other, we can directly use jit_ops"""
+        self.model_func = {
+            "calc_dv": jit_ops["calc_dv"],
+            "calc_rhs": jit_ops["calc_rhs"],
+        }

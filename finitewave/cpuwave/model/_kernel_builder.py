@@ -3,18 +3,8 @@ from numba import njit, prange
 from finitewave.core.model.kernel_generator import KernelGenerator
 
 
-def _freeze_observers(observers):
-    if not observers:
-        return tuple()
-    return tuple((o["name"], o["expr"]) for o in observers)
-
 @lru_cache(maxsize=64)
-def _build_cached(gen, dimensions, observers_key, glb_key):
-    gen.dimensions = dimensions
-    gen.observers = [{"name": n, "expr": e} for (n, e) in observers_key]
-
-    src = gen.generate_cpu_numba()
-
+def _build_cached(name, src, glb_key):
     loc = {}
     glb = { # dict of injected globals (calc_*, etc.)
         "njit": njit,
@@ -23,24 +13,40 @@ def _build_cached(gen, dimensions, observers_key, glb_key):
     }
     exec(src, glb, loc)
 
-    return loc[gen.kernel_func_name()], src
+    return loc[name]
 
-def build_kernel(gen: KernelGenerator, glb: dict, dimensions: int,
-                 observers=()):
+def build_kernel(kernel_name, kernel_str, step_func_name, step_func_body, model_func):
     """
-    gen: *instance* used only to pass class + defaults; build uses its class.
-    glb: injected globals for exec (calc_* etc.) — must be stable for caching
+    Builds a Numba JIT-compiled kernel function from the provided kernel string and step function string.
+
+    Parameters
+    ----------
+    kernel_str : str
+        The source code of the kernel function as a string.
+    step_func_name : str
+        The name of the step function.
+    step_func_body : str
+        The body of the step function.
+    model_func : dict
+        A dictionary of model-specific functions (e.g., calc_dv, calc_rhs) that
     """
-    observers_key = _freeze_observers(observers)
 
     # make globals hashable for caching
-    glb_key = tuple(sorted(glb.items(), key=lambda kv: kv[0]))
+    sorted_model_func = tuple(sorted(model_func.items(), key=lambda kv: kv[0]))
 
-    fn, src = _build_cached(
-        gen,
-        int(dimensions),
-        observers_key,
-        glb_key,
+    step_func = _build_cached(
+        step_func_name,
+        step_func_body,
+        sorted_model_func,
+    )
+    
+    # add step_func to globals for the kernel, so it can call it
+    sorted_model_func += ((step_func_name, step_func),)
+
+    kernel_func = _build_cached(
+        kernel_name,
+        kernel_str,
+        sorted_model_func,
     )
 
-    return fn, src
+    return kernel_func
