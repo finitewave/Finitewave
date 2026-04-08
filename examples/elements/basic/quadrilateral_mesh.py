@@ -10,6 +10,7 @@ coords, elems = fw.build_quadrilateral_mesh(n, n, (0, size), (0, size))
 
 # create cardiac tissue object:
 tissue = fw.CardiacTissueElements(coords, elems, elem_type='Quadrilateral')
+tissue.mesh_elems += (np.random.rand(*tissue.mesh_elems.shape) < 0.2).astype(int)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -27,7 +28,7 @@ simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 # set up the solver, default is Crank-Nicolson:
 # ! Forward Euler is conditionally stable for quadrilateral meshes
-simulation.solver = fw.ForwardEulerSolver()
+# simulation.solver = fw.ForwardEulerSolver()
 
 # run the model:
 simulation.run()
@@ -39,7 +40,8 @@ elems_u = np.mean(u[elems], axis=1)
 # show the potential map at the end of calculations:
 faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
 mesh = pv.PolyData(tissue.coords, faces)
-mesh.cell_data["values"] = elems_u
+# mesh.cell_data["values"] = elems_u
+mesh["u"] = u
 
 pl = pv.Plotter()
 pl.add_mesh(mesh, cmap="RdBu_r", show_edges=False)

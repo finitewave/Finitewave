@@ -15,7 +15,7 @@ class LinearQuadrilateralElement:
         Coefficient for mass matrix calculation.
     elem_mass: (4, 4) ndarray
         Element mass matrix.
-    dN: list of (4,) ndarray
+    dN: (2, 4) ndarray
         Derivative of shape functions with respect to xi and eta.
     quad_weights: (1,) ndarray
         Quadrature weights for the element.
@@ -31,7 +31,7 @@ class LinearQuadrilateralElement:
                                                         [1, 2, 4, 2],
                                                         [2, 1, 2, 4]])
 
-        self.dN = [np.array([-0.25,  0.25,  0.25, -0.25]),
-                   np.array([-0.25, -0.25,  0.25,  0.25])]
+        self.dN = np.array([[-0.25,  0.25,  0.25, -0.25],
+                            [-0.25, -0.25,  0.25,  0.25]])
         self.quad_weights = np.array([4.0])
         self.n_points = 4

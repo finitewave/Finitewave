@@ -1,16 +1,9 @@
 import math
 import numpy as np
 
-from finitewave.core.model.cardiac_model import CardiacModel
-from finitewave.core.model.ionic_kernel_generator import IonicKernelGenerator
-
-from finitewave.cpuwave.stencil.sten2D.asymmetric_stencil_2d import AsymmetricStencil2D
-from finitewave.cpuwave.stencil.sten2D.isotropic_stencil_2d import IsotropicStencil2D
-from finitewave.cpuwave.stencil.sten3D.asymmetric_stencil_3d import AsymmetricStencil3D
-from finitewave.cpuwave.stencil.sten3D.isotropic_stencil_3d import IsotropicStencil3D
+from ._cardiac_model import CardiacModel
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
-from finitewave.cpuwave.model._kernel_builder import build_kernel
 
 
 try:
@@ -21,46 +14,6 @@ except KeyError as e:
         "Luo–Rudy 1991 model ops not found."
         # "Install model package: pip install finitewave-model-luo-rudy91"
     ) from e
-
-
-class LuoRudy91Kernel(IonicKernelGenerator):
-    def __init__(self):
-        super().__init__()
-        self.args_order = [
-            "u", "m", "h", "j", "d", "f", "x", "cai",
-            "gna", "gsi", "gk", "gk1", "gkp", "gb",
-            "ko", "ki", "nai", "nao", "cao",
-            "R", "T", "F", "E_Na", "E_K1", "PR_NaK"
-        ]
-
-    def generate_body(self) -> str:
-        model = {var: self._indexing(var) for var in (self.arrays + self.scalars)}
-        u_new = f"u_new{self._raw_indexing()}"
-
-        return f"""\
-        u_loc = {model['u']}
-
-        ina = calc_ina(u_loc, {model['m']}, {model['h']}, {model['j']}, {model['E_Na']}, {model['gna']})
-        isi = calc_isk(u_loc, {model['d']}, {model['f']}, {model['cai']}, {model['gsi']})
-        {model['cai']} += dt * calc_dcai({model['cai']}, isi)
-
-        ik  = calc_ik(u_loc, {model['x']}, {model['ko']}, {model['ki']}, {model['nao']}, {model['nai']}, 
-            {model['PR_NaK']}, {model['R']}, {model['T']}, {model['F']}, {model['gk']})
-        ik1 = calc_ik1(u_loc, {model['ko']}, {model['E_K1']}, {model['gk1']})
-        ikp = calc_ikp(u_loc, {model['E_K1']}, {model['gkp']})
-        ib  = calc_ib(u_loc, {model['gb']})
-
-        {u_new} += dt * calc_rhs(ina, isi, ik, ik1, ikp, ib)
-
-        {model['m']} += dt * calc_dm(u_loc, {model['m']})
-        {model['h']} += dt * calc_dh(u_loc, {model['h']})
-        {model['j']} += dt * calc_dj(u_loc, {model['j']})
-
-        {model['d']} += dt * calc_dd(u_loc, {model['d']})
-        {model['f']} += dt * calc_df(u_loc, {model['f']})
-        {model['x']} += dt * calc_dx(u_loc, {model['x']})
-    """
-
 
 
 class LuoRudy91(CardiacModel):
@@ -120,22 +73,29 @@ class LuoRudy91(CardiacModel):
     PMID: 1709839.
 
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, memory_save=False):
+        super().__init__(memory_save)
 
         self.D_model = 0.1
         self.npfloat = "float64"
-
         self._initialize_variables_and_parameters(ops)
+        self._initialize_model_func(jit_ops)
 
-    def initialize(self):
-        super().initialize()
-    
-        self._allocate_state_arrays()
-    
-        gen = self._initialize_kernel(LuoRudy91Kernel)
-    
-        glb = {
+    def initialize(self, simulation):
+        """
+        Initializes the model for simulation.
+        """
+        super().initialize(simulation)
+
+        self._initialize_ionic_kernel(ops.ionic_step, self.model_func)
+        self.ionic_kernel_args = [getattr(self, name) for name in self.ionic_kernel_arg_names]
+
+    def prepacing(self, stim_prepacing):
+        self._initialize_prepacing_kernel(ops.ionic_step)
+        return self._prepacing(stim_prepacing)
+
+    def _initialize_model_func(self, jit_ops):
+        self.model_func = {
             "calc_dm": jit_ops["calc_dm"],
             "calc_dh": jit_ops["calc_dh"],
             "calc_dj": jit_ops["calc_dj"],
@@ -151,36 +111,3 @@ class LuoRudy91(CardiacModel):
             "calc_ib": jit_ops["calc_ib"],
             "calc_rhs": jit_ops["calc_rhs"],
         }
-
-        self._kernel, _ = build_kernel(
-            gen=gen,
-            glb=glb,
-            dimensions=self.cardiac_tissue.dimensions,
-            observers=self.observers,
-        )
-        self._buffs = self._form_and_verify_observers()
-
-    def run_ionic_kernel(self):
-        args = [getattr(self, name) for name in self._kernel_args_order]
-        self._kernel(
-            self.u_new,
-            self.cardiac_tissue.myo_indexes,
-            self.dt,
-            self.step,
-            *args,
-            *self._buffs,
-        )
-
-    def select_stencil(self, cardiac_tissue):
-        if cardiac_tissue.fibers is None:
-            if cardiac_tissue.dimensions == 2:
-                return IsotropicStencil2D()
-            if cardiac_tissue.dimensions == 3:
-                return IsotropicStencil3D()
-            raise ValueError("Unsupported number of dimensions")
-        else:
-            if cardiac_tissue.dimensions == 2:
-                return AsymmetricStencil2D()
-            if cardiac_tissue.dimensions == 3:
-                return AsymmetricStencil3D()
-            raise ValueError("Unsupported number of dimensions")

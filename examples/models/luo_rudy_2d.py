@@ -33,25 +33,19 @@ import finitewave as fw
 
 n = 400
 m = 10
+dt = 0.01
+t_max = 500
 
-prepacing_protocol = [
-    {"n_beats": 30,
-     "cycle_length": 1000.,
-     "stim_duration": 0.5,
-     "stim_amplitude": 100.,
-     "dt": 0.01},
-    {"n_beats": 100,
-     "cycle_length": 500.,
-     "stim_duration": 0.5,
-     "stim_amplitude": 100.,
-     "dt": 0.01}
-]
 # create mesh
 tissue = fw.CardiacTissueGrid((n, m), dr=0.1)
 
 # create model object and set up parameters
+stim_prepacing = fw.StimPrepacing(dt)
+stim_prepacing.add_stim(n_beats=30, basic_cycle_length=1000., stim_duration=0.5, stim_amplitude=100.)
+stim_prepacing.add_stim(n_beats=100, basic_cycle_length=500., stim_duration=0.5, stim_amplitude=100.)
+
 luo_rudy = fw.LuoRudy91()
-luo_rudy.prepacing(prepacing_protocol)
+luo_rudy.prepacing(stim_prepacing)
 # set up stimulation parameters
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimCurrentCoord(0, 100., 1, 0, 1, 0, m))
@@ -66,8 +60,8 @@ tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
 simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.t_max = 500
+simulation.dt = dt
+simulation.t_max = t_max
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = luo_rudy
@@ -81,12 +75,20 @@ simulation.run()
 # plt.show()
 
 # plot the action potential
-plt.figure()
+fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(10, 5))
+
+time = np.arange(len(luo_rudy.u_pacing)) * dt
+axs[0].plot(time, luo_rudy.u_pacing, label="cell_50_3")
+axs[0].set_xlabel('Time (ms)')
+axs[0].set_ylabel('Voltage (mV)')
+axs[0].set_title('Prepacing Protocol')
+axs[0].grid()
+
 time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
-plt.legend(title='Luo-Rudy 1991')
-plt.xlabel('Time (ms)')
-plt.ylabel('Voltage (mV)')
-plt.title('Action Potential')
-plt.grid()
+axs[1].plot(time, action_pot_tracker.output, label="cell_50_3")
+axs[1].set_xlabel('Time (ms)')
+axs[1].set_ylabel('Voltage (mV)')
+axs[1].set_title('Action Potential')
+axs[1].grid()
+# plt.legend(title='Luo-Rudy 1991')
 plt.show()

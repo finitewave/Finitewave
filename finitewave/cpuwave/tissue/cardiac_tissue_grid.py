@@ -24,7 +24,7 @@ class CardiacTissueGrid(CardiacTissue):
         used.
     """
 
-    def __init__(self, shape, dr=1.0):
+    def __init__(self, shape, dr):
         """
         Initializes the CardiacTissueGrid instance.
 

@@ -87,7 +87,7 @@ class CardiacModel(CardiacModelBase):
 
         dt = stim_prepacing.dt
         stim_values = stim_prepacing.stim_sequence
-        self.u_history = np.zeros(len(stim_values), dtype=self.npfloat)
+        self.u_pacing = np.zeros(len(stim_values), dtype=self.npfloat)
 
         prepacing_kernel_args = []
         for name in self.prepacing_kernel_arg_names:
@@ -112,7 +112,7 @@ class CardiacModel(CardiacModelBase):
 
             raise ValueError(f"Prepacing kernel argument {name} not found in state variables or parameters.")
 
-        state_vals = self.prepacing_kernel(self.u_history, stim_values, dt,
+        state_vals = self.prepacing_kernel(self.u_pacing, stim_values, dt,
                                            self.init_u, *prepacing_kernel_args)
 
         
@@ -194,7 +194,7 @@ class CardiacModel(CardiacModelBase):
 
         state_vars = self.state_vars
 
-        arrays = ["u_history"]
+        arrays = ["u_pacing"]
         scalars = []
         
         for param in self.state_pars:

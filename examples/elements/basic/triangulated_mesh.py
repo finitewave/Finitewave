@@ -11,6 +11,7 @@ coords, elems = fw.build_triangulated_mesh(n, n, (0, size), (0, size))
 
 # create cardiac tissue object:
 tissue = fw.CardiacTissueElements(coords, elems, elem_type='Triangle')
+tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.2).astype(int)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -33,15 +34,17 @@ simulation.run()
 
 # get the resulting potential at the element centers:
 u = simulation.cardiac_model.u
-elems_u = np.mean(u[elems], axis=1)
+elems_u = np.zeros(tissue.elems.shape[0]) * np.nan
+elems_u[tissue.myo_elems_indexes] = u[tissue.myo_elements].mean(axis=1)
 coords_3d = np.hstack([coords, np.zeros((coords.shape[0], 1))])
 
 # show the potential map at the end of calculations:
 faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
 mesh = pv.PolyData(coords_3d, faces)
-mesh.cell_data["values"] = elems_u
+# mesh.cell_data["u"] = elems_u
+mesh["u"] = u
 
 pl = pv.Plotter()
-pl.add_mesh(mesh, cmap="RdBu_r", show_edges=False)
+pl.add_mesh(mesh, cmap="RdBu_r", show_edges=False, nan_color="white")
 pl.camera_position = 'xy'
 pl.show()

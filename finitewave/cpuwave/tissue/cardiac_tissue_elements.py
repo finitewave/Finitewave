@@ -87,10 +87,19 @@ class CardiacTissueElements(CardiacTissue):
         numpy.ndarray
             The flat indices of the ``myo_elements``.
         """
+        return np.flatnonzero(self.myo_elems_mask)
+    
+    @property
+    def myo_elems_mask(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            A boolean array of length M indicating which elements are myocytes.
+        """
         myo_nodes_mask = self.mesh == 1
-        myo_elems_mask = ((self.mesh_elems == 1) &
-                          np.all(myo_nodes_mask[self.elems], axis=1))
-        return np.flatnonzero(myo_elems_mask)
+        myo_elems_mask = ((self.mesh_elems == 1) & np.all(myo_nodes_mask[self.elems], axis=1))
+        return myo_elems_mask
     
     @property
     def myo_on_tissue_indexes(self):

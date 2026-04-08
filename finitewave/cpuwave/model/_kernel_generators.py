@@ -1,6 +1,4 @@
 import textwrap
-import re
-import warnings
 
 from finitewave.cpuwave.model._kernel_builder import _build_cached
 
@@ -217,7 +215,7 @@ class StepKernelGenerator(KernelGenerator):
 class SingleCellKernelGenerator(StepKernelGenerator):
     def __init__(self, kernel_func_name="single_cell_kernel"):
         super().__init__(kernel_func_name)
-        self.common_args = ["u_history", "stim_values", "dt", "u"]
+        self.common_args = ["u_pacing", "stim_values", "dt", "u"]
 
     def _assign_indexing(self, name, arrays):
         if name in arrays:
@@ -237,9 +235,9 @@ class SingleCellKernelGenerator(StepKernelGenerator):
             The header for the loop that iterates over the indexes.
         """
         loop = """\
-            u_history[0] = u
+            u_pacing[0] = u
             for idx in range(1, len(stim_values)):
-                u_old = u_history.flat[idx-1] + dt * stim_values.flat[idx-1]
+                u_old = u_pacing.flat[idx-1] + dt * stim_values.flat[idx-1]
         """
         loop = textwrap.indent("\n" +textwrap.dedent(loop).strip(), " " * indent)
         return loop
@@ -253,7 +251,7 @@ class SingleCellKernelGenerator(StepKernelGenerator):
         """
         update_vars = "\n".join(f"{self._update_indexing(var, arrays)} = {var}_new" for var in state_vars if var != "u")
         update_vars += "\nu = u_old + dt * rhs_new"
-        update_vars += "\nu_history.flat[idx] = u"
+        update_vars += "\nu_pacing.flat[idx] = u"
         return textwrap.indent("\n" + textwrap.dedent(update_vars).strip(), " " * (indent))
 
 

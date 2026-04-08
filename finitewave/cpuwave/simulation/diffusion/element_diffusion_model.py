@@ -2,6 +2,7 @@ import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 from finitewave.cpuwave.numerics.fem.element_assembler import ElementAssembler
 
+
 class ElementDiffusionModel(DiffusionModelBase):
     """
     Class for assembling element-based diffusion models.
@@ -58,7 +59,7 @@ class ElementDiffusionModel(DiffusionModelBase):
         tissue = self.simulation.cardiac_tissue
 
         indexes = tissue.myo_indexes
-        coords = tissue.coords[indexes]
+        coords = tissue.coords
         elems = tissue.myo_elements
 
         diffusion = self.compute_diffusion(self.simulation, tissue)

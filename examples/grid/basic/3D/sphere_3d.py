@@ -103,25 +103,28 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(stim1)
 stim_sequence.add_stim(stim2)
 
+stim_prepacing = fw.StimPrepacing(dt=0.01)
+stim_prepacing.add_stim(n_beats=5, basic_cycle_length=40, stim_duration=0.1, stim_amplitude=1)
+stim_prepacing.add_stim(n_beats=5, basic_cycle_length=30, stim_duration=0.1, stim_amplitude=1)
+stim_prepacing.add_stim(n_beats=5, basic_cycle_length=25, stim_duration=0.1, stim_amplitude=1)
+
+model = fw.AlievPanfilov(memory_save=True)
+model.prepacing(stim_prepacing)
+
 simulation = fw.CardiacSimulation()
 # set up numerical parameters:
 simulation.dt = 0.01
-simulation.t_max = 2
+simulation.t_max = 200
 # add the tissue and the stim parameters to the model object:
-simulation.cardiac_model = fw.AlievPanfilov(memory_save=True)
+simulation.cardiac_model = model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 
 simulation.run()
 
-# u is the flattened array of the action potential values at the tissue points.
-# We need to reshape it back to the original grid shape for visualization.
 u = simulation.cardiac_model.u
-u_full = np.zeros(tissue.mesh.shape, dtype=float)
-u_full.flat[tissue.tissue_indexes] = u
 
 # visualize the potential map in 3D
-mesh_builder = fw.PyVistaGridBuilder()
-grid = mesh_builder.build_from_grid(tissue.mesh)
-grid = mesh_builder.add_scalar(u_full, 'u')
-grid.plot(cmap='RdBu_r')
+grid = fw.PyVistaMeshGrid(tissue.mesh, as_surface=False)
+grid['u'] = u
+grid.plot(scalars='u', cmap='coolwarm', show_edges=False, show_scalar_bar=True)

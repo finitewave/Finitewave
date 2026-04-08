@@ -1,5 +1,6 @@
 from functools import lru_cache
 from numba import njit, prange
+import math
 from finitewave.core.model.kernel_generator import KernelGenerator
 
 
@@ -9,6 +10,9 @@ def _build_cached(name, src, glb_key):
     glb = { # dict of injected globals (calc_*, etc.)
         "njit": njit,
         "prange": prange,
+        "log": math.log,
+        "exp": math.exp,
+        "sqrt": math.sqrt,
         **dict(glb_key),        
     }
     exec(src, glb, loc)

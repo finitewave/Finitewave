@@ -16,7 +16,7 @@ class LinearTetrahedralElement:
         Coefficient for mass matrix calculation.
     elem_mass: (4, 4) ndarray
         Element mass matrix.
-    dN: list of (4,) ndarray
+    dN: (3, 4) ndarray
         Derivative of shape functions with respect to xi, eta, and zeta.
     quad_weights: (1,) ndarray
         Quadrature weights for the element.
@@ -31,9 +31,9 @@ class LinearTetrahedralElement:
                                                         [1, 2, 1, 1],
                                                         [1, 1, 2, 1],
                                                         [1, 1, 1, 2]])
-        self.dN = [np.array([-1.0, 1.0, 0.0, 0.0]),
-                   np.array([-1.0, 0.0, 1.0, 0.0]),
-                   np.array([-1.0, 0.0, 0.0, 1.0])]
+        self.dN = np.array([[-1.0, 1.0, 0.0, 0.0],
+                            [-1.0, 0.0, 1.0, 0.0],
+                            [-1.0, 0.0, 0.0, 1.0]])
 
         self.quad_weights = np.array([1.0/6.0])
         self.n_points = 4

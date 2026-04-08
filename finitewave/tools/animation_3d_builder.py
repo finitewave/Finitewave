@@ -4,13 +4,16 @@ import pyvista as pv
 from tqdm import tqdm
 
 from .animation_2d_builder import Animation2DBuilder
-from .pyvista_grid_builder import PyVistaGridBuilder
+from .pyvista_grid_builder import (
+    PyVistaMeshGrid,
+    PyVistaSurfaceGrid,
+    PyVistaTetraGrid
+)
 
 
 class Animation3DBuilder(Animation2DBuilder):
     def __init__(self) -> None:
         super().__init__()
-        self.mesh_builder = PyVistaGridBuilder()
 
     def write(self,
               coords=None,
@@ -64,7 +67,7 @@ class Animation3DBuilder(Animation2DBuilder):
 
         grid = self.build_grid(coords, elems, mesh, elem_type)
         scalar = self.calc_cell_scalars(scalar, elems, mesh)
-        grid = self.mesh_builder.add_scalar(scalar, scalar_name)
+        grid[scalar_name] = scalar
 
         if clim is not None:
             clim = [np.nanmin(scalar), np.nanmax(scalar)]
@@ -89,7 +92,7 @@ class Animation3DBuilder(Animation2DBuilder):
                              desc="Building animation"):
             scalar = self.load_scalar(filename, self.scalar_mask, nan_mask)
             scalar = self.calc_cell_scalars(scalar, elems, mesh)
-            grid = self.mesh_builder.add_scalar(scalar, scalar_name)
+            grid[scalar_name] = scalar
             pl.write_frame()
 
         pl.close()
@@ -130,16 +133,15 @@ class Animation3DBuilder(Animation2DBuilder):
             raise ValueError("Only one of elems or mesh should be provided.")
 
         if mesh is not None:
-            self.mesh_builder.build_from_grid(mesh, as_surface=True)
-            return self.mesh_builder.grid
+            grid = PyVistaMeshGrid(mesh, as_surface=True)
+            return grid
 
         if elem_type is None:
             raise ValueError("elem_type must be specified when elems are provided.")
 
-        if 'Tetra' in elem_type:
-            self.mesh_builder.build_from_tetrahedra(coords, elems,
-                                                    as_surface=True)
-            return self.mesh_builder.grid
+        if 'tetra' in elem_type.lower():
+            grid = PyVistaTetraGrid(coords, elems, as_surface=True)
+            return grid
 
-        self.mesh_builder.build_from_surface_elems(coords, elems)
-        return self.mesh_builder.grid
+        grid = PyVistaSurfaceGrid(coords, elems)
+        return grid

@@ -64,8 +64,17 @@ class ElementAssembler:
 
         for i in range(self.reference_element.n_points):
             for j in range(len(self.reference_element.dN)):
-                jacobian[:, j, :] += (self.reference_element.dN[j][i] *
+                jacobian[:, j, :] += (self.reference_element.dN[j, i] *
                                       coords[elems[:, i]])
+            
+        # for e in range(n_elems):
+        #     try:
+        #         np.linalg.inv(jacobian[e])
+        #     except np.linalg.LinAlgError:
+        #         print(f"Singular Jacobian for element {e}. Check the mesh quality.")
+        #         print(f"Element connectivity:\n{elems[e]}")
+        #         print(f"Element nodes:\n{coords[elems[e]]}")
+        #         raise ValueError()
         return jacobian
     
     def compute_gradients(self, coords, elems):
@@ -88,7 +97,7 @@ class ElementAssembler:
         jacobian = self.build_jacobian(coords, elems)
         grads = self._compute_gradients(jacobian)
         # Transpose to (N_elems, dim_phys, N_points)
-        grads = np.transpose(grads, (0, 2, 1)).copy() 
+        # grads = np.transpose(grads, (0, 2, 1)).copy() 
         return grads
     
     def compute_elements_size(self, coords, elems):
@@ -118,25 +127,25 @@ class ElementAssembler:
 
         Returns:
         -------
-            grads: (N_elems, N_points, dim_phys)
+            grads: (N_elems, dim_phys, N_points)
                 Gradient of shape functions in global coordinates for each
                 element.
 
         Note:
-            The output shape is (N_elems, N_points, dim_phys) to match the expected format
+            The output shape is (N_elems, dim_phys, N_points) to match the expected format
             for subsequent computations.
         """
         n_elems, dim_ref, dim_phys = jacobian.shape
         jacobian_inv = self.invert_jacobian(jacobian)
         n_points = self.reference_element.n_points
-        grads = np.zeros((n_elems, n_points, dim_phys))
+        grads = np.zeros((n_elems, dim_phys, n_points))
 
         for i in range(n_points):
             dN_ref = np.stack(
-                [np.full(n_elems, self.reference_element.dN[j][i]) for j in range(dim_ref)],
+                [np.full(n_elems, self.reference_element.dN[j, i]) for j in range(dim_ref)],
                 axis=1
             )
-            grads[:, i, :] = (jacobian_inv @ dN_ref[..., None])[..., 0]
+            grads[:, :, i] = (jacobian_inv @ dN_ref[..., None])[..., 0]
 
         return grads
 
@@ -193,6 +202,7 @@ class ElementAssembler:
     def compute_system_matrices(self, coords, elems, diffusion, indexes, reindex=False):
         """
         Computes the stiffness and mass matrices.
+
         Parameters
         ----------
         coords : np.ndarray
@@ -210,20 +220,67 @@ class ElementAssembler:
             The rows, columns, stiffness matrix, and mass matrix.
         """
 
-        print(diffusion.shape)
         shape = (coords.shape[0], coords.shape[0])
         elem_mass = self.reference_element.elem_mass
 
         if reindex:
             elems = self.reindex_elems(coords, elems, indexes)
+            coords = coords[indexes]
+            shape = (len(indexes), len(indexes))
 
         elements_size, grads = self.compute_metrics(coords, elems)
-        rows, cols, stiff, mass = stiffness_and_mass_matrix(elems, elements_size,
-                                                            grads, diffusion,
-                                                            elem_mass)
-        stiffness_matrix = sp.coo_matrix((stiff, (rows, cols)), shape=shape)
-        mass_matrix = sp.coo_matrix((mass, (rows, cols)), shape=shape)
-        return stiffness_matrix.tocsr(), mass_matrix.tocsr()
+        # TODO: replace with einsum for better performance and readability
+        # rows, cols, stiff, mass = stiffness_and_mass_matrix(elems, elements_size,
+        #                                                     grads, diffusion,
+        #                                                     elem_mass)
+        # stiffness_matrix = sp.coo_matrix((stiff, (rows, cols)), shape=shape)
+        # mass_matrix = sp.coo_matrix((mass, (rows, cols)), shape=shape)
+
+        stiff_matrix, mass_matrix = self._stiffness_and_mass_matrix(elems, elements_size,
+                                                                    grads, diffusion,
+                                                                    elem_mass, shape)
+
+        # n_components, labels = sp.csgraph.connected_components(stiffness_matrix, directed=False)
+        # print(f"Connected components in the stiffness matrix: {n_components}")
+        return stiff_matrix, mass_matrix
+    
+    def _stiffness_and_mass_matrix(self, elems, elems_size, grads, diffusion, elem_mass, shape):
+        """
+        Computes the stiffness matrix.
+
+        K[e] = V[e] * (grad[e, i] @ D[e] @ grad[e, j])
+
+        Parameters
+        ----------
+        elems : np.ndarray [N_elems, N_points]
+            The connectivity of the mesh elements.
+        elems_size : np.ndarray [N_elems,]
+            The volumes/areas of the elements.
+        grads : np.ndarray [N_elems, N_points, dim_phys]
+            The gradients of the shape functions.
+        diffusion : np.ndarray [N_elems, dim_phys, dim_phys]
+            The diffusion tensors for each element.
+        elem_mass : np.ndarray [N_points, N_points]
+            The mass matrix for each element.
+
+        Returns
+        -------
+        sp.csr_matrix
+            The stiffness matrix in sparse format.
+        """
+        n_elems, n_points = elems.shape
+        rows = np.repeat(elems[:, :, np.newaxis], n_points, axis=2).flatten()
+        cols = np.repeat(elems[:, np.newaxis, :], n_points, axis=1).flatten()
+
+        stiff_data = np.einsum('e,eki,elk,elj->eij', elems_size, grads, diffusion, grads, optimize='optimal')
+        stiff_data = stiff_data.flatten()
+
+        mass_data = np.einsum('e,ij->eij', elems_size, elem_mass, optimize='optimal')
+        mass_data = mass_data.flatten()
+
+        stiff_matrix = sp.coo_matrix((stiff_data, (rows, cols)), shape=shape)
+        mass_matrix = sp.coo_matrix((mass_data, (rows, cols)), shape=shape)
+        return stiff_matrix.tocsr(), mass_matrix.tocsr()
     
     def reindex_elems(self, coords, elems, indexes):
         """
@@ -246,7 +303,10 @@ class ElementAssembler:
         """
         new_indexes = - np.ones(coords.shape[0], dtype=int)
         new_indexes[indexes] = np.arange(len(indexes))
-        return new_indexes[elems]
+        new_elems = new_indexes[elems]
+        if np.any(new_elems < 0):
+            raise ValueError("Some elements are not connected to the specified nodes.")
+        return new_elems
 
 
 @njit(parallel=True)
@@ -287,7 +347,7 @@ def stiffness_and_mass_matrix(elems, volumes, grads, diffusion, elem_mass):
     for e in prange(n_elems):
         for i in range(n_points):
             for j in range(n_points):
-                ind = n_points ** 2 * (e - 1) + n_points * (i - 1) + j
+                ind = n_points ** 2 * e + n_points * i + j
                 rows[ind] = elems[e, i]
                 cols[ind] = elems[e, j]
                 val = volumes[e] * (grads[e, i, :] @
