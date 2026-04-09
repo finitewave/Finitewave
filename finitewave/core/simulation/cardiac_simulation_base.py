@@ -1,8 +1,5 @@
 import copy
-import warnings
-from tqdm import tqdm
 import numpy as np
-import numba
 
 
 class CardiacSimulationBase:
@@ -27,10 +24,14 @@ class CardiacSimulationBase:
         The object responsible for loading the state of the simulation.
     state_saver : StateSaver
         The object responsible for saving the state of the simulation.
+    solver : Solver
+        The solver used for time integration of the reaction-diffusion system.
+    diffusion_model : DiffusionModel
+        The diffusion model to assemble the diffusion operator for the simulation.
+    cardiac_model : CardiacModel
+        The cardiac model that defines the ionic currents and state variables.
     dt : float
         Time step for the simulation.
-    dr : float
-        Spatial step for the simulation.
     t_max : float
         Maximum time for the simulation (model units).
     t : float

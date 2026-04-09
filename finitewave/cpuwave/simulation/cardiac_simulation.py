@@ -34,10 +34,14 @@ class CardiacSimulation(CardiacSimulationBase):
         The object responsible for loading the state of the simulation.
     state_saver : StateSaver
         The object responsible for saving the state of the simulation.
+    solver : Solver
+        The solver used for time integration of the reaction-diffusion system.
+    diffusion_model : DiffusionModel
+        The diffusion model to assemble the diffusion operator for the simulation.
+    cardiac_model : CardiacModel
+        The cardiac model that defines the ionic currents and state variables.
     dt : float
         Time step for the simulation.
-    dr : float
-        Spatial step for the simulation.
     t_max : float
         Maximum time for the simulation (model units).
     t : float
@@ -48,11 +52,13 @@ class CardiacSimulation(CardiacSimulationBase):
         Whether to display a progress bar during simulation.
     npfloat : type
         The floating-point type used for numerical computations.
+    track_solution : bool
+        Whether to track the solution at previous time steps for use in trackers.
     """
     def __init__(self):
         super().__init__()
         self.diffusion_model = DiffusionModel()
-        self.solver = None
+        self.track_solution = False
 
     def initialize(self):
 
@@ -75,7 +81,7 @@ class CardiacSimulation(CardiacSimulationBase):
         if initialize:
             self.initialize()
 
-        self.limit_num_of_threads(num_of_threads)
+        self.set_num_of_threads(num_of_threads)
 
         if self.t_max < self.t:
             raise ValueError("t_max must be greater than current t.")
@@ -114,7 +120,16 @@ class CardiacSimulation(CardiacSimulationBase):
                     self.state_saver.save()
                 break
 
-    def limit_num_of_threads(self, num_of_threads):
+    def set_num_of_threads(self, num_of_threads):
+        """
+        Sets the number of threads for Numba parallel operations.
+
+        Parameters
+        ----------
+        num_of_threads : int or None
+            The number of threads to use for Numba parallel operations. If None,
+            it will use the maximum available threads minus one to avoid overloading the system.
+        """
         max_num_of_threads = numba.config.NUMBA_NUM_THREADS
 
         if num_of_threads is None:
@@ -130,6 +145,15 @@ class CardiacSimulation(CardiacSimulationBase):
         numba.set_num_threads(num_of_threads)
 
     def default_solver(self):
+        """Selects the default solver based on the type of cardiac tissue.
+        For grid-based tissues, it uses the Forward Euler method. For element-based
+        tissues, it uses the Crank-Nicolson method with Conjugate Gradient solver.
+
+         Returns
+         -------
+         Solver
+             The default solver instance based on the tissue type.
+        """
         if self.cardiac_tissue.meta["type"] == "Grid":
             return ForwardEulerSolver()
 

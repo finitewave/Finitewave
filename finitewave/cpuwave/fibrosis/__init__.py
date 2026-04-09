@@ -1,0 +1,1 @@
+from .decoupling_pattern import DecouplingPattern

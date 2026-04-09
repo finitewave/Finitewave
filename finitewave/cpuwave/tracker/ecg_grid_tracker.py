@@ -44,6 +44,7 @@ class ECGGridTracker(Tracker):
             The simulation object.
         """
         self.simulation = simulation
+        self.simulation.track_solution = True
         self.measure_coords = self.build_measure_coords(self.measure_coords)
         self.ecg = []
 

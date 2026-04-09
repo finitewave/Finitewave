@@ -1,5 +1,5 @@
-import numpy as np
-from finitewave.cpuwave.numerics.linalg.solvers import forward_euler
+from scipy import sparse
+from finitewave.cpuwave.numerics.linalg.numba_linalg import forward_euler
 from .solver import Solver
 
 
@@ -47,8 +47,8 @@ class ForwardEulerSolver(Solver):
 
     def assemble_system(self):
         """Assembles the system matrix for the Forward Euler method.
-        Takes the stiffness and mass matrices from the diffusion model
-        and computes the inverse of the lumped mass matrix diagonal.
+        
+        A_lhs = dt * M^{-1} * K
 
         Parameters
         ----------
@@ -60,52 +60,26 @@ class ForwardEulerSolver(Solver):
             Time step for the simulation.
         """
         stiff, mass = self.simulation.diffusion_model.weights
-        # stiff, mass, nonzero_rows = self.remove_zeros(stiff, mass)
+        dt = self.simulation.dt
         mass_lumped = mass.sum(axis=1).A.ravel()
-        self.mass_inv = 1 / mass_lumped
-        self.stiff = stiff
-        # self.myo_indexes = self.myo_indexes[nonzero_rows]
+        mass_inv = sparse.diags(1 / mass_lumped)
+        self.a_lhs_matrix = dt * mass_inv * stiff
 
     def run(self):
         """Performs a single time step using the Forward Euler method.
 
         For each time step:
-        1. Update the solution vector and right-hand side from the cardiac model.
-        2. u_new = u - dt * M^{-1} * K * u + dt * rhs (explicit diffusion step).
-        3. Update the cardiac model solution with the new values.
+            1. Update the solution vector and right-hand side from the cardiac model.
+            2. u_new = u - A_lhs @ u + dt * rhs (explicit diffusion step).
+            3. Update the cardiac model solution with the new values.
         """        
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
-        forward_euler(self.stiff, self.u, self.rhs, self.mass_inv,
+        forward_euler(self.a_lhs_matrix, self.u, self.rhs,
                       self.u_new, self.myo_indexes, self.simulation.dt)
 
         self.u, self.u_new = self.u_new, self.u
         self.simulation.cardiac_model.u = self.u
         self.num_iterations.append(1)
-
-    def remove_zeros(self, stiff, mass):
-        """Removes zero rows from the stiffness and mass matrices to optimize
-        the system for the Forward Euler method.
-
-        Parameters
-        ----------
-        stiff : scipy.sparse.csr_matrix
-            The stiffness matrix to be modified.
-        mass : scipy.sparse.csr_matrix
-            The mass matrix to be modified.
-
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            The modified stiffness matrix with zero rows removed.
-        scipy.sparse.csr_matrix
-            The modified mass matrix with zero rows removed.
-        np.ndarray
-            The indices of the non-zero rows in the original stiffness matrix.
-        """
-        nonzero_rows = np.where(stiff.getnnz(axis=1) > 0)[0]
-        stiff = stiff[nonzero_rows][:, nonzero_rows]
-        mass = mass[nonzero_rows][:, nonzero_rows]
-        return stiff, mass, nonzero_rows

@@ -4,3 +4,4 @@ from .model import *
 from .numerics import *
 from .tissue import *
 from .tracker import *
+from .fibrosis import *

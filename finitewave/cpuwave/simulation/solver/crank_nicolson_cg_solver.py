@@ -78,15 +78,17 @@ class CrankNicolsonCGSolver(Solver):
         For each time step:
             1. Update the solution vector and right-hand side from the cardiac model.
             2. u = u + dt * rhs (explicit reaction step).
-            3. b = A_rhs * u (formulate the right-hand side for diffusion).
-            4. Solve A_lhs * u_new = b using Conjugate Gradient method.
+            3. b = A_rhs @ u (formulate the right-hand side for diffusion).
+            4. Solve A_lhs @ u_new = b using Conjugate Gradient method.
             5. Update the cardiac model solution with the new values.
         """
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
-        # Copy current solution to u_new for the trackers if needed
-        self.u_new = copyto_numba(self.u, self.u_new, self.myo_indexes)
+
+        if self.simulation.track_solution:
+            self.u_new = copyto_numba(self.u, self.u_new, self.myo_indexes)
+
         # Explicit step for the reaction term (rhs of ionic model)
         self.u = ax_p_y_numba(self.simulation.dt, self.rhs, self.u,
                               self.myo_indexes)

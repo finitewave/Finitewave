@@ -16,9 +16,13 @@ class CardiacTissueGrid(CardiacTissue):
         indicates the type of tissue at that location. Possible values are:
         ``0`` for non-tissue, ``1`` for healthy tissue, and ``2`` for fibrotic
         tissue.
-    conductivity : float or np.ndarray
+    conductivity : float or np.ndarray (mesh.shape)
         The conductivity of the tissue used for reducing the diffusion
         coefficients. The conductivity should be in the range [0, 1].
+    connectivity : float or np.ndarray (mesh.shape + (ndim,))
+        The conductivity of the junctions between nodes in the tissue.
+        The connectivity between node (i, ...) and (i+1, ...) should be given in
+        connectivity[i, ..., 0] etc.
     fibers : np.ndarray
         Fibers orientation in the tissue. If None, the isotropic stencil is
         used.
@@ -44,7 +48,6 @@ class CardiacTissueGrid(CardiacTissue):
         self.mesh = np.ones(shape, dtype=np.int8)
         self.conductivity = 1.0
         self.connectivity = 1.0
-        self.element_conductivity = 1.0
         self.dr = dr
         self.fibers = None
 
