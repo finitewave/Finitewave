@@ -21,7 +21,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 100
+simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()

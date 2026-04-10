@@ -14,39 +14,26 @@ class Tracker(ABC):
 
     Attributes
     ----------
+    start_time : float
+        The time at which tracking will begin. Default is 0.
+    end_time : float
+        The time at which tracking will end. Default is infinity.
+    step : int
+        The frequency at which tracking will occur. Default is 1.
+    iter_counter : int
+        A counter to keep track of the number of iterations for tracking purposes.
     model : CardiacModel
         The simulation model to which the tracker is attached. This allows
         the tracker to access the model's state and data during the simulation.
-
-    file_name : str
-        The name of the file where the tracked data will be saved.
-        Default is an empty string.
-
-    path : str
-        The directory path where the tracked data will be saved.
-        Default is the current directory.
-
-    start_time : float
-        The time step at which tracking will begin. Default is 0.
-
-    end_time : float
-        The time step at which tracking will end. Default is infinity.
-
-    step : int
-        The frequency at which tracking will occur. Default is 1.
     """
-
-    # __metaclass__ = ABCMeta
-
-    def __init__(self):
+    def __init__(self, start_time=0, end_time=np.inf, step=1):
+        self.start_time = start_time
+        self.end_time = end_time
+        self.step = step
+        self.iter_counter = 0
+        self.tracking_counter = 0
         self.model = None
-        self.file_name = "tracked_data"
-        self.path = "."
-        self.start_time = 0
-        self.end_time = np.inf
-        self.step = 1
 
-    @abstractmethod
     def initialize(self, simulation):
         """
         Abstract method to be implemented by subclasses for initializing
@@ -57,7 +44,10 @@ class Tracker(ABC):
         simulation : Simulation
             The simulation object to which the tracker will be attached.
         """
-        pass
+        self.simulation = simulation
+        n_measurements = int(np.ceil((min(self.end_time, simulation.t_max) - self.start_time) / 
+                                     (simulation.dt * self.step)))
+        self.tracking_times = - np.ones((n_measurements,), dtype=float)
 
     @abstractmethod
     def _track(self):
@@ -74,13 +64,17 @@ class Tracker(ABC):
         This method calls the ``_track`` method at the specified tracking
         frequency and within the specified time range.
         """
-        if self.start_time > self.simulation.t or self.simulation.t > self.end_time:
+        if (self.simulation.t < self.start_time) or (self.simulation.t > self.end_time):
             return
-        # Check if the current time step is within the tracking frequency
-        if self.simulation.step % self.step != 0:
+
+        if self.iter_counter % self.step != 0:
+            self.iter_counter += 1
             return
 
         self._track()
+        self.tracking_times[self.tracking_counter] = self.simulation.t
+        self.tracking_counter += 1
+        self.iter_counter += 1
 
     def clone(self):
         """
@@ -93,9 +87,8 @@ class Tracker(ABC):
         """
         return copy.deepcopy(self)
 
-    def write(self):
+    def write(self, path=".", file_name="tracked_data", dir_name=""):
         """
         Writes the tracked data to a file.
         """
-        np.save(Path(self.path, self.file_name).with_suffix('.npy'),
-                self.output)
+        np.save(Path(path, dir_name, file_name).with_suffix('.npy'), self.output)

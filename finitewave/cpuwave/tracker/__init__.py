@@ -21,10 +21,10 @@ Each tracker class has basic attributes such as ``start_time``, ``end_time``,
     and the ``step`` is the number of time steps between recordings.
 """
 
-from .action_potential_grid_tracker import ActionPotentialGridTracker
+from .action_potential_tracker import ActionPotentialTracker
 from .activation_time_tracker import ActivationTimeTracker
-from .variable_grid_tracker import VariableGridTracker
-from .multi_variable_grid_tracker import MultiVariableGridTracker
+from .variable_tracker import VariableTracker
+from .multi_variable_tracker import MultiVariableTracker
 from .ecg_grid_tracker import ECGGridTracker
 from .frame_tracker import FrameTracker
 from .local_activation_time_tracker import LocalActivationTimeTracker

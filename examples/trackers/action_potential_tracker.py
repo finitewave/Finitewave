@@ -13,18 +13,17 @@ tissue points.
 
 Simulation Setup:
 -----------------
-- Tissue Grid: A 100×100 cardiac tissue domain.
+- Tissue Grid: A 100×10 cardiac tissue domain with a spatial resolution of dr = 0.25.
 - Stimulation:
   - A left-side stimulus is applied at time t = 0.
   - The excitation wave propagates across the tissue.
 - Action Potential Tracking:
   - Action potentials are recorded at two specific cells:  
-    - Cell at (30, 30)
-    - Cell at (70, 70)
-  - Sampling step: Every time step (1 ms).
+    - Cell at (30, 5)
+    - Cell at (70, 5)
+  - Sampling step: Every time step.
 - Time and Space Resolution:
   - Temporal step (dt): 0.01
-  - Spatial resolution (dr): 0.25
   - Total simulation time (t_max): 50
 
 Execution:
@@ -59,39 +58,48 @@ import finitewave as fw
 
 # create a mesh of cardiomyocytes (elems = 1):
 n = 100
-m = 100
-tissue = fw.CardiacTissueFDM([m, n])
+m = 10
+tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoordFDM(0, 1, 0, 3, 0, n))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 3, 0, m))
 
 # set up tracker parameters:
+node_inds = [[30, 5], [70, 5]]
+action_pot_tracker = fw.ActionPotentialTracker(node_inds)
+
 tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotentialTrackerFDM()
-# to specify the mesh node under the measuring - use the cell_ind field:
-# eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[30, 30], [70, 70]]
-action_pot_tracker.step = 1
 tracker_sequence.add_tracker(action_pot_tracker)
 
-# create model object and set up parameters:
-aliev_panfilov = fw.AlievPanfilovFDM()
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 50
-# add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
-aliev_panfilov.tracker_sequence = tracker_sequence
+# set up simulation parameters:
+simulation = fw.CardiacSimulation()
+simulation.dt = 0.01
+simulation.t_max = 50
+simulation.cardiac_model = fw.AlievPanfilov(memory_save=False)
+simulation.cardiac_tissue = tissue
+simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
-aliev_panfilov.run()
+# run the model:
+simulation.run()
 
 # plot the action potential
-time = np.arange(len(action_pot_tracker.output)) * aliev_panfilov.dt
+time = action_pot_tracker.tracking_times
+act_pot = action_pot_tracker.act_pot
+u = simulation.cardiac_model.u
 
-plt.figure()
-plt.plot(time, action_pot_tracker.output[:, 0], label="cell_30_30")
-plt.plot(time, action_pot_tracker.output[:, 1], label="cell_70_70")
-plt.legend(title='Aliev-Panfilov')
+fig, axs = plt.subplots(ncols=2, width_ratios=[0.3, 1])
+
+axs[0].imshow(u, cmap="RdBu_r", origin="lower")
+axs[0].scatter(np.array(action_pot_tracker.node_inds)[:, 1],
+               np.array(action_pot_tracker.node_inds)[:, 0],
+               c=["tab:blue", "tab:orange"],
+               label='Tracked Nodes')
+
+for i, (x, y) in enumerate(node_inds):
+    axs[1].plot(time, act_pot[:, i], label=f"Node [{x}, {y}]")
+axs[1].legend(title='Aliev-Panfilov Model')
+axs[1].set_xlabel('Time (ms)')
+axs[1].set_ylabel('Membrane Potential (mV)')
 plt.show()
