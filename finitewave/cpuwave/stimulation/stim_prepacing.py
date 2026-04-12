@@ -15,7 +15,7 @@ class StimPrepacing:
         self.dt = dt
         self._stim_sequence = []
 
-    def add_stim(self, n_beats, basic_cycle_length, stim_duration, stim_amplitude):
+    def add_stim(self, n_beats, cycle_length, curr_value, duration):
         """
         Adds a stimulus to the prepacing sequence.
         
@@ -23,24 +23,24 @@ class StimPrepacing:
         ----------
         n_beats : int
             Number of beats for the prepacing sequence.
-        basic_cycle_length : float
-            Interval between each beat in the prepacing sequence.
-        stim_duration : float
+        cycle_length : float
+            Length of each cycle in the prepacing sequence.
+        duration : float
             Duration of the stimulus.
-        stim_amplitude : float
-            Amplitude of the stimulus.
+        curr_value : float
+            Amplitude of the stimulus current.
         """
-        steps = int(n_beats * basic_cycle_length / self.dt)
+        steps = int(n_beats * cycle_length / self.dt)
 
         stim_values = np.zeros(steps, dtype=np.float64)
 
         for s in np.arange(n_beats):
-            stim_start = s * basic_cycle_length
-            stim_end = stim_start + stim_duration
+            stim_start = s * cycle_length
+            stim_end = stim_start + duration
             
             start_idx = int(stim_start / self.dt)
             end_idx = int(stim_end / self.dt)
-            stim_values[start_idx: end_idx] = stim_amplitude
+            stim_values[start_idx: end_idx] = curr_value
 
         self._stim_sequence.append(stim_values)
 

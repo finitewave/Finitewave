@@ -33,12 +33,10 @@ class LuoRudy91(CardiacModel):
     - Plateau K⁺ current (I_Kp)
     - Background/leak current (I_b)
 
-    Attributes
-    ----------
+    Model Diffusion
+    ---------------
     D_model : float
-        Diffusion coefficient for the model, used in tissue simulations.
-    npfloat : str
-        String specifying the floating-point precision to use (e.g., 'float64').
+        Model-specific diffusion coefficient for simulating spatial propagation.
     
     Model Variables
     ---------------
@@ -77,37 +75,5 @@ class LuoRudy91(CardiacModel):
         super().__init__(memory_save)
 
         self.D_model = 0.1
-        self.npfloat = "float64"
         self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(jit_ops)
-
-    def initialize(self, simulation):
-        """
-        Initializes the model for simulation.
-        """
-        super().initialize(simulation)
-
-        self._initialize_ionic_kernel(ops.ionic_step, self.model_func)
-        self.ionic_kernel_args = [getattr(self, name) for name in self.ionic_kernel_arg_names]
-
-    def prepacing(self, stim_prepacing):
-        self._initialize_prepacing_kernel(ops.ionic_step)
-        return self._prepacing(stim_prepacing)
-
-    def _initialize_model_func(self, jit_ops):
-        self.model_func = {
-            "calc_dm": jit_ops["calc_dm"],
-            "calc_dh": jit_ops["calc_dh"],
-            "calc_dj": jit_ops["calc_dj"],
-            "calc_dd": jit_ops["calc_dd"],
-            "calc_df": jit_ops["calc_df"],
-            "calc_dx": jit_ops["calc_dx"],
-            "calc_dcai": jit_ops["calc_dcai"],
-            "calc_ina": jit_ops["calc_ina"],
-            "calc_isk": jit_ops["calc_isk"],
-            "calc_ik": jit_ops["calc_ik"],
-            "calc_ik1": jit_ops["calc_ik1"],
-            "calc_ikp": jit_ops["calc_ikp"],
-            "calc_ib": jit_ops["calc_ib"],
-            "calc_rhs": jit_ops["calc_rhs"],
-        }
+        self._initialize_model_func(ops, jit_ops)

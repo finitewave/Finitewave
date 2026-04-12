@@ -14,7 +14,7 @@ class ElementAssembler:
         The reference element used for numerical integration.
     """
     def __init__(self):
-        pass
+        self.reference_element = None
 
     def compute_metrics(self, coords, elems):
         """
@@ -199,7 +199,7 @@ class ElementAssembler:
         Jplus = np.matmul(JT, invG)             # (N, 3, 2) — right pseudoinverse
         return Jplus
    
-    def compute_system_matrices(self, coords, elems, diffusion, indexes, reindex=False):
+    def compute_system_matrices(self, coords, elems, diffusion=None, indexes=None, reindex=False):
         """
         Computes the stiffness and mass matrices.
 
@@ -223,7 +223,10 @@ class ElementAssembler:
         shape = (coords.shape[0], coords.shape[0])
         elem_mass = self.reference_element.elem_mass
 
-        if reindex:
+        if diffusion is None:
+            diffusion = np.eye(coords.shape[1]) * np.ones(len(elems))[:, np.newaxis, np.newaxis]
+
+        if reindex and indexes is not None:
             elems = self.reindex_elems(coords, elems, indexes)
             coords = coords[indexes]
             shape = (len(indexes), len(indexes))

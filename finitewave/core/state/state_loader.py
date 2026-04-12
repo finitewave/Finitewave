@@ -29,16 +29,16 @@ class StateLoader:
         self.passed = True
         self.model = None
 
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Initializes the state keeper with the given model.
 
         Parameters
         ----------
-        model : CardiacModel
-            The model instance for which the state will be saved or loaded.
+        simulation : CardiacSimulation
+            The simulation instance for which the state will be saved or loaded.
         """
-        self.model = model
+        self.model = simulation.cardiac_model
         self.passed = self.path == ""
 
         if not Path(self.path).exists():
@@ -57,9 +57,10 @@ class StateLoader:
         if self.passed:
             return
 
-        for var in self.model.cardiac_model.state_vars:
+        for var in self.model.state_vars:
             val = self._load_variable(Path(self.path), var)
-            setattr(self.model.cardiac_model, var, val)
+            state_var = getattr(self.model, var)
+            state_var[:] = val
 
         # self.model.update_state()
         self.passed = True
@@ -79,14 +80,5 @@ class StateLoader:
             The variable loaded from the file.
         """
         val = np.load(var_path.joinpath(var_name + ".npy"))
-
-        if val.shape == self.model.cardiac_model.u.shape:
-            return val
-
-        if val.size == 1:
-            val_arr = np.zeros_like(self.model.cardiac_model.u)
-            val_arr.flat[:] = val
-            return val_arr
-
-        msg = "Loaded variable shape does not match model variable shape."
-        raise ValueError(msg)
+        
+        return val

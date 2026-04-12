@@ -23,7 +23,7 @@ class MultiVariableTracker(Tracker):
     tracking_times : np.ndarray
         An array of time points corresponding to the tracked variable values.
     """
-    def __init__(self, node_inds=None, var_list=[], start_time=0, end_time=np.inf, step=1):
+    def __init__(self, node_inds=None, var_list=None, start_time=0, end_time=np.inf, step=1):
         """
         Initializes the MultiVariableTracker with default parameters.
 
@@ -33,7 +33,7 @@ class MultiVariableTracker(Tracker):
             The indices of the node(s) where the variables are tracked. List of
             lists can be used to track multiple nodes.
         var_list : list of str
-            A list of variable names to be tracked.
+            A list of variable names to be tracked. If None, all state variables in the model will be tracked.
         start_time : float, optional
             The time at which tracking will begin. Default is 0.
         end_time : float, optional
@@ -63,6 +63,9 @@ class MultiVariableTracker(Tracker):
 
         self.vars_data = {}
         self.model = simulation.cardiac_model
+
+        if self.var_list is None:
+            self.var_list = self.model.state_vars
 
         self._node_inds = self._compute_node_inds(simulation.cardiac_tissue, simulation.cardiac_model)
 
@@ -120,7 +123,6 @@ class MultiVariableTracker(Tracker):
             raise ValueError(f"Specified nodes {non_tissue_inds} are not part of the tissue.")
 
         return flat_ind
-        
 
     def _track(self):
         """

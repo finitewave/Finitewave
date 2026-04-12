@@ -24,9 +24,9 @@ for i in range(5):
                                                x_min=0, x_max=5,
                                                y_min=0, y_max=m))
 prepacing = fw.StimPrepacing(dt=0.01)
-prepacing.add_stim(n_beats=5, basic_cycle_length=40, stim_duration=0.1, stim_amplitude=2.)
-prepacing.add_stim(n_beats=5, basic_cycle_length=30, stim_duration=0.1, stim_amplitude=2.)
-prepacing.add_stim(n_beats=5, basic_cycle_length=25, stim_duration=0.1, stim_amplitude=2.)
+prepacing.add_stim(n_beats=5, cycle_length40, stim_duration=0.1, stim_amplitude=2.)
+prepacing.add_stim(n_beats=5, cycle_length30, stim_duration=0.1, stim_amplitude=2.)
+prepacing.add_stim(n_beats=5, cycle_length25, stim_duration=0.1, stim_amplitude=2.)
 
 cardiac_model = fw.AlievPanfilov()
 cardiac_model.prepacing(prepacing)

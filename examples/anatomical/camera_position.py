@@ -3,8 +3,8 @@ import pyvista as pv
 
 
 path = Path("/Users/arstanbekokenov/Projects/Finitewave/examples/data/atrial_mesh")
+vtk_mesh = pv.read(path / "Mesh_31475951.vtk")
 
-vtk_mesh = pv.read(path / "Mesh_10954794.vtk")
 vtk_mesh.points /= 1000
 
 plotter = pv.Plotter()

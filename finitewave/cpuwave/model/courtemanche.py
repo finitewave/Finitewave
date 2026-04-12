@@ -1,5 +1,4 @@
 import math
-import numpy as np
 
 from ._cardiac_model import CardiacModel
 
@@ -27,12 +26,10 @@ class Courtemanche(CardiacModel):
     The Courtemanche model is widely used as a reference atrial electrophysiology model. 
     It has served as the basis for many subsequent atrial modeling studies, including investigations of atrial fibrillation and drug effects.
 
-    Attributes
-    ----------
+    Model diffusion
+    ---------------
     D_model : float
-        Diffusion coefficient for the model, used in tissue simulations.
-    npfloat : str
-        String specifying the floating-point precision to use (e.g., 'float64').
+        Model-specific diffusion coefficient for simulating spatial propagation.
 
     Model Variables
     ---------------
@@ -159,81 +156,4 @@ class Courtemanche(CardiacModel):
         self.D_model = 0.154
         self.npfloat = "float64"
         self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(jit_ops)
-
-    def initialize(self, simulation):
-        """
-        Initializes the model for simulation.
-        """
-        super().initialize(simulation)
-
-        self._initialize_ionic_kernel(ops.ionic_step, self.model_func)
-        self.ionic_kernel_args = [getattr(self, name) for name in self.ionic_kernel_arg_names]
-
-    def prepacing(self, stim_prepacing):
-        self._initialize_prepacing_kernel(ops.ionic_step)
-        return self._prepacing(stim_prepacing)
-
-    def _initialize_model_func(self, jit_ops):
-    
-        self.model_func = {
-            "calc_gating_variable_rush_larsen": jit_ops["calc_gating_variable_rush_larsen"],
-            "calc_ena": jit_ops["calc_ena"],
-            "calc_ek": jit_ops["calc_ek"],
-            "calc_eca": jit_ops["calc_eca"],
-            "calc_am": jit_ops["calc_am"],
-            "calc_bm": jit_ops["calc_bm"],
-            "calc_tau": jit_ops["calc_tau"],
-            "calc_inf": jit_ops["calc_inf"],
-            "calc_ah": jit_ops["calc_ah"],
-            "calc_bh": jit_ops["calc_bh"],
-            "calc_aj": jit_ops["calc_aj"],
-            "calc_bj": jit_ops["calc_bj"],
-            "calc_tau_oa": jit_ops["calc_tau_oa"],
-            "calc_oa_inf": jit_ops["calc_oa_inf"],
-            "calc_tau_oi": jit_ops["calc_tau_oi"],
-            "calc_oi_inf": jit_ops["calc_oi_inf"],
-            "calc_tau_ua": jit_ops["calc_tau_ua"],
-            "calc_ua_inf": jit_ops["calc_ua_inf"],
-            "calc_tau_ui": jit_ops["calc_tau_ui"],
-            "calc_ui_inf": jit_ops["calc_ui_inf"],
-            "calc_tau_xr": jit_ops["calc_tau_xr"],
-            "calc_xr_inf": jit_ops["calc_xr_inf"],
-            "calc_tau_xs": jit_ops["calc_tau_xs"],
-            "calc_xs_inf": jit_ops["calc_xs_inf"],
-            "calc_tau_d": jit_ops["calc_tau_d"],
-            "calc_d_inf": jit_ops["calc_d_inf"],
-            "calc_tau_f": jit_ops["calc_tau_f"],
-            "calc_f_inf": jit_ops["calc_f_inf"],
-            "calc_tau_fca": jit_ops["calc_tau_fca"],
-            "calc_fca_inf": jit_ops["calc_fca_inf"],
-            "calc_ina": jit_ops["calc_ina"],
-            "calc_ik1": jit_ops["calc_ik1"],
-            "calc_ito": jit_ops["calc_ito"],
-            "calc_ikur": jit_ops["calc_ikur"],
-            "calc_ikr": jit_ops["calc_ikr"],
-            "calc_iks": jit_ops["calc_iks"],
-            "calc_ical": jit_ops["calc_ical"],
-            "calc_inak": jit_ops["calc_inak"],
-            "calc_inaca": jit_ops["calc_inaca"],
-            "calc_ibca": jit_ops["calc_ibca"],
-            "calc_ibna": jit_ops["calc_ibna"],
-            "calc_ipca": jit_ops["calc_ipca"],
-            "calc_Fn": jit_ops["calc_Fn"],
-            "calc_tau_urel": jit_ops["calc_tau_urel"],
-            "calc_urel_inf": jit_ops["calc_urel_inf"],
-            "calc_tau_vrel": jit_ops["calc_tau_vrel"],
-            "calc_vrel_inf": jit_ops["calc_vrel_inf"],
-            "calc_tau_wrel": jit_ops["calc_tau_wrel"],
-            "calc_wrel_inf": jit_ops["calc_wrel_inf"],
-            "calc_irel": jit_ops["calc_irel"],
-            "calc_itr": jit_ops["calc_itr"],
-            "calc_iup": jit_ops["calc_iup"],
-            "calc_iupleak": jit_ops["calc_iupleak"],
-            "calc_dcaup": jit_ops["calc_dcaup"],
-            "calc_dnai": jit_ops["calc_dnai"],
-            "calc_dki": jit_ops["calc_dki"],
-            "calc_dcai": jit_ops["calc_dcai"],
-            "calc_dcarel": jit_ops["calc_dcarel"],           
-            "calc_rhs": jit_ops["calc_rhs"],
-        }
+        self._initialize_model_func(ops, jit_ops)

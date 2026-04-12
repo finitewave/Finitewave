@@ -41,8 +41,8 @@ tissue = fw.CardiacTissueGrid((n, m), dr=0.1)
 
 # create model object and set up parameters
 stim_prepacing = fw.StimPrepacing(dt)
-stim_prepacing.add_stim(n_beats=30, basic_cycle_length=1000., stim_duration=0.5, stim_amplitude=100.)
-stim_prepacing.add_stim(n_beats=100, basic_cycle_length=500., stim_duration=0.5, stim_amplitude=100.)
+stim_prepacing.add_stim(n_beats=30, cycle_length1000., stim_duration=0.5, stim_amplitude=100.)
+stim_prepacing.add_stim(n_beats=100, cycle_length500., stim_duration=0.5, stim_amplitude=100.)
 
 luo_rudy = fw.LuoRudy91()
 luo_rudy.prepacing(stim_prepacing)

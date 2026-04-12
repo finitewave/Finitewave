@@ -36,8 +36,8 @@ n = 100
 m = 10
 
 stim_prepacing = fw.StimPrepacing(dt=0.005)
-stim_prepacing.add_stim(n_beats=30, basic_cycle_length=500., stim_duration=2., stim_amplitude=20.)
-stim_prepacing.add_stim(n_beats=30, basic_cycle_length=300., stim_duration=2., stim_amplitude=20.)
+stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
+stim_prepacing.add_stim(n_beats=30, cycle_length=300., curr_value=20., duration=2.)
 
 # create model object and set up parameters
 courtemanche = fw.Courtemanche()
@@ -48,10 +48,10 @@ courtemanche.prepacing(stim_prepacing)
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimCurrentCoord(0, 20., 2., 0, 2, 0, m))
 
-action_pot_tracker = fw.ActionPotentialGridTracker()
+action_pot_tracker = fw.ActionPotentialTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[n//2, m//2]]
+action_pot_tracker.node_inds = [[n//2, m//2]]
 action_pot_tracker.step = 1
 
 tracker_sequence = fw.TrackerSequence()

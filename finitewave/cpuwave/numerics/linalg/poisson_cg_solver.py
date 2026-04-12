@@ -2,10 +2,10 @@ import numpy as np
 from .solvers import cg_numba, preconditioned_cg_numba
 
 
-def poisson_cg_solver(A, b, indexes, M=None, dirichlet_indexes=None, x0=None,
+def poisson_cg_solver(A, b, indexes=None, M=None, dirichlet_indexes=None, x0=None,
                       rtol=None, atol=1e-8, maxiter=1000):
     """
-    Solves the linear system Ax = b using the Conjugate Gradient method,
+    Solves the linear system A@x = b using the Conjugate Gradient method,
     with support for Dirichlet boundary conditions.
     
     Parameters
@@ -14,7 +14,7 @@ def poisson_cg_solver(A, b, indexes, M=None, dirichlet_indexes=None, x0=None,
         The sparse matrix representing the linear system.
     b : np.ndarray
         The right-hand side vector.
-    indexes : np.ndarray
+    indexes : np.ndarray, optional
         The indexes of the nodes where the solution is computed
         (including dirichlet nodes).
     M : object, optional
@@ -41,6 +41,9 @@ def poisson_cg_solver(A, b, indexes, M=None, dirichlet_indexes=None, x0=None,
 
     if x0 is None:
         x0 = b.copy()
+
+    if indexes is None:
+        indexes = np.arange(A.shape[0])
 
     if dirichlet_indexes is not None:
         internal_idx = internal_indexes(A, dirichlet_indexes)

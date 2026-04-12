@@ -31,9 +31,9 @@ import numpy as np
 import finitewave as fw
 
 prepacing = fw.StimPrepacing(dt=0.01)
-prepacing.add_stim(n_beats=3, basic_cycle_length=40, stim_duration=0.1, stim_amplitude=2.)
-prepacing.add_stim(n_beats=3, basic_cycle_length=30, stim_duration=0.1, stim_amplitude=2.)
-prepacing.add_stim(n_beats=2, basic_cycle_length=25, stim_duration=0.1, stim_amplitude=2.)
+prepacing.add_stim(n_beats=3, cycle_length40, stim_duration=0.1, stim_amplitude=2.)
+prepacing.add_stim(n_beats=3, cycle_length30, stim_duration=0.1, stim_amplitude=2.)
+prepacing.add_stim(n_beats=2, cycle_length25, stim_duration=0.1, stim_amplitude=2.)
 
 model = fw.AlievPanfilov()
 model.prepacing(prepacing)

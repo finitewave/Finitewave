@@ -1,7 +1,4 @@
-import textwrap
-import numpy as np
 
-from finitewave.core.model.cardiac_model_base import CardiacModelBase
 from finitewave.cpuwave.model._cardiac_model import CardiacModel
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
@@ -27,12 +24,10 @@ class AlievPanfilov(CardiacModel):
     variable coupled with a cubic nonlinearity to simulate action potential dynamics
     in excitable media.
 
-    Attributes
-    ----------
+    Model Diffusion
+    ---------------
     D_model : float
-        Diffusion coefficient used for simulating spatial propagation.
-    npfloat : str
-        Floating-point precision used in the simulation (default: 'float64').
+        Model-specific diffusion coefficient for tissue simulations.
 
     Model Variables
     ---------------
@@ -72,26 +67,5 @@ class AlievPanfilov(CardiacModel):
         """
         super().__init__(memory_save)
         self.D_model = 1.
-        self.npfloat = 'float64'
         self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(jit_ops)
-
-    def initialize(self, simulation):
-        """
-        Initializes the model for simulation.
-        """
-        super().initialize(simulation)
-
-        self._initialize_ionic_kernel(ops.ionic_step, self.model_func)
-        self.ionic_kernel_args = [getattr(self, name) for name in self.ionic_kernel_arg_names]
-
-    def prepacing(self, stim_prepacing):
-        self._initialize_prepacing_kernel(ops.ionic_step)
-        return self._prepacing(stim_prepacing)
-
-    def _initialize_model_func(self, jit_ops):
-        """TODO: if jit_ops func is independent each other, we can directly use jit_ops"""
-        self.model_func = {
-            "calc_dv": jit_ops["calc_dv"],
-            "calc_rhs": jit_ops["calc_rhs"],
-        }
+        self._initialize_model_func(ops, jit_ops)

@@ -3,8 +3,10 @@ from warnings import warn
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
 
-from ._kernel_generators import StepKernelGenerator
-from ._kernel_generators import SingleCellKernelGenerator
+from ._kernel_generators import (
+    IonicKernelGenerator,
+    PrepacingKernelGenerator,
+)
 
 
 class CardiacModel(CardiacModelBase):
@@ -13,24 +15,20 @@ class CardiacModel(CardiacModelBase):
 
     Attributes
     ----------
-    state_vars : list
-        List of state variables to be saved and restored.
     memory_save : bool
         Whether to save memory by only storing the state variables at the
         tissue indexes (``mesh > 0``).
-    D_model : float
-        Model-specific diffusion coefficient.
-    u : np.ndarray
-        Array representing the action potential (mV) across the tissue.
-    rhs : np.ndarray
-        Array representing the sum of the ionic currents multiplied by dt.
     myo_indexes : np.ndarray
-        Array of myocyte indices corresponding to cardiac model arrays.
-        If memory saving is enabled, the indexes correspond to
-        ``mesh.flat[tissue_indexes] == 1``.
+        Array of indices corresponding to the myocytes in the mesh.
+        If `memory_saving` is True, the indexes correspond to `mesh.flat[tissue_indexes[myo_indexes]]`.
+        Otherwise, they correspond to `mesh.flat[myo_indexes]`.
     tissue_indexes : np.ndarray
-        Array of indices corresponding to the full tissue mesh.
-        State variables and rhs correspond to mesh.flat[tissue_indexes]
+        Array of indices corresponding to the tissue points. For consistency, when `memory_save` is False,
+        this will be an array of all indexes in the mesh.
+    ionic_kernel_generator : KernelGenerator
+        Object that generates the multithreaded `ionic_kernel` function for the model.
+    prepacing_generator : KernelGenerator
+        Object that generates the signle-cell `prepacing_kernel` function for the model.
     """
 
     def __init__(self, memory_save):
@@ -45,13 +43,12 @@ class CardiacModel(CardiacModelBase):
         """
         super().__init__()
         self.memory_save = memory_save
-        self.state_vars = []
-        self.step = 1
-        self.counter = 0
-        self.ionic_kernel_generator = StepKernelGenerator()
-        self.prepacing_generator = SingleCellKernelGenerator("prepacing_kernel")
-        self.observers = []
-        self.model_func = {}
+        self.myo_indexes = None
+        self.tissue_indexes = None
+        self.ionic_kernel_generator = IonicKernelGenerator()
+        self.prepacing_generator = PrepacingKernelGenerator()
+        self._model_func = {}
+        self._ionic_step_func = None
 
     def initialize(self, simulation):
         """
@@ -65,15 +62,39 @@ class CardiacModel(CardiacModelBase):
         self._allocate_arrays(simulation)
         self.rhs = np.zeros_like(self.u)
         self.compute_indexes(simulation.cardiac_tissue)
+        self._initialize_ionic_kernel()
+        self.ionic_kernel_args = self._collect_ionic_kernel_args()
+        
+    def compute_indexes(self, cardiac_tissue):
+        """
+        Computes the myocyte and tissue indexes based on the cardiac tissue mesh.
+
+        Parameters
+        ----------
+        cardiac_tissue : CardiacTissue
+            The cardiac tissue object.
+        """
+        if self.memory_save:
+            self.myo_indexes = cardiac_tissue.myo_on_tissue_indexes
+            self.tissue_indexes = cardiac_tissue.tissue_indexes
+            return
+
+        self.myo_indexes = cardiac_tissue.myo_indexes
+        self.tissue_indexes = np.arange(cardiac_tissue.mesh.size)
 
     def run(self, dt):
         """
-        Executes the ionic kernel for the Aliev-Panfilov model.
-        """
-        self.counter += 1
-        if (self.counter - 1) % self.step != 0:
-            return
+        Executes the ionic kernel for the current time step.
 
+        Parameters
+        ----------
+        dt : float
+            Time step size for the simulation.
+        """
+        self.iter_counter += 1
+        if (self.iter_counter - 1) % self.step != 0:
+            return
+        
         self.ionic_kernel(
             self.rhs,
             self.u,
@@ -81,46 +102,38 @@ class CardiacModel(CardiacModelBase):
             dt,
             *self.ionic_kernel_args,
         )
+    
+    def prepacing(self, stim_prepacing):
+        """
+        Prepaces the model using the provided stimulation sequence.
         
-    def _prepacing(self, stim_prepacing):
-        """Executes the prepacing sequence for the Aliev-Panfilov model."""
-
+        Parameters
+        ----------
+        stim_prepacing : StimPrepacing
+            Object containing the stimulation sequence and parameters.
+        """
+        self._initialize_prepacing_kernel()
         dt = stim_prepacing.dt
         stim_values = stim_prepacing.stim_sequence
-        self.u_pacing = np.zeros(len(stim_values), dtype=self.npfloat)
 
-        prepacing_kernel_args = []
-        for name in self.prepacing_kernel_arg_names:
-            if name in self.state_vars:
-                param_val = getattr(self, f"init_{name}")
-
-                if not np.isscalar(param_val):
-                    raise ValueError(f"Prepacing kernel does not support array initial conditions. " +
-                                     f"Initial condition 'init_{name}' is an array.")
-                
-                prepacing_kernel_args.append(param_val)
-                continue
-            
-            if name in self.state_pars:
-                param_val = getattr(self, name)
-                if not np.isscalar(param_val):
-                    raise ValueError(f"Prepacing kernel does not support array parameters. " +
-                                     f"Parameter '{name}' is an array.")
-            
-                prepacing_kernel_args.append(getattr(self, name))
-                continue
-
-            raise ValueError(f"Prepacing kernel argument {name} not found in state variables or parameters.")
-
+        self.u_pacing = np.zeros(len(stim_values), dtype=np.float32)
+        prepacing_kernel_args = self._collect_prepacing_kernel_args()
         state_vals = self.prepacing_kernel(self.u_pacing, stim_values, dt,
                                            self.init_u, *prepacing_kernel_args)
 
-        
-        # initial conditions
+        # update initial conditions with the final state after prepacing
         for var, value in zip(self.state_vars, state_vals):
             setattr(self, f"init_{var}", value)
 
     def _initialize_variables_and_parameters(self, ops):
+        """
+        Initializes the model's variables and parameters based on the provided ops object.
+        
+        Parameters
+        ----------
+        ops : Ops
+            Object containing the model's variables and parameters.
+        """
         self.default_parameters = ops.get_parameters()
         self.default_variables = ops.get_variables()
 
@@ -138,8 +151,34 @@ class CardiacModel(CardiacModelBase):
         # declare arrays (optional, for readability/debug)
         for name in self.default_variables.keys():
             setattr(self, name, np.ndarray)      
+    
+    def _initialize_model_func(self, ops, jit_ops):
+        """
+        Initializes the model's ionic step function and any additional model functions.
+        
+        Parameters
+        ----------
+        ops : Ops
+            Object containing the model's functions, including the `ionic_step` function.
+        jit_ops : dict
+            Dictionary of additional model functions used in the `ionic_kernel`,
+            where keys are function names and values are jit-compiled functions.
+        """
+        self._ionic_step_func = ops.ionic_step
+
+        self._model_func = {}
+        for key, func in jit_ops.items():
+            self._model_func[key] = func
 
     def _allocate_arrays(self, simulation):
+        """
+        Allocates the model's state variable arrays based on the simulation's cardiac tissue mesh.
+        
+        Parameters
+        ----------
+        simulation : Simulation
+            The simulation object containing the cardiac tissue mesh.
+        """
         shape = simulation.cardiac_tissue.mesh.shape
 
         if self.memory_save:
@@ -166,78 +205,36 @@ class CardiacModel(CardiacModelBase):
                         f"param '{name}' shape {par.shape} != tissue shape {shape}"
                     ) 
     
-    def _initialize_ionic_kernel(self, ionic_step, exclude_params=[]):
-
-        state_vars = self.state_vars
-
-        arrays = ["rhs"] + list(state_vars)
-        scalars = []
-        
-        for param in self.state_pars:
-            if param in exclude_params:
-                continue
-
-            param_val = getattr(self, param)
-
-            if isinstance(param_val, np.ndarray):
-                arrays.append(param)
-
-            if np.isscalar(param_val):
-                scalars.append(param)
-
-        res = self.ionic_kernel_generator.generate(ionic_step, arrays, scalars,
-                                                   state_vars, self.model_func,
-                                                   self.observers)
+    def _initialize_ionic_kernel(self):
+        """Construct the `ionic_kernel` function for the model using the IonicKernelGenerator."""
+        res = self.ionic_kernel_generator.generate_model_kernel(
+            self, self._ionic_step_func, self._model_func, self.observers
+        )
         self.ionic_kernel, self.ionic_kernel_arg_names = res
 
-    def _initialize_prepacing_kernel(self, ionic_step, exclude_params=[]):
-
-        state_vars = self.state_vars
-
-        arrays = ["u_pacing"]
-        scalars = []
-        
-        for param in self.state_pars:
-            if param in exclude_params:
-                continue
-
-            param_val = getattr(self, param)
-
-            if not np.isscalar(param_val):
-                raise ValueError(f"Prepacing kernel does not support array parameters. " +
-                                 f"Parameter 'init_{param}' is an array.")
-            scalars.append(param)
-
-        for param in self.state_vars:
-            if param in exclude_params:
-                continue
-
-            param_val = getattr(self, f"init_{param}")
-
-            if not np.isscalar(param_val):
-                raise ValueError(f"Prepacing kernel does not support array initial conditions. " +
-                                 f"Initial condition 'init_{param}' is an array.")
-            scalars.append(param)
-
-        res = self.prepacing_generator.generate(ionic_step, arrays, scalars,
-                                                state_vars, self.model_func,
-                                                output_args=state_vars)
+    def _initialize_prepacing_kernel(self):
+        """Construct the `prepacing_kernel` function for the model using the PrepacingKernelGenerator."""
+        res = self.prepacing_generator.generate_model_kernel(
+            self, self._ionic_step_func, self._model_func
+        )
         self.prepacing_kernel, self.prepacing_kernel_arg_names = res
 
-    def compute_indexes(self, cardiac_tissue):
-        """
-        Computes the myocyte indexes. If memory saving is enabled, also
-        computes the tissue indexes.
+    def _collect_ionic_kernel_args(self):
+        """Collects the arguments for the `ionic_kernel` function based on the `ionic_kernel_arg_names`."""
+        return [getattr(self, name) for name in self.ionic_kernel_arg_names]
+    
+    def _collect_prepacing_kernel_args(self):
+        """Collects the arguments for the `prepacing_kernel` function based on the `prepacing_kernel_arg_names`."""
+        prepacing_kernel_args = []
+        for name in self.prepacing_kernel_arg_names:
+            if name in self.state_vars:
+                prepacing_kernel_args.append(getattr(self, f"init_{name}"))
+                continue
+            
+            if name in self.state_pars:
+                prepacing_kernel_args.append(getattr(self, name))
+                continue
 
-        Parameters
-        ----------
-        cardiac_tissue : CardiacTissue
-            The cardiac tissue object.
-        """
-        if self.memory_save:
-            self.myo_indexes = cardiac_tissue.myo_on_tissue_indexes
-            self.tissue_indexes = cardiac_tissue.tissue_indexes
-            return
-
-        self.myo_indexes = cardiac_tissue.myo_indexes
-        self.tissue_indexes = np.arange(cardiac_tissue.mesh.size)
+            raise ValueError(f"Prepacing kernel argument {name} not found in state variables or parameters.")
+        
+        return prepacing_kernel_args
