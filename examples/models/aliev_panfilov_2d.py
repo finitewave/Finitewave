@@ -31,19 +31,18 @@ import numpy as np
 import finitewave as fw
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
-tissue = fw.CardiacTissueGrid([n, n])
+n = 100
+m = 10
+tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
-                                           x_min=n//2 - 3, x_max=n//2 + 3,
-                                           y_min=n//2 - 3, y_max=n//2 + 3))
+                                           x_min=0, x_max=5,
+                                           y_min=0, y_max=m))
 
-action_pot_tracker = fw.ActionPotentialGridTracker()
-# to specify the mesh node under the measuring - use the cell_ind field:
-# eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[50, 3]]
+action_pot_tracker = fw.ActionPotentialTracker()
+action_pot_tracker.node_inds = [[50, 3]]
 action_pot_tracker.step = 1
 
 tracker_sequence = fw.TrackerSequence()
@@ -52,11 +51,11 @@ tracker_sequence.add_tracker(action_pot_tracker)
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.dr = 0.25
-simulation.t_max = 30
+simulation.t_max = 50
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
+simulation.tracker_sequence = tracker_sequence
 
 # run the model:
 simulation.run()
@@ -64,7 +63,7 @@ simulation.run()
 # plot the action potential
 plt.figure()
 time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-plt.plot(time, action_pot_tracker.output, label="cell_50_3")
+plt.plot(time, action_pot_tracker.output, label=f"cell_{n//2}_{m//2}")
 plt.legend(title='Aliev-Panfilov')
 plt.title('Action Potential')
 plt.grid()

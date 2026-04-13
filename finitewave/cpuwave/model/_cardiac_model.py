@@ -103,7 +103,7 @@ class CardiacModel(CardiacModelBase):
             *self.ionic_kernel_args,
         )
     
-    def prepacing(self, stim_prepacing):
+    def prepacing(self, stim_prepacing, history=True):
         """
         Prepaces the model using the provided stimulation sequence.
         
@@ -111,19 +111,66 @@ class CardiacModel(CardiacModelBase):
         ----------
         stim_prepacing : StimPrepacing
             Object containing the stimulation sequence and parameters.
+        history : bool, optional
+            Whether to store the pacing history in `self.u_pacing`.
         """
-        self._initialize_prepacing_kernel()
+        self._initialize_prepacing_kernel(history)
+        prepacing_kernel_args = self._collect_prepacing_kernel_args()
+
         dt = stim_prepacing.dt
         stim_values = stim_prepacing.stim_sequence
+        
+        if history:
+            self.u_pacing = np.zeros(len(stim_values), dtype=np.float32)
+            self.u_pacing[0] = self.init_u
+            prepacing_kernel_args = [self.u_pacing] + prepacing_kernel_args
 
-        self.u_pacing = np.zeros(len(stim_values), dtype=np.float32)
-        prepacing_kernel_args = self._collect_prepacing_kernel_args()
-        state_vals = self.prepacing_kernel(self.u_pacing, stim_values, dt,
+        state_vals = self.prepacing_kernel(stim_values, dt,
                                            self.init_u, *prepacing_kernel_args)
 
         # update initial conditions with the final state after prepacing
         for var, value in zip(self.state_vars, state_vals):
             setattr(self, f"init_{var}", value)
+     
+    def set_parameters(self, params):
+        """
+        Updates the model's parameters with the provided values.
+
+        Parameters
+        ----------
+        params : dict
+            Dictionary of parameter names and their new values.
+        """
+        for name, value in params.items():
+            if not hasattr(self, name):
+                raise ValueError(f"Parameter '{name}' not found in the model.")
+            setattr(self, name, value)
+    
+    def set_variables(self, vars, initial=False):
+        """
+        Updates the model's initial conditions with the provided values.
+
+        Parameters
+        ----------
+        vars : dict
+            Dictionary of variable names and their new initial values.
+        initial : bool, optional
+            Whether the provided values are initial conditions (default is False).
+            If True, the values will be set to `init_{var}` attributes.
+            If False, they will be set to the current state variable arrays.
+        """
+        prefix = "init_" if initial else ""
+
+        for name, value in vars.items():
+            if not hasattr(self, f"{prefix}{name}"):
+                raise ValueError(f"Variable '{name}' not found in the model.")
+            
+            if initial:
+                setattr(self, f"{prefix}{name}", value)
+                continue
+
+            var_data = getattr(self, f"{prefix}{name}")
+            var_data[:] = value
 
     def _initialize_variables_and_parameters(self, ops):
         """
@@ -207,16 +254,14 @@ class CardiacModel(CardiacModelBase):
     
     def _initialize_ionic_kernel(self):
         """Construct the `ionic_kernel` function for the model using the IonicKernelGenerator."""
-        res = self.ionic_kernel_generator.generate_model_kernel(
-            self, self._ionic_step_func, self._model_func, self.observers
-        )
+        res = self.ionic_kernel_generator.generate_model_kernel(self)
         self.ionic_kernel, self.ionic_kernel_arg_names = res
 
-    def _initialize_prepacing_kernel(self):
-        """Construct the `prepacing_kernel` function for the model using the PrepacingKernelGenerator."""
-        res = self.prepacing_generator.generate_model_kernel(
-            self, self._ionic_step_func, self._model_func
-        )
+    def _initialize_prepacing_kernel(self, history):
+        """Construct the `prepacing_kernel` function for the model using the
+        PrepacingKernelGenerator."""
+        self.prepacing_generator.history = history
+        res = self.prepacing_generator.generate_model_kernel(self)
         self.prepacing_kernel, self.prepacing_kernel_arg_names = res
 
     def _collect_ionic_kernel_args(self):

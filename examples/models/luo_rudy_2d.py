@@ -31,7 +31,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import finitewave as fw
 
-n = 400
+n = 100
 m = 10
 dt = 0.01
 t_max = 500
@@ -41,8 +41,7 @@ tissue = fw.CardiacTissueGrid((n, m), dr=0.1)
 
 # create model object and set up parameters
 stim_prepacing = fw.StimPrepacing(dt)
-stim_prepacing.add_stim(n_beats=30, cycle_length1000., stim_duration=0.5, stim_amplitude=100.)
-stim_prepacing.add_stim(n_beats=100, cycle_length500., stim_duration=0.5, stim_amplitude=100.)
+stim_prepacing.add_stim(n_beats=10, cycle_length=1000., curr_value=100, duration=0.5)
 
 luo_rudy = fw.LuoRudy91()
 luo_rudy.prepacing(stim_prepacing)
@@ -50,10 +49,10 @@ luo_rudy.prepacing(stim_prepacing)
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimCurrentCoord(0, 100., 1, 0, 1, 0, m))
 
-action_pot_tracker = fw.ActionPotentialGridTracker()
+action_pot_tracker = fw.ActionPotentialTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
-action_pot_tracker.cell_ind = [[n//2, m//2]]
+action_pot_tracker.node_inds = [[n//2, m//2]]
 action_pot_tracker.step = 1
 
 tracker_sequence = fw.TrackerSequence()
@@ -71,24 +70,22 @@ simulation.tracker_sequence = tracker_sequence
 # run the model:
 simulation.run()
 
-# plt.plot(luo_rudy.u_pacing)
-# plt.show()
-
 # plot the action potential
 fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(10, 5))
 
 time = np.arange(len(luo_rudy.u_pacing)) * dt
-axs[0].plot(time, luo_rudy.u_pacing, label="cell_50_3")
+axs[0].plot(time, luo_rudy.u_pacing, label=f"cell_{n//2}_{m//2}")
 axs[0].set_xlabel('Time (ms)')
 axs[0].set_ylabel('Voltage (mV)')
 axs[0].set_title('Prepacing Protocol')
 axs[0].grid()
 
 time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-axs[1].plot(time, action_pot_tracker.output, label="cell_50_3")
+axs[1].plot(time, action_pot_tracker.output, label=f"cell_{n//2}_{m//2}")
 axs[1].set_xlabel('Time (ms)')
 axs[1].set_ylabel('Voltage (mV)')
 axs[1].set_title('Action Potential')
 axs[1].grid()
-# plt.legend(title='Luo-Rudy 1991')
+plt.tight_layout()
+plt.legend(title='Luo-Rudy 1991')
 plt.show()

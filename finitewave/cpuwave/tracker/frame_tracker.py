@@ -19,22 +19,41 @@ class FrameTracker(Tracker):
         Directory for saving frames.
     var_name : str
         Name of the target array to capture.
-    frame_type : str
+    output_dtype : str
         Default frame format settings.
     overwrite : bool
         Overwrite existing frames.
     """
 
-    def __init__(self):
+    def __init__(self, aggregate=False, dir_name="snapshots", var_name="u",
+                 overwrite=True, output_dtype=None, **kwargs):
         """
         Initializes the FrameGridTracker with default parameters.
+
+        Parameters
+        ----------
+        aggregate : bool, optional
+            Whether to aggregate frames into a single array.
+            If False, frames will be saved individually.
+        dir_name : str, optional
+            Directory name for saving frames (default is "snapshots").
+        var_name : str, optional
+            Name of the target array to capture (default is "u").
+        overwrite : bool, optional
+            Whether to overwrite existing frames (default is True).
+        output_dtype : dtype, optional
+            Data type for the saved frames (default is None).
+            If None, it will be set to the simulation's default floating-point type.
+        **kwargs
+            Additional keyword arguments for the base Tracker class.
         """
-        Tracker.__init__(self)
-        self.dir_name = "snapshots"   # Directory for saving frames
-        self.var_name = "u"           # Name of the target array to capture
-        self.frame_type = np.float64  # Default frame format settings
-        self._frame_counter = 0       # Internal frame counter
-        self.overwrite = True         # Overwrite existing frames
+        super().__init__(**kwargs)
+        self.aggregate = aggregate
+        self.dir_name = dir_name
+        self.var_name = var_name
+        self.output_dtype = output_dtype
+        self.overwrite = overwrite
+        self.frames = None
 
     def initialize(self, simulation):
         """
@@ -46,10 +65,41 @@ class FrameTracker(Tracker):
         simulation : object
             The cardiac tissue model object containing the data to be tracked.
         """
-        self.simulation = simulation
-        self._frame_counter = 0  # Reset frame counter
-        self._frame_type = simulation.npfloat
+        super().initialize(simulation)
 
+        if self.output_dtype is None:
+            self.output_dtype = simulation.npfloat
+
+        if self.aggregate:
+            self._make_array()
+        else:
+            self._make_dir()
+
+    @property
+    def output(self):
+        """
+        Returns the tracked frames.
+
+        Returns
+        -------
+        np.ndarray
+            The array containing the tracked frames if aggregation is enabled.
+            Otherwise, returns None since frames are saved individually.
+        """
+        if self.aggregate:
+            return self.frames
+        return None
+    
+    def _make_array(self):
+        t_max = min(self.simulation.t_max, self.end_time)
+        t_min = self.start_time
+        dt = self.simulation.dt
+        n_frames = int((t_max - t_min) / (self.step * dt)) + 1
+        var_data = self.simulation.cardiac_model.__dict__[self.var_name]
+
+        self.frames = np.zeros((n_frames, *var_data.shape))
+
+    def _make_dir(self):
         if not Path(self.path, self.dir_name).is_dir():
             Path(self.path, self.dir_name).mkdir(parents=True)
 
@@ -64,11 +114,14 @@ class FrameTracker(Tracker):
         The frames are saved in the specified directory as NumPy files.
         """
         frame = self.simulation.cardiac_model.__dict__[self.var_name]
+        
+
+        if self.aggregate:
+            self.frames[self.tracking_counter] = frame.astype(self.output_dtype)
+        return
+
         dir_path = Path(self.path, self.dir_name)
-
         np.save(
-            dir_path.joinpath(str(self._frame_counter)).with_suffix(".npy"),
-            frame.astype(self.frame_type),
+            dir_path.joinpath(str(self.tracking_counter)).with_suffix(".npy"),
+            frame.astype(self.output_dtype),
         )
-
-        self._frame_counter += 1

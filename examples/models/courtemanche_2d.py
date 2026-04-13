@@ -37,7 +37,6 @@ m = 10
 
 stim_prepacing = fw.StimPrepacing(dt=0.005)
 stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
-stim_prepacing.add_stim(n_beats=30, cycle_length=300., curr_value=20., duration=2.)
 
 # create model object and set up parameters
 courtemanche = fw.Courtemanche()

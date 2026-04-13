@@ -21,7 +21,11 @@ class Tracker(ABC):
     step : int
         The frequency at which tracking will occur. Default is 1.
     iter_counter : int
-        A counter to keep track of the number of iterations for tracking purposes.
+        A counter to keep track of the number of iterations of simulation.
+    tracking_counter : int
+        A counter to keep track of the number of tracking events that have occurred.
+    tracking_times : list
+        A list to store the times at which tracking events occurred.
     model : CardiacModel
         The simulation model to which the tracker is attached. This allows
         the tracker to access the model's state and data during the simulation.
@@ -32,6 +36,7 @@ class Tracker(ABC):
         self.step = step
         self.iter_counter = 0
         self.tracking_counter = 0
+        self.tracking_times = []
         self.model = None
 
     def initialize(self, simulation):

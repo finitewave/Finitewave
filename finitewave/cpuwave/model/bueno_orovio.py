@@ -1,24 +1,7 @@
-import math
-import numpy as np
 
-from finitewave.core.model.cardiac_model import CardiacModel
-from finitewave.core.model.ionic_kernel_generator import IonicKernelGenerator
-
-from finitewave.cpuwave.stencil.sten2D.asymmetric_stencil_2d import (
-    AsymmetricStencil2D
-)
-from finitewave.cpuwave.stencil.sten2D.isotropic_stencil_2d import (
-    IsotropicStencil2D
-)
-from finitewave.cpuwave.stencil.sten3D.asymmetric_stencil_3d import (
-    AsymmetricStencil3D
-)
-from finitewave.cpuwave.stencil.sten3D.isotropic_stencil_3d import (
-    IsotropicStencil3D
-)
+from ._cardiac_model import CardiacModel
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
-from finitewave.cpuwave.model._kernel_builder import build_kernel
 
 
 try:
@@ -29,54 +12,6 @@ except KeyError as e:
         "Bueno-Orovio model ops not found. "
         # "Install model package: pip install finitewave-model-bueno-orovio"
     ) from e
-
-
-class BuenoOrovioKernel(IonicKernelGenerator):
-    def __init__(self):
-        super().__init__()
-        self.args_order = [
-            "u", "v", "w", "s", "u_o", "u_u", "theta_v", "theta_w", "theta_v_m", "theta_o",
-            "tau_v1_m", "tau_v2_m", "tau_v_p", "tau_w1_m", "tau_w2_m", "k_w_m", "u_w_m",
-            "tau_w_p", "tau_fi", "tau_o1", "tau_o2", "tau_so1", "tau_so2", "k_so", "u_so",
-            "tau_s1", "tau_s2", "k_s", "u_s", "tau_si", "tau_w_inf", "w_inf_"
-        ]
-
-    def generate_body(self) -> str:
-        model = {var: self._indexing(var) for var in (self.arrays + self.scalars)}
-        u_new = f"u_new{self._raw_indexing()}"
-        
-        return f"""\
-        J_fi = calc_Jfi({model['u']}, {model['v']}, {model['theta_v']}, 
-                            {model['u_u']}, {model['tau_fi']})
-        
-        tau_o = calc_tau_o({model['u']}, {model['tau_o1']}, {model['tau_o2']}, {model['theta_o']})
-        tau_so = calc_tau_so({model['u']}, {model['tau_so1']}, {model['tau_so2']},
-                                    {model['k_so']}, {model['u_so']})
-        J_so = calc_Jso({model['u']}, {model['u_o']}, {model['theta_w']},
-                            tau_o, tau_so)
-
-        J_si = calc_Jsi({model['u']}, {model['w']}, {model['s']}, {model['theta_w']}, {model['tau_si']})
-        
-
-        {u_new} += dt*calc_rhs(J_fi, J_so, J_si)
-
-        v_inf = calc_v_inf({model['u']}, {model['theta_v_m']})
-        tau_v_m = calc_tau_v_m({model['u']}, {model['theta_v_m']}, 
-                                   {model['tau_v1_m']}, {model['tau_v2_m']})
-        {model['v']} += dt*calc_v({model['v']}, {model['u']}, {model['theta_v']}, v_inf, 
-                         tau_v_m, {model['tau_v_p']})
-        
-        w_inf = calc_w_inf({model['u']}, {model['theta_o']}, {model['tau_w_inf']}, {model['w_inf_']})
-        tau_w_m = calc_tau_w_m({model['u']}, {model['tau_w1_m']}, {model['tau_w2_m']}, 
-                                   {model['k_w_m']}, {model['u_w_m']})
-        {model['w']} += dt*calc_w({model['w']}, {model['u']}, {model['theta_w']}, 
-                         w_inf, tau_w_m, {model['tau_w_p']})
-        
-        tau_s = calc_tau_s({model['u']}, {model['tau_s1']}, {model['tau_s2']}, {model['theta_w']})
-        {model['s']} += dt*calc_s({model['s']}, {model['u']}, tau_s, 
-                         {model['k_s']}, {model['u_s']})
-
-"""
 
 
 class BuenoOrovio(CardiacModel):
@@ -158,95 +93,11 @@ class BuenoOrovio(CardiacModel):
 
     """
 
-    def __init__(self):
+    def __init__(self, memory_save=False):
         """
         Initializes the Bueno-Orovio instance with default parameters.
         """
-        super().__init__()
-        self.D_model = 1.
-        self.npfloat    = 'float64'
-
+        super().__init__(memory_save)
+        self.D_model = 0.1171
         self._initialize_variables_and_parameters(ops)
-
-    def initialize(self):
-        """
-        Initializes the model for simulation.
-        """
-        super().initialize()
-
-        self._allocate_state_arrays()
-
-        gen = self._initialize_kernel(BuenoOrovioKernel)
-
-        glb = {
-            "calc_v_inf": jit_ops["calc_v_inf"],
-            "calc_tau_v_m": jit_ops["calc_tau_v_m"],
-            "calc_v": jit_ops["calc_v"],
-            "calc_w_inf": jit_ops["calc_w_inf"],
-            "calc_tau_w_m": jit_ops["calc_tau_w_m"],
-            "calc_w": jit_ops["calc_w"],
-            "calc_tau_s": jit_ops["calc_tau_s"],
-            "calc_s": jit_ops["calc_s"],
-            "calc_Jfi": jit_ops["calc_Jfi"],
-            "calc_tau_o": jit_ops["calc_tau_o"],
-            "calc_tau_so": jit_ops["calc_tau_so"],
-            "calc_Jso": jit_ops["calc_Jso"],
-            "calc_Jsi": jit_ops["calc_Jsi"],
-            "calc_rhs": jit_ops["calc_rhs"]
-        }
-
-        self._kernel, _ = build_kernel(
-            gen=gen,
-            glb=glb,
-            dimensions=self.cardiac_tissue.dimensions,
-            observers=self.observers,
-        )
-
-        self._buffs = self._form_and_verify_observers()
-    
-    def run_ionic_kernel(self):
-        """
-        Executes the ionic kernel for the Bueno-Orovio model.
-        """
-        args = [getattr(self, name) for name in self._kernel_args_order]
-        self._kernel(
-            self.u_new,
-            self.cardiac_tissue.myo_indexes,
-            self.dt,
-            self.step,
-            *args,
-            *self._buffs,
-        )
-
-    def select_stencil(self, cardiac_tissue):
-        """
-        Selects the appropriate stencil for diffusion based on the tissue
-        properties. If the tissue has fiber directions, an asymmetric stencil
-        is used; otherwise, an isotropic stencil is used.
-
-        Parameters
-        ----------
-        cardiac_tissue : CardiacTissue
-            A tissue object representing the cardiac tissue.
-
-        Returns
-        -------
-        Stencil
-            The stencil object to use for diffusion computations.
-        """
-        if cardiac_tissue.fibers is None:
-            if cardiac_tissue.dimensions == 2:
-                return IsotropicStencil2D()
-            elif cardiac_tissue.dimensions == 3:
-                return IsotropicStencil3D()
-            else:
-                raise ValueError("Unsupported number of dimensions")
-        else:
-            if cardiac_tissue.dimensions == 2:
-                return AsymmetricStencil2D()
-            elif cardiac_tissue.dimensions == 3:
-                return AsymmetricStencil3D()
-            else:
-                raise ValueError("Unsupported number of dimensions")
-
-
+        self._initialize_model_func(ops, jit_ops)

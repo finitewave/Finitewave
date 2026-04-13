@@ -51,17 +51,13 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 30
+simulation.t_max = 50
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 
 # run the model:
 simulation.run()
-
-# plt.figure()
-# plt.imshow(simulation.diffusion_model.weights[0].toarray())
-# plt.show()
 
 # show the potential map at the end of calculations:
 plt.figure()

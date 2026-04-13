@@ -1,9 +1,6 @@
-import math
-
 from ._cardiac_model import CardiacModel
 
 from finitewave.cpuwave.model._registry import load_ops, wrap_calc
-from finitewave.cpuwave.model._kernel_builder import build_kernel
 
 
 try:

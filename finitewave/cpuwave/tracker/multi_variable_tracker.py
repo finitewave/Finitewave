@@ -83,7 +83,7 @@ class MultiVariableTracker(Tracker):
                 msg = (f"Some node indices are out of bounds for variable " +
                        f"'{var_name}' with size {var_val.size}.")
                 raise ValueError(msg)
-
+            
             self.vars_data[var_name] = np.zeros((len(self.tracking_times), len(self._node_inds)),
                                                 dtype=var_val.dtype)
 
