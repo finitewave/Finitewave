@@ -39,7 +39,7 @@ import finitewave as fw
 import numpy as np
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n = 1000
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
@@ -52,7 +52,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
 simulation.t_max = 50
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.Courtemanche()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 

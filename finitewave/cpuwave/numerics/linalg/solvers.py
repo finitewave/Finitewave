@@ -5,7 +5,8 @@ from .numba_linalg import (
     b_m_matvec_numba,
     ay_p_x_numba,
     matvec_and_dot_numba,
-    y_pm_ax_numba)
+    y_pm_ax_numba,
+    copyto_numba,)
 
 
 def forward_euler(A, u, rhs, mass_inv, u_new, indexes, dt):
@@ -126,25 +127,27 @@ def cg_numba(A, b, x, indexes, rtol=None, atol=1e-6, maxiter=100):
     r = b_m_matvec_numba(indptr, indices, data, b, x, r, indexes)
     q = np.empty_like(r)
 
-    # Dummy value to initialize var, silences warnings
-    rho_prev, p = None, None
+    p = np.empty_like(r)
+    p = copyto_numba(r, p, indexes)
+
+    r_dot_r = dot_numba(r, r, indexes)
+
+    if np.sqrt(r_dot_r) < atol:
+        return x, 0
 
     for iteration in range(maxiter):
-        rho_cur = dot_numba(r, r, indexes)
-        if np.sqrt(rho_cur) < atol:  # Are we done?
-            return x, iteration
-
-        if iteration > 0:
-            beta = rho_cur / rho_prev
-            p = ay_p_x_numba(beta, r, p, indexes)
-        else:  # First spin
-            p = np.empty_like(r)
-            p[:] = r[:]
+        r_dot_r_prev = r_dot_r
 
         q, p_dot_q = matvec_and_dot_numba(indptr, indices, data, p, q, indexes)
-        alpha = rho_cur / p_dot_q
-        x, r = y_pm_ax_numba(alpha, p, x, q, r, indexes)
-        rho_prev = rho_cur
+
+        alpha = r_dot_r / p_dot_q
+        x, r, r_dot_r = y_pm_ax_numba(alpha, p, x, q, r, indexes)
+
+        if np.sqrt(r_dot_r) < atol:
+            return x, iteration
+
+        beta = r_dot_r / r_dot_r_prev
+        p = ay_p_x_numba(beta, r, p, indexes)
 
     return x, -1
 
@@ -219,7 +222,7 @@ def preconditioned_cg_numba(A, b, x, indexes, M, rtol=None, atol=1e-6, maxiter=1
 
         q, p_dot_q = matvec_and_dot_numba(indptr, indices, data, p, q, indexes)
         alpha = rho_cur / p_dot_q
-        x, r = y_pm_ax_numba(alpha, p, x, q, r, indexes)
         rho_prev = rho_cur
+        x, r, rho_cur = y_pm_ax_numba(alpha, p, x, q, r, indexes)
 
     return x, -1

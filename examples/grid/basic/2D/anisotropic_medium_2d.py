@@ -48,12 +48,12 @@ import numpy as np
 import finitewave as fw
 
 # number of nodes on the side
-n, m = 400, 200
+n, m = 200, 200
 # fiber orientation angle
 tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
 alpha = np.pi / 4
 # tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3).astype(int)
-tissue.mesh[n//4: n//4 + 30, m//4: 3*m//4] = 2
+# tissue.mesh[n//4: n//4 + 30, m//4: 3*m//4] = 2
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, m, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
@@ -67,10 +67,10 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 30
+simulation.t_max = 20
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.FentonKarma()
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 
 # run the model:

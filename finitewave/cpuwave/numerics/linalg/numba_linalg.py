@@ -121,22 +121,25 @@ def cg_numba(A, b, x, indexes, rtol=None, atol=1e-6, maxiter=100):
     # Dummy value to initialize var, silences warnings
     rho_prev, p = None, None
 
+    p = np.empty_like(r)
+    p = copyto_numba(r, p, indexes)
+
+    rho_cur = dot_numba(r, r, indexes)
+
+    if np.sqrt(rho_cur) < atol:
+        return x, 0
+
     for iteration in range(maxiter):
-        rho_cur = dot_numba(r, r, indexes)
-        if np.sqrt(rho_cur) < atol:  # Are we done?
-            return x, iteration
-
-        if iteration > 0:
-            beta = rho_cur / rho_prev
-            p = ay_p_x_numba(beta, r, p, indexes)
-        else:  # First spin
-            p = np.empty_like(r)
-            p[:] = r[:]
-
         q, p_dot_q = matvec_and_dot_numba(indptr, indices, data, p, q, indexes)
         alpha = rho_cur / p_dot_q
-        x, r = y_pm_ax_numba(alpha, p, x, q, r, indexes)
+        x, r, r_dot_r = y_pm_ax_numba(alpha, p, x, q, r, indexes)
         rho_prev = rho_cur
+        rho_cur = r_dot_r
+
+        if np.sqrt(rho_cur) < atol:
+            return x, iteration
+
+        p = ay_p_x_numba(rho_cur / rho_prev, r, p, indexes)
 
     return x, -1
 
@@ -317,12 +320,16 @@ def y_pm_ax_numba(a, xp, yp, xm, ym, indexes):
     """
     Computes yp = yp + a * xp and ym = ym - a * xm in place.
     """
+    ym_dot_ym = 0.
     n = len(indexes)
     for i in prange(n):
         ii = indexes[i]
         yp.flat[ii] += a * xp.flat[ii]
-        ym.flat[ii] -= a * xm.flat[ii]
-    return yp, ym
+
+        ym_i = ym.flat[ii] - a * xm.flat[ii]
+        ym.flat[ii] = ym_i
+        ym_dot_ym += ym_i * ym_i
+    return yp, ym, ym_dot_ym
 
 
 @njit(parallel=True, fastmath=True, cache=True)
