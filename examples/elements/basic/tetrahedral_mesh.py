@@ -29,7 +29,7 @@ simulation.dt = 0.01
 simulation.t_max = 10
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.BuenoOrovio()
 simulation.stim_sequence = stim_sequence
 # simulation.solver = fw.ForwardEulerSolver()
 

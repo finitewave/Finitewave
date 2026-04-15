@@ -34,47 +34,7 @@ class IonicKernelGenerator(KernelGenerator):
         """
         super().__init__()
         self.kernel_func_name = kernel_func_name
-        self.common_args = ["rhs", "u", "indexes", "dt"]
-    
-    def _update_indexing(self, name, arrays):
-        """
-        Indexing that is used for updating state variables with new values.
-
-        Parameters
-        ----------
-        name : str
-            The name of the variable to update.
-        arrays : list of str
-            List of array variable names used in the step function.
-
-        Returns
-        -------
-        str
-            The indexing string to use for updating the variable.
-        """
-        if name in arrays:
-            return f"{name}.flat[idx]"
-        return name
-        
-    def _assign_indexing(self, name, arrays):
-        """
-        Indexing that is used to assign state variables to temporary (old) value.
-
-        Parameters
-        ----------
-        name : str
-            The name of the variable to assign.
-        arrays : list of str
-            List of array variable names used in the step function.
-
-        Returns
-        -------
-        str
-            The indexing string to use for assigning the variable.
-        """
-        if name in arrays:
-            return f"{name}.flat[idx]"
-        return name
+        self.common_args = ["dt", "u"]
     
     def _generate_args(self, vars, base="", suffix="", exclude=[]):
         """
@@ -151,7 +111,7 @@ class IonicKernelGenerator(KernelGenerator):
             The header for the loop that iterates over the indexes.
         """
         loop = """\
-            for i in range(len(indexes)):
+            for i in prange(len(indexes)):
                 idx = indexes[i]
         """
         return self._add_indent(loop, indent)
@@ -219,7 +179,7 @@ class IonicKernelGenerator(KernelGenerator):
         output = "return " + ", ".join(f"{var}" for var in output_args) if output_args else ""
         return self._add_indent(output, indent)
     
-    def generate_step_func(self, step_func, arrays, scalars, state_vars, obs_args):
+    def generate_step_func(self, step_func, state_vars, state_pars):
         """
         Generate the step function that computes the new state variables and rhs based on the current state and parameters.
         
@@ -227,15 +187,10 @@ class IonicKernelGenerator(KernelGenerator):
         ----------
         step_func : function
             The user-defined function that computes the new state variables and rhs.
-        arrays : list of str
-            List of array variable names used in the step function.
-        scalars : list of str
-            List of scalar variable names used in the step function.
         state_vars : list of str
             List of state variable names.
-        obs_args : list of str
-            List of observer extra arguments which should be returned from
-            the step function.
+        state_pars : list of str
+            List of state parameter names.
             
         Returns
         -------
@@ -250,12 +205,11 @@ class IonicKernelGenerator(KernelGenerator):
         func_name, body = self.extract_func_body(step_func)
 
         input_args = "dt"
-        input_args = self._generate_args(arrays, input_args, exclude=["rhs"])
-        input_args = self._generate_args(scalars, input_args)
+        input_args = self._generate_args(state_vars, input_args)
+        input_args = self._generate_args(state_pars, input_args)
                                                                                                                                                     
         output_args = "rhs"
         output_args = self._generate_args(state_vars, output_args, suffix="_new", exclude=["u"])
-        output_args = self._generate_args(obs_args, output_args, exclude=state_vars)
 
         body = self._add_indent(body, 16)
 
@@ -267,54 +221,17 @@ class IonicKernelGenerator(KernelGenerator):
         """
 
         func_body = textwrap.dedent(func_body).strip()
-
-        signature_inputs = "dt"
-        signature_inputs = self._generate_args(arrays, signature_inputs, suffix="_old", exclude=["rhs"])
-        signature_inputs = self._generate_args(scalars, signature_inputs)
-    
-        signature_returns = "rhs_new"
-        signature_returns = self._generate_args(state_vars, signature_returns, suffix="_new", exclude=["u"])
+  
+        signature_returns = "rhs"
+        signature_returns = self._generate_args(state_vars, signature_returns, exclude=["u"])
         signature_returns = self._generate_args(obs_args, signature_returns)
 
-        func_signature = f"{signature_returns} = {func_name}({signature_inputs})"
+        func_signature = f"{signature_returns} = {func_name}({input_args})"
         return func_name, func_signature, func_body
     
-    def generate_observers(self, observers, state_vars, indent):
-        if len(observers) == 0:
-            return "", set(), set()   
-
-        names = set()
-        expr_lines = []
-        expr_args = []
-        kernel_args = []
-
-        for obs in observers:
-            
-            name, expr, e_args, k_args = obs.generate(state_vars)
-            
-            if name in set(kernel_args):
-                raise ValueError(f"Observer name '{name}' collides with kernel arg name.")
-
-            if name in names:
-                raise ValueError(f"Duplicate observer name '{name}'.")
-
-            names.add(name)
-            expr_lines.append(expr)
-            expr_args.extend(e_args)
-            kernel_args.extend(k_args)
-
-        expr_lines = self._add_indent("\n".join(expr_lines), indent)
-
-        return expr_lines, set(expr_args), set(kernel_args)
-
-    def generate_body(self, step_func, arrays, scalars, state_vars,
-                      observers=[], output_args=[]):
+    def generate_body(self, step_func, arrays, scalars, state_vars, output_args=[]):
         """Generate numba CPU kernel."""
         input_setup = self.generate_input_setup(arrays, scalars, indent=16)
-        loop = self.generate_loop(indent=16)
-        asign_vars = self.generate_assignments(arrays, indent=20)
-        update_states = self.generate_update_states(state_vars, arrays, indent=20)
-        obs, obs_args, obs_kernel_args = self.generate_observers(observers, state_vars, indent=20)
         output = self.generate_output(output_args, indent=16)
 
         kernel_args = list(arrays) + list(scalars) + list(obs_kernel_args)
@@ -328,11 +245,7 @@ class IonicKernelGenerator(KernelGenerator):
             @njit(parallel=True, fastmath=True)
             def {self.kernel_func_name}({kernel_args_str}):
                 {input_setup}
-                {loop}
-                    {asign_vars}\n
-                    {step_func_signature}
-                    {update_states}
-                    {obs}
+                {step_func_signature}
                 {output}
             """
         kernel_func = textwrap.dedent(kernel_func).strip()

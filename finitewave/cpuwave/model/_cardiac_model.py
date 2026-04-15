@@ -95,13 +95,16 @@ class CardiacModel(CardiacModelBase):
         if (self.iter_counter - 1) % self.step != 0:
             return
         
-        self.ionic_kernel(
-            self.rhs,
+        res = self.ionic_kernel(
+            self.dt,
             self.u,
-            self.myo_indexes,
-            dt,
             *self.ionic_kernel_args,
         )
+
+        for i, name in enumerate(self.state_vars):
+            self.__dict__[name] = res[i+1]  # +1 to skip rhs
+
+        self.ionic_kernel_args.update(res)
     
     def prepacing(self, stim_prepacing, history=True):
         """
