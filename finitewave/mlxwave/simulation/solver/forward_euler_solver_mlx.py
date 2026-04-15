@@ -68,6 +68,8 @@ class ForwardEulerSolverMlx(Solver):
         self.a_lhs_matrix = dt * mass_inv * stiff
         self.a_lhs_matrix = self.build_ellpack(self.a_lhs_matrix)
 
+        print(self.a_lhs_matrix[1][:5])
+
         # print(self.a_lhs_matrix[0], self.a_lhs_matrix[1])
 
     def run(self):

@@ -216,6 +216,7 @@ class IonicMlxGenerator(KernelGenerator):
         step_func_name, step_func_signature, step_func_body = step_res
 
         kernel_func =f"""\
+            @mx.compile
             def {self.kernel_func_name}({kernel_args_str}):
                 {input_setup}
                 {step_func_signature}

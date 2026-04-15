@@ -1,6 +1,7 @@
 import mlx.core as mx
 
 
+@mx.compile
 def forward_euler_mlx(indices, data, u, u_new, rhs, indexes, dt):
     """
     Performs the Forward Euler step:
@@ -28,7 +29,7 @@ def forward_euler_mlx(indices, data, u, u_new, rhs, indexes, dt):
     np.ndarray
         Updated solution vector after the Forward Euler step.
     """
-    u_new = u - dt * mx.sum(data * u[indices], axis=1) + dt * rhs
+    u_new[indexes] = u[indexes] - mx.sum(data * u[indexes][indices], axis=1) + dt * rhs[indexes]
     return u_new
 
 

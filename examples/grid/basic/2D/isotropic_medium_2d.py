@@ -41,7 +41,7 @@ import mlx.core as mx
 
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n = 1000
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
@@ -53,7 +53,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 0.02
+simulation.t_max = 100
 simulation.cardiac_model = fw.AlievPanfilovMLX(memory_save=True)
 simulation.cardiac_tissue = tissue
 # simulation.stim_sequence = stim_sequence
