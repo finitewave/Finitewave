@@ -1,15 +1,12 @@
 import numpy as np
+import mlx.core as mx
 from warnings import warn
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
-
-from ._kernel_generators import (
-    IonicKernelGenerator,
-    PrepacingKernelGenerator,
-)
+from finitewave.mlxwave.model.kernel.ionic_mlx_kernel import IonicMlxGenerator
 
 
-class CardiacModel(CardiacModelBase):
+class CardiacModelMlx(CardiacModelBase):
     """
     Base class for cardiac grid models.
 
@@ -45,8 +42,8 @@ class CardiacModel(CardiacModelBase):
         self.memory_save = memory_save
         self.myo_indexes = None
         self.tissue_indexes = None
-        self.ionic_kernel_generator = IonicKernelGenerator()
-        self.prepacing_generator = PrepacingKernelGenerator()
+        self.ionic_kernel_generator = IonicMlxGenerator()
+        # self.prepacing_generator = PrepacingNumbaGenerator()
         self._model_func = {}
         self._ionic_step_func = None
 
@@ -60,7 +57,7 @@ class CardiacModel(CardiacModelBase):
             The simulation object.
         """
         self._allocate_arrays(simulation)
-        self.rhs = np.zeros_like(self.u)
+        self.rhs = None
         self.compute_indexes(simulation.cardiac_tissue)
         self._initialize_ionic_kernel()
         self.ionic_kernel_args = self._collect_ionic_kernel_args()
@@ -75,12 +72,12 @@ class CardiacModel(CardiacModelBase):
             The cardiac tissue object.
         """
         if self.memory_save:
-            self.myo_indexes = cardiac_tissue.myo_on_tissue_indexes
-            self.tissue_indexes = cardiac_tissue.tissue_indexes
+            self.myo_indexes = mx.array(cardiac_tissue.myo_on_tissue_indexes)
+            self.tissue_indexes = mx.array(cardiac_tissue.tissue_indexes)
             return
 
-        self.myo_indexes = cardiac_tissue.myo_indexes
-        self.tissue_indexes = np.arange(cardiac_tissue.mesh.size)
+        self.myo_indexes = mx.array(cardiac_tissue.myo_indexes)
+        self.tissue_indexes = mx.arange(cardiac_tissue.mesh.size)
 
     def run(self, dt):
         """
@@ -95,13 +92,30 @@ class CardiacModel(CardiacModelBase):
         if (self.iter_counter - 1) % self.step != 0:
             return
         
-        self.ionic_kernel(
-            self.rhs,
-            self.u,
-            self.myo_indexes,
+        # print(dt)
+        # print(self.u)
+        # print(self.ionic_kernel_arg_names)
+        # print(self.ionic_kernel_args)
+        
+        res = self.ionic_kernel(
             dt,
+            self.u,
             *self.ionic_kernel_args,
         )
+        mx.eval(res)
+        mx.synchronize()
+        self.rhs = res[0]
+        
+        # print(res)
+        
+        i = 0
+        for name in self.state_vars:
+            if name == "u":
+                continue
+            self.__dict__[name] = res[i+1]
+            i += 1
+        
+        self.ionic_kernel_args[:len(res) - 1] = res[1:]
     
     def prepacing(self, stim_prepacing, history=True):
         """
@@ -241,7 +255,8 @@ class CardiacModel(CardiacModelBase):
         # allocate state arrays
         for name in self.default_variables.keys():
             init_val = getattr(self, f"init_{name}")
-            setattr(self, name, init_val * np.ones(shape, dtype=simulation.npfloat))
+            array_val = init_val * np.ones(shape, dtype=simulation.npfloat)
+            setattr(self, name, mx.array(array_val))
 
         # validate parameter fields shapes if they are arrays
         for name in self.default_parameters.keys():

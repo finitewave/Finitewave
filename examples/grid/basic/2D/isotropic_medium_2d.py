@@ -37,9 +37,11 @@ import matplotlib.pyplot as plt
 
 import finitewave as fw
 import numpy as np
+import mlx.core as mx
+
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 1000
+n = 400
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
@@ -51,16 +53,28 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 100
-simulation.cardiac_model = fw.BuenoOrovio()
+simulation.t_max = 0.02
+simulation.cardiac_model = fw.AlievPanfilovMLX(memory_save=True)
 simulation.cardiac_tissue = tissue
-simulation.stim_sequence = stim_sequence
+# simulation.stim_sequence = stim_sequence
+simulation.initialize()
+
+u = np.zeros((n, n), dtype=np.float32)
+u[n//2 - 3:n//2 + 3, n//2 - 3:n//2 + 3] = 1.0
+
+simulation.cardiac_model.u = mx.array(u.flatten(), dtype=mx.float32)
 
 # run the model:
-simulation.run()
+simulation.run(initialize=False)
+
+print("Simulation completed.")
+u = np.array(simulation.cardiac_model.u).reshape(tissue.mesh.shape)
+v = np.array(simulation.cardiac_model.v).reshape(tissue.mesh.shape)
 
 # show the potential map at the end of calculations:
-plt.figure()
-plt.imshow(simulation.cardiac_model.u)
-plt.colorbar()
+fig, axs = plt.subplots(ncols=2)
+im = axs[0].imshow(u, cmap="inferno")
+axs[0].set_title("Membrane Potential (u)")
+im = axs[1].imshow(v, cmap="inferno")
+axs[1].set_title("Recovery Variable (v)")
 plt.show()

@@ -1,4 +1,4 @@
-# from .aliev_panfilov import AlievPanfilov
+from .aliev_panfilov_mlx import AlievPanfilovMLX
 # # from .barkley import Barkley
 # # from .mitchell_schaeffer import MitchellSchaeffer
 # from .fenton_karma import FentonKarma
