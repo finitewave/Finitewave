@@ -3,10 +3,8 @@ from warnings import warn
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
 
-from ._kernel_generators import (
-    IonicKernelGenerator,
-    PrepacingKernelGenerator,
-)
+from .kernel.ionic_numba_kernel import IonicNumbaGenerator
+from .kernel.prepacing_numba_kernel import PrepacingNumbaGenerator
 
 
 class CardiacModel(CardiacModelBase):
@@ -45,8 +43,8 @@ class CardiacModel(CardiacModelBase):
         self.memory_save = memory_save
         self.myo_indexes = None
         self.tissue_indexes = None
-        self.ionic_kernel_generator = IonicKernelGenerator()
-        self.prepacing_generator = PrepacingKernelGenerator()
+        self.ionic_kernel_generator = IonicNumbaGenerator()
+        self.prepacing_generator = PrepacingNumbaGenerator()
         self._model_func = {}
         self._ionic_step_func = None
 
@@ -59,6 +57,7 @@ class CardiacModel(CardiacModelBase):
         simulation : Simulation
             The simulation object.
         """
+        self.simulation = simulation
         self._allocate_arrays(simulation)
         self.rhs = np.zeros_like(self.u)
         self.compute_indexes(simulation.cardiac_tissue)
@@ -82,7 +81,38 @@ class CardiacModel(CardiacModelBase):
         self.myo_indexes = cardiac_tissue.myo_indexes
         self.tissue_indexes = np.arange(cardiac_tissue.mesh.size)
 
-    def run(self, dt):
+    def output(self, var_name="u"):
+        """
+        Returns the state variable with the tissue shape for output.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of the variable to output. Default is "u" (transmembrane potential).
+
+        Returns
+        -------
+        np.ndarray (*mesh.shape)
+            The state variable array reshaped to the tissue mesh shape,
+            with values only at the tissue indexes.
+        """
+        if not hasattr(self, var_name):
+            raise ValueError(f"Variable '{var_name}' not found in the model.")
+        
+        if not self.memory_save:
+            var_data = getattr(self, var_name)
+            return var_data
+        
+        init_val = getattr(self, f"init_{var_name}")
+        
+        var_mesh = np.ones_like(self.simulation.cardiac_tissue.mesh,
+                                dtype=self.simulation.npfloat)
+        var_mesh *= init_val
+        var_data = getattr(self, var_name)
+        var_mesh.flat[self.tissue_indexes] = var_data[self.tissue_indexes]
+        return var_mesh
+
+    def run(self):
         """
         Executes the ionic kernel for the current time step.
 
@@ -96,10 +126,10 @@ class CardiacModel(CardiacModelBase):
             return
         
         self.ionic_kernel(
+            self.simulation.dt,
+            self.myo_indexes,
             self.rhs,
             self.u,
-            self.myo_indexes,
-            dt,
             *self.ionic_kernel_args,
         )
     
@@ -198,24 +228,6 @@ class CardiacModel(CardiacModelBase):
         # declare arrays (optional, for readability/debug)
         for name in self.default_variables.keys():
             setattr(self, name, np.ndarray)      
-    
-    def _initialize_model_func(self, ops, jit_ops):
-        """
-        Initializes the model's ionic step function and any additional model functions.
-        
-        Parameters
-        ----------
-        ops : Ops
-            Object containing the model's functions, including the `ionic_step` function.
-        jit_ops : dict
-            Dictionary of additional model functions used in the `ionic_kernel`,
-            where keys are function names and values are jit-compiled functions.
-        """
-        self._ionic_step_func = ops.ionic_step
-
-        self._model_func = {}
-        for key, func in jit_ops.items():
-            self._model_func[key] = func
 
     def _allocate_arrays(self, simulation):
         """
@@ -246,7 +258,7 @@ class CardiacModel(CardiacModelBase):
         # validate parameter fields shapes if they are arrays
         for name in self.default_parameters.keys():
             par = getattr(self, name)
-            if isinstance(par, np.ndarray):
+            if isinstance(par, np.ndarray) and par.size > 1:
                 if par.shape != shape:
                     raise ValueError(
                         f"param '{name}' shape {par.shape} != tissue shape {shape}"

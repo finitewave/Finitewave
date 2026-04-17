@@ -63,19 +63,17 @@ tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 3, 0, m))
+stim_sequence.add_stim(fw.StimCurrentCoord(0, 5, 0.1, 0, 3, 0, m))
 
 # set up tracker parameters:
-node_inds = [[30, 5], [70, 5]]
+node_inds = [[0, 5], [70, 5]]
 action_pot_tracker = fw.ActionPotentialTracker(node_inds)
 
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
 # set up simulation parameters:
-simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.t_max = 50
+simulation = fw.CardiacSimulation(dt=0.01, t_max=50)
 simulation.cardiac_model = fw.AlievPanfilov(memory_save=False)
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence

@@ -8,8 +8,8 @@ from finitewave.core.simulation.cardiac_simulation_base import (
     CardiacSimulationBase
 )
 from .diffusion.diffusion_model import DiffusionModel
-from .solver.forward_euler_solver import ForwardEulerSolver
-from .solver.crank_nicolson_cg_solver import CrankNicolsonCGSolver
+from finitewave.cpuwave.solver.forward_euler_solver import ForwardEulerSolver
+from finitewave.cpuwave.solver.crank_nicolson_cg_solver import CrankNicolsonCGSolver
 
 
 class CardiacSimulation(CardiacSimulationBase):
@@ -55,8 +55,8 @@ class CardiacSimulation(CardiacSimulationBase):
     track_solution : bool
         Whether to track the solution at previous time steps for use in trackers.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, dt=None, t_max=None):
+        super().__init__(dt, t_max)
         self.diffusion_model = DiffusionModel()
         self.track_solution = False
 
@@ -67,7 +67,7 @@ class CardiacSimulation(CardiacSimulationBase):
 
         super().initialize()
 
-    def run(self, initialize=True, num_of_threads=None):
+    def run(self, initialize=True, num_of_threads=None, prog_bar=True):
         """
         Runs the simulation loop. Handles stimuli, diffusion, ionic kernel
         updates, and tracking.
@@ -89,36 +89,50 @@ class CardiacSimulation(CardiacSimulationBase):
         if self.state_loader:
             self.state_loader.load()
 
+        bar_desc = self._create_bar_desc()
         iters = int(np.ceil((self.t_max - self.t) / self.dt))
-        bar_desc = (f"Running {self.cardiac_model.__class__.__name__}" +
-                    f" on {self.cardiac_tissue.meta['shape']}" +
-                    f" {self.cardiac_tissue.meta['type']}")
 
-        for _ in tqdm(range(iters), total=iters, desc=bar_desc,
-                      disable=not self.prog_bar):
+        for _ in tqdm(range(iters), total=iters, desc=bar_desc, disable=not prog_bar):
+            if self.iter_step():
+                break
+        
+        if self.tracker_sequence:
+            self.tracker_sequence.tracker_next()
+    
+    def iter_step(self):
+        """
+        Performs a single iteration of the simulation.
+        """
+        if self.tracker_sequence:
+            self.tracker_sequence.tracker_next()
 
-            if self.stim_sequence:
-                self.stim_sequence.stimulate_next()
+        if self.stim_sequence:
+            self.stim_sequence.stimulate_next()
 
-            if self.tracker_sequence:
-                self.tracker_sequence.tracker_next()
+        self.cardiac_model.run()
+        self.solver.run()
 
-            self.cardiac_model.run(self.dt)
-            self.solver.run()
+        self.t += self.dt
+        self.step += 1
 
-            self.t += self.dt
-            self.step += 1
+        if self.command_sequence:
+            self.command_sequence.execute_next()
 
-            if self.command_sequence:
-                self.command_sequence.execute_next()
-
+        if self.check_termination():
             if self.state_saver:
                 self.state_saver.save()
 
-            if self.check_termination():
-                if self.state_saver:
-                    self.state_saver.save()
-                break
+            if self.tracker_sequence:
+                self.tracker_sequence.track_next()
+
+            return True
+
+        return False
+
+    def _create_bar_desc(self):
+        return (f"Running {self.cardiac_model.__class__.__name__}" +
+                f" on {self.cardiac_tissue.meta['shape']}" +
+                f" {self.cardiac_tissue.meta['type']}")
 
     def set_num_of_threads(self, num_of_threads):
         """

@@ -1,8 +1,8 @@
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 
-from finitewave.cpuwave.numerics.fem.elements.triangle_element import LinearTriangleElement
-from finitewave.cpuwave.numerics.fem.elements.quadrilateral_element import LinearQuadrilateralElement
-from finitewave.cpuwave.numerics.fem.elements.tetrahedral_element import LinearTetrahedralElement
+from finitewave.core.numerics.fem.elements.triangle_element import LinearTriangleElement
+from finitewave.core.numerics.fem.elements.quadrilateral_element import LinearQuadrilateralElement
+from finitewave.core.numerics.fem.elements.tetrahedral_element import LinearTetrahedralElement
 
 from .grid_diffusion_model import GridDiffusionModel
 from .element_diffusion_model import ElementDiffusionModel

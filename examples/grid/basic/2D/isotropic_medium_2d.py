@@ -35,13 +35,22 @@ showing the resulting excitation wave pattern.
 
 import matplotlib.pyplot as plt
 
-import finitewave as fw
+import finitewave.mlxwave as fw
 import numpy as np
 import mlx.core as mx
 
 
+stim_prepacing = fw.StimPrepacing(dt=0.005)
+stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration=2.)
+stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
+
+# create model object and set up parameters
+courtemanche = fw.LuoRudy91()
+courtemanche.prepacing(stim_prepacing)
+
+
 # create a tissue of size 400x400 with cardiomycytes:
-n = 1000
+n = 800
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
@@ -51,30 +60,18 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.t_max = 100
-simulation.cardiac_model = fw.AlievPanfilovMLX(memory_save=True)
+simulation = fw.CardiacSimulation(dt=0.01, t_max=500)
+simulation.cardiac_model = courtemanche
 simulation.cardiac_tissue = tissue
-# simulation.stim_sequence = stim_sequence
-simulation.initialize()
-
-u = np.zeros((n, n), dtype=np.float32)
-u[n//2 - 3:n//2 + 3, n//2 - 3:n//2 + 3] = 1.0
-
-simulation.cardiac_model.u = mx.array(u.flatten(), dtype=mx.float32)
+simulation.stim_sequence = stim_sequence
 
 # run the model:
-simulation.run(initialize=False)
+simulation.run()
 
-print("Simulation completed.")
-u = np.array(simulation.cardiac_model.u).reshape(tissue.mesh.shape)
-v = np.array(simulation.cardiac_model.v).reshape(tissue.mesh.shape)
+u = simulation.cardiac_model.output("u")
 
 # show the potential map at the end of calculations:
-fig, axs = plt.subplots(ncols=2)
-im = axs[0].imshow(u, cmap="inferno")
-axs[0].set_title("Membrane Potential (u)")
-im = axs[1].imshow(v, cmap="inferno")
-axs[1].set_title("Recovery Variable (v)")
+plt.figure()
+plt.imshow(u, cmap="inferno")
+plt.colorbar(label="Membrane Potential")
 plt.show()

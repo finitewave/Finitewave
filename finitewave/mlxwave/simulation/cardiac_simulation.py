@@ -1,18 +1,16 @@
-import copy
-import warnings
-from tqdm import tqdm
-import numpy as np
-import numba
 
-from finitewave.core.simulation.cardiac_simulation_base import (
-    CardiacSimulationBase
+from finitewave.cpuwave.simulation.cardiac_simulation import (
+    CardiacSimulation as CardiacSimulationCPU
 )
-from .diffusion.diffusion_model import DiffusionModel
-from .solver.forward_euler_solver_mlx import ForwardEulerSolverMlx
-from .solver.crank_nicolson_cg_solver import CrankNicolsonCGSolver
+from finitewave.mlxwave.solver.forward_euler_solver import (
+    ForwardEulerSolver
+)
+from finitewave.mlxwave.solver.crank_nicolson_cg_solver import (
+    CrankNicolsonCGSolver
+)
 
 
-class CardiacSimulation(CardiacSimulationBase):
+class CardiacSimulation(CardiacSimulationCPU):
     """
     Base class for electrophysiological models.
 
@@ -55,94 +53,15 @@ class CardiacSimulation(CardiacSimulationBase):
     track_solution : bool
         Whether to track the solution at previous time steps for use in trackers.
     """
-    def __init__(self):
-        super().__init__()
-        self.diffusion_model = DiffusionModel()
-        self.track_solution = False
+    def __init__(self, dt=None, t_max=None):
+        super().__init__(dt, t_max)
 
-    def initialize(self):
-
-        if self.solver is None:
-            self.solver = self.default_solver()
-
-        super().initialize()
-
-    def run(self, initialize=True, num_of_threads=None):
+    def set_num_of_threads(self, num_of_threads):
         """
-        Runs the simulation loop. Handles stimuli, diffusion, ionic kernel
-        updates, and tracking.
-
-        Parameters
-        ----------
-        initialize : bool, optional
-            Whether to (re)initialize the model before running the simulation.
-            Default is True.
+        Sets the number of threads for parallel computations. This method is
+        for compatibility with CPU-based simulations and does not affect GPU computations.
         """
-        if initialize:
-            self.initialize()
-
-        # self.set_num_of_threads(num_of_threads)
-
-        if self.t_max < self.t:
-            raise ValueError("t_max must be greater than current t.")
-
-        if self.state_loader:
-            self.state_loader.load()
-
-        iters = int(np.ceil((self.t_max - self.t) / self.dt))
-        bar_desc = (f"Running {self.cardiac_model.__class__.__name__}" +
-                    f" on {self.cardiac_tissue.meta['shape']}" +
-                    f" {self.cardiac_tissue.meta['type']}")
-
-        for _ in tqdm(range(iters), total=iters, desc=bar_desc,
-                      disable=not self.prog_bar):
-
-            if self.stim_sequence:
-                self.stim_sequence.stimulate_next()
-
-            if self.tracker_sequence:
-                self.tracker_sequence.tracker_next()
-
-            self.cardiac_model.run(self.dt)
-            self.solver.run()
-
-            self.t += self.dt
-            self.step += 1
-
-            if self.command_sequence:
-                self.command_sequence.execute_next()
-
-            if self.state_saver:
-                self.state_saver.save()
-
-            if self.check_termination():
-                if self.state_saver:
-                    self.state_saver.save()
-                break
-
-    # def set_num_of_threads(self, num_of_threads):
-    #     """
-    #     Sets the number of threads for Numba parallel operations.
-
-    #     Parameters
-    #     ----------
-    #     num_of_threads : int or None
-    #         The number of threads to use for Numba parallel operations. If None,
-    #         it will use the maximum available threads minus one to avoid overloading the system.
-    #     """
-    #     max_num_of_threads = numba.config.NUMBA_NUM_THREADS
-
-    #     if num_of_threads is None:
-    #         num_of_threads = max(1, max_num_of_threads - 1)
-
-    #     if num_of_threads > max_num_of_threads:
-    #         warnings.warn(
-    #             f"Selected number of threads ({num_of_threads}) exceeds the available threads ({max_num_of_threads}). "
-    #             f"Using the maximum available threads instead."
-    #         )
-    #         num_of_threads = min(num_of_threads, max_num_of_threads)
-
-    #     numba.set_num_threads(num_of_threads)
+        pass
 
     def default_solver(self):
         """Selects the default solver based on the type of cardiac tissue.
@@ -155,9 +74,9 @@ class CardiacSimulation(CardiacSimulationBase):
              The default solver instance based on the tissue type.
         """
         if self.cardiac_tissue.meta["type"] == "Grid":
-            return ForwardEulerSolverMlx()
+            return ForwardEulerSolver()
 
-        # if self.cardiac_tissue.meta["type"] == "Elements":
-        #     return CrankNicolsonCGSolver()
+        if self.cardiac_tissue.meta["type"] == "Elements":
+            return CrankNicolsonCGSolver()
 
-        # raise ValueError("Unsupported tissue type")
+        raise ValueError("Unsupported tissue type")

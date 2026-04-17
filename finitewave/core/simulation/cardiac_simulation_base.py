@@ -43,7 +43,7 @@ class CardiacSimulationBase:
     npfloat : type
         The floating-point type used for numerical computations.
     """
-    def __init__(self):
+    def __init__(self, dt=None, t_max=None):
         self.meta = {}
         self.cardiac_tissue = None
         self.stim_sequence = None
@@ -56,13 +56,11 @@ class CardiacSimulationBase:
         self.diffusion_model = None
         self.cardiac_model = None
 
-        self.dt = 0.
-        self.dr = 0.
-        self.t_max = 0.
+        self.dt = dt
+        self.t_max = t_max
         self.t = 0
         self.step = 0
 
-        self.prog_bar = True
         self.npfloat = np.float64
 
     def initialize(self):

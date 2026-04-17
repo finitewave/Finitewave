@@ -1,12 +1,11 @@
 
 from ._cardiac_model import CardiacModel
 
-from finitewave.cpuwave.model._registry import load_ops, wrap_calc
+from .kernel._load_ops import load_ops
 
 
 try:
     ops = load_ops("bueno_orovio")
-    jit_ops = wrap_calc(ops)
 except KeyError as e:
     raise ImportError(
         "Bueno-Orovio model ops not found. "
@@ -99,5 +98,5 @@ class BuenoOrovio(CardiacModel):
         """
         super().__init__(memory_save)
         self.D_model = 0.1171
+        self.ops = ops
         self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(ops, jit_ops)

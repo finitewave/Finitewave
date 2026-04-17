@@ -75,15 +75,13 @@ class MultiVariableTracker(Tracker):
                 raise ValueError(f"Variable '{var_name}' not found in model.")
             
             var_val = getattr(self.model, var_name)
-
-            if not isinstance(var_val, np.ndarray):
-                raise TypeError(f"Variable '{var_name}' is not a NumPy array.")
             
             if var_val.size < max(self._node_inds) + 1:
                 msg = (f"Some node indices are out of bounds for variable " +
                        f"'{var_name}' with size {var_val.size}.")
                 raise ValueError(msg)
             
+            var_val = np.asarray(var_val)
             self.vars_data[var_name] = np.zeros((len(self.tracking_times), len(self._node_inds)),
                                                 dtype=var_val.dtype)
 
@@ -132,7 +130,8 @@ class MultiVariableTracker(Tracker):
         """
         for var_name in self.var_list:
             var_values = self.model.__dict__[var_name]
-            self.vars_data[var_name][self.tracking_counter] = var_values.flat[self._node_inds]
+            var_values = np.asarray(var_values, copy=False)
+            self.vars_data[var_name][self.tracking_counter] = var_values[self._node_inds]
         
     @property
     def output(self):

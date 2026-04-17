@@ -56,9 +56,7 @@ action_pot_tracker.step = 1
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
-simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.t_max = 500
+simulation = fw.CardiacSimulation(dt=0.01, t_max=500)
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m], dr=0.5)
 simulation.cardiac_model = courtemanche

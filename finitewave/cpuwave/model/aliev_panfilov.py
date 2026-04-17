@@ -1,12 +1,11 @@
 
 from finitewave.cpuwave.model._cardiac_model import CardiacModel
 
-from finitewave.cpuwave.model._registry import load_ops, wrap_calc
+from finitewave.cpuwave.model.kernel._load_ops import load_ops
 
 
 try:
     ops = load_ops("aliev_panfilov")
-    jit_ops = wrap_calc(ops)
 except KeyError as e:
     raise ImportError(
         "Aliev-Panfilov model ops not found. "
@@ -67,5 +66,5 @@ class AlievPanfilov(CardiacModel):
         """
         super().__init__(memory_save)
         self.D_model = 1.
+        self.ops = ops
         self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(ops, jit_ops)

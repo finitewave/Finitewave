@@ -1,6 +1,6 @@
 import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
-from finitewave.cpuwave.numerics.fem.element_assembler import ElementAssembler
+from finitewave.core.numerics.fem.element_assembler import ElementAssembler
 
 
 class ElementDiffusionModel(DiffusionModelBase):

@@ -1,1 +1,4 @@
 from finitewave.core.fibrosis.fibrosis_pattern import FibrosisPattern
+from finitewave.core.fibrosis.diffuse_2d_pattern import Diffuse2DPattern
+from finitewave.core.fibrosis.structural_2d_pattern import Structural2DPattern
+from finitewave.core.fibrosis.decoupling_pattern import DecouplingPattern

@@ -1,7 +1,7 @@
 import numpy as np
 import pyvista as pv
 
-import finitewave as fw
+import finitewave.mlxwave as fw
 
 
 # create a tissue of size 50x50 with 200x200 points:
@@ -21,10 +21,10 @@ stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation()
 simulation.dt = 0.01
-simulation.t_max = 10
+simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_model = fw.Courtemanche()
 simulation.stim_sequence = stim_sequence
 # set up the solver:
 # simulation.solver = fw.ForwardEulerSolver()
@@ -33,7 +33,7 @@ simulation.stim_sequence = stim_sequence
 simulation.run()
 
 # get the resulting potential at the element centers:
-u = simulation.cardiac_model.u
+u = simulation.cardiac_model.output("u")
 elems_u = np.zeros(tissue.elems.shape[0]) * np.nan
 elems_u[tissue.myo_elems_indexes] = u[tissue.myo_elements].mean(axis=1)
 coords_3d = np.hstack([coords, np.zeros((coords.shape[0], 1))])

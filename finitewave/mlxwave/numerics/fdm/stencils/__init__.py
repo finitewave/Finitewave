@@ -1,4 +1,0 @@
-from ..asymmetric_stencil import AsymmetricStencil
-# from .symmetric_stencil_2d import SymmetricStencil2D
-from ..isotropic_stencil import IsotropicStencil
-# from .isotropic_second_order_stencil import IsotropicSecondOrderStencil

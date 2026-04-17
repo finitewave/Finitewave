@@ -50,8 +50,8 @@ class Tracker(ABC):
             The simulation object to which the tracker will be attached.
         """
         self.simulation = simulation
-        n_measurements = int(np.ceil((min(self.end_time, simulation.t_max) - self.start_time) / 
-                                     (simulation.dt * self.step)))
+        n_measurements = 1 + int(np.floor((min(self.end_time, simulation.t_max) - self.start_time) / 
+                                          (simulation.dt * self.step)))
         self.tracking_times = - np.ones((n_measurements,), dtype=float)
 
     @abstractmethod
@@ -75,9 +75,9 @@ class Tracker(ABC):
         if self.iter_counter % self.step != 0:
             self.iter_counter += 1
             return
-
-        self._track()
+        
         self.tracking_times[self.tracking_counter] = self.simulation.t
+        self._track()
         self.tracking_counter += 1
         self.iter_counter += 1
 

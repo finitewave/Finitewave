@@ -1,11 +1,10 @@
 from ._cardiac_model import CardiacModel
 
-from finitewave.cpuwave.model._registry import load_ops, wrap_calc
+from .kernel._load_ops import load_ops
 
 
 try:
     ops = load_ops("courtemanche")
-    jit_ops = wrap_calc(ops)
 except KeyError as e:
     raise ImportError(
         "Courtemanche model ops not found. "
@@ -151,6 +150,5 @@ class Courtemanche(CardiacModel):
     def __init__(self, memory_save=False):
         super().__init__(memory_save)
         self.D_model = 0.154
-        self.npfloat = "float64"
+        self.ops = ops
         self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(ops, jit_ops)

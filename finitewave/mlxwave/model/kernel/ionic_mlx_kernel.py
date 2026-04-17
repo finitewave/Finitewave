@@ -162,8 +162,8 @@ class IonicMlxGenerator(KernelGenerator):
 
         func_body = textwrap.dedent(func_body).strip()
 
-        print("\nGenerated step function:")
-        print(func_body)
+        # print("\nGenerated step function:")
+        # print(func_body)
 
         signature_inputs = input_args
     
@@ -225,8 +225,8 @@ class IonicMlxGenerator(KernelGenerator):
             """
         kernel_func = textwrap.dedent(kernel_func).strip()
 
-        print("\nGenerated kernel function:")
-        print(kernel_func)
+        # print("\nGenerated kernel function:")
+        # print(kernel_func)
         return step_func_name, step_func_body, kernel_func, kernel_args
     
     def generate_kernel(self, ops, arrays, scalars, state_vars, observers=[], output_args=[]):

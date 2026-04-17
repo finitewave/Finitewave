@@ -28,6 +28,8 @@ def wrap_mlx_func(ops, start_with="calc_", exclude_funcs=["calc_where"]):
                  "log": mx.log,
                  "exp": mx.exp,
                  "sqrt": mx.sqrt,
+                 "abs": mx.abs,
+                 "tanh": mx.tanh,
                  "calc_where": mx.where}
     
     model_funcs = {}
@@ -103,7 +105,7 @@ def _inject_globals(func, glb_funcs):
     return func
 
 
-# @lru_cache(maxsize=64)
+@lru_cache(maxsize=64)
 def build_func(func_name, func_code, glb_funcs, model_funcs):
     """Builds a function from its source code, injecting necessary globals.
     

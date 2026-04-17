@@ -1,11 +1,10 @@
 from ._cardiac_model import CardiacModel
 
-from finitewave.cpuwave.model._registry import load_ops, wrap_calc
+from .kernel._load_ops import load_ops
 
 
 try:
     ops = load_ops("fenton_karma")
-    jit_ops = wrap_calc(ops)
 except KeyError as e:
     raise ImportError(
         "Fenton-Karma model ops not found. "
