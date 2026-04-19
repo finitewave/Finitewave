@@ -457,8 +457,7 @@ steps described above:
 
  The output should look like this:
 
- .. image-sg:: /usage/images/quick_start_output.png
+.. image:: usage/images/quick_start_output.png
    :alt: Aliev-Panfilov 2D model
-   :srcset: /usage/images/quick_start_output.png
-   :class: sphx-glr-single-img
+   :width: 600px
 
