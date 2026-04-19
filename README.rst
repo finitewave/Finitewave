@@ -457,7 +457,7 @@ steps described above:
 
  The output should look like this:
 
-.. image:: usage/images/quick_start_output.png
+.. image:: images/quick_start_output.png
    :alt: Aliev-Panfilov 2D model
    :width: 600px
 
