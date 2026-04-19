@@ -62,8 +62,6 @@ nk = 10
 tissue = fw.CardiacTissue3D([n, n, nk])
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, n, nk], dtype="uint8")
-# add empty nodes on the sides (elems = 0):
-tissue.add_boundaries()
 
 # create model object:
 aliev_panfilov = fw.AlievPanfilov3D()

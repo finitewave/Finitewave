@@ -16,7 +16,6 @@ Simulation Setup:
 -----------------
 - Tissue Size: 100×100×10
 - Initial Conditions: Fully excitable tissue with no fibrosis
-- Boundary Handling: No-flux boundaries using `add_boundaries()`
 - Stimulation:
   - First planar stimulus at t = 0, applied to lower half of Y domain
   - Second planar stimulus at t = 31, applied to left half of X domain
@@ -60,8 +59,6 @@ nk = 10
 tissue = fw.CardiacTissue3D([n, n, nk])
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, n, nk], dtype="uint8")
-# add empty nodes on the sides (elems = 0):
-tissue.add_boundaries()
 
 # create model object:
 aliev_panfilov = fw.AlievPanfilov3D()

@@ -42,7 +42,8 @@ To install Finitewave, navigate to the root directory of the project and run:
 
 .. code-block:: bash
 
-    $ python -m build
+    $ python -m pip install --upgrade pip
+    $ pip install build
     $ pip install dist/finitewave-<version>.whl
 
 
@@ -140,14 +141,6 @@ Nodes marked as ``0`` and ``2`` are treated similarly as isolated nodes with no
 flux through their boundaries. These different notations help distinguish
 between areas of healthy tissue, empty spaces, and regions of fibrosis or
 infarction.
-
-.. note::
-
-    To satisfy boundary conditions, every Finitewave mesh must include boundary 
-    nodes (marked as ``0``). This can be easily achieved using the
-    ``add_boundaries()`` method, which automatically adds rows of empty nodes
-    around the edges of the mesh. You should apply this method if you modify the
-    ``mesh``, for example by adding fibrosis.
 
 You can also utilize ``0`` nodes to define complex geometries and pathways,
 or to model organ-level structures. For example, to simulate the
@@ -462,10 +455,10 @@ steps described above:
     plt.tight_layout()
     plt.show()
 
-.. The output should look like this:
+ The output should look like this:
 
-.. .. image-sg:: /usage/images/quick_start_001.png
-..   :alt: Aliev-Panfilov 2D model
-..   :srcset: /usage/images/quick_start_001.png
-..   :class: sphx-glr-single-img
+ .. image-sg:: /usage/images/quick_start_output.png
+   :alt: Aliev-Panfilov 2D model
+   :srcset: /usage/images/quick_start_output.png
+   :class: sphx-glr-single-img
 

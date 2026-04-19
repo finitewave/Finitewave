@@ -15,7 +15,6 @@ the propagation of the activation wave across the tissue volume.
 Simulation Setup:
 -----------------
 - Domain: 3D slab of size 100×100×10 with uniform cardiomyocytes (value = 1).
-- Boundaries: Added using `add_boundaries()` to define no-flux edges.
 - Conductivity: Uniform (1.0) across the tissue.
 - Fiber orientation: Longitudinal (along the x-axis).
 - Stimulation: Applied to a thin slab at x = 0–3 across the entire yz-plane at t=0.
@@ -52,7 +51,6 @@ tissue = fw.CardiacTissue3D([n, nj, nk])
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, nj, nk], dtype="uint8")
 # add empty nodes on the sides (elems = 0):
-tissue.add_boundaries()
 
 # add a conductivity array, all elements = 1.0 -> normal conductvity:
 tissue.cond = np.ones([n, nj, nk])

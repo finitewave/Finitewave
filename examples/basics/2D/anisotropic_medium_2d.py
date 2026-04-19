@@ -54,7 +54,6 @@ alpha = 0.25 * np.pi
 tissue = fw.CardiacTissue2D([n, n])
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, n])
-tissue.add_boundaries()
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, n, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
