@@ -1,3 +1,4 @@
+import numpy as np
 import mlx.core as mx
 from finitewave.cpuwave.stimul.stim_current_electrodes import (
     StimCurrentElectrodes as StimCurrentElectrodesCPU
@@ -25,7 +26,10 @@ class StimCurrentElectrodes(StimCurrentElectrodesCPU):
         The radius around each coordinate to include in the stimulation.
     """
     def initialize(self, simulation):
-        super().initialize(simulation)
+        myo_indexes = np.array(simulation.cardiac_model.myo_indexes, copy=False)
+        tissue_indexes = np.array(simulation.cardiac_model.tissue_indexes, copy=False)
+        myo_coords = simulation.cardiac_tissue.coords[tissue_indexes[myo_indexes]]
+        self.stim_indexes = self.select_nodes(myo_coords, myo_indexes)
         self.stim_indexes = mx.array(self.stim_indexes, dtype=mx.int32)
 
     def stimulate(self, simulation):

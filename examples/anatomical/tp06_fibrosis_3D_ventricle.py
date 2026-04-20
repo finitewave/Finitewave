@@ -10,44 +10,40 @@ import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
 
-import finitewave as fw
+import finitewave.mlxwave as fw
 
 
-path = Path(__file__).parent
+path = Path(__file__).parent.parent
 
 # Load mesh as cubic array
 mesh = np.load(path.joinpath("data", "mesh.npy"))
 
-tissue = fw.CardiacTissue3D(mesh.shape)
+tissue = fw.CardiacTissueGrid(mesh.shape, dr=0.25)
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = mesh
-# generate 20% of fibrosis in the ventrcile wall:
-fibrosis_pattern = fw.Diffuse3DPattern(0, mesh.shape[0], 0, mesh.shape[1], 0, mesh.shape[2], 0.20)
-fibrosis_pattern.generate(tissue.mesh.shape, tissue.mesh)
-
-tissue.add_boundaries()
+# # generate 20% of fibrosis in the ventrcile wall:
+# fibrosis_pattern = fw.Diffuse3DPattern(0, mesh.shape[0], 0, mesh.shape[1], 0, mesh.shape[2], 0.20)
+# fibrosis_pattern.generate(tissue.mesh.shape, tissue.mesh)
 
 # create model object:
-tp06 = fw.TP063D()
-# set up numerical parameters:
-tp06.dt = 0.01
-tp06.dr = 0.25
-tp06.t_max = 25
+tp06 = fw.TenTusscherPanfilov2006()
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord3D(0, -20, 0, mesh.shape[0],
-                                             0, mesh.shape[0],
-                                             0, 30))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, -20,
+                                           0, mesh.shape[0],
+                                           0, mesh.shape[0],
+                                           0, 30))
 # add the tissue and the stim parameters to the model object:
-tp06.cardiac_tissue = tissue
-tp06.stim_sequence = stim_sequence
+simulation = fw.CardiacSimulation(dt=0.01, t_max=0.01)
+simulation.cardiac_tissue = tissue
+simulation.stim_sequence = stim_sequence
 # initialize model: compute weights, add stimuls, trackers etc.
-tp06.run()
+simulation.cardiac_model = tp06
+simulation.run()
 
 # show the potential map at the end of calculations
 
-# visualize the ventricle in 3D
-mesh_builder = fw.VisMeshBuilder3D()
-mesh_grid = mesh_builder.build_mesh(tissue.mesh)
-mesh_grid = mesh_builder.add_scalar(tp06.u, 'u')
-mesh_grid.plot(clim=[-80, 30], cmap='viridis')
+# # visualize the ventricle in 3D
+# grid = fw.PyVistaMeshGrid(tissue.mesh, as_surface=True)
+# grid["u"] = simulation.cardiac_model.u
+# grid.plot(scalars="u", cmap="inferno", show_edges=False, show_scalar_bar=False)

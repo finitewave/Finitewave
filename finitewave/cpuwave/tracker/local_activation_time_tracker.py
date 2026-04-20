@@ -68,6 +68,7 @@ class LocalActivationTimeTracker(Tracker):
         # Initialize with a single layer of -1 (no activation)
         self.act_t = [-np.ones_like(self.simulation.cardiac_model.u)]
         self._activated = np.full(self.simulation.cardiac_model.u.shape, 0, dtype=bool)
+        super().initialize(simulation)
 
     def _track(self):
         """
@@ -75,6 +76,7 @@ class LocalActivationTimeTracker(Tracker):
         at each time step.
         """
         u = self.simulation.cardiac_model.u
+        u = np.array(u, copy=False)
 
         if not self.activated:
             self._activate_tracker(u)

@@ -60,6 +60,6 @@ class LuoRudy91(CardiacModel):
 
     model_name = "luo_rudy_91"
 
-    def __init__(self):
+    def __init__(self, memory_save=True):
         super().__init__()
         self.D_model = 0.1
