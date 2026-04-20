@@ -57,6 +57,12 @@ which allows changes to be immediately reflected without reinstallation:
     $ pip install -e .
 
 
+To run tests:
+
+.. code-block:: bash
+
+    $ pytest tests/
+
 Requirements
 ------------
 
@@ -460,4 +466,3 @@ steps described above:
 .. image:: images/quick_start_output.png
    :alt: Aliev-Panfilov 2D model
    :width: 600px
-
