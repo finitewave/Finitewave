@@ -131,7 +131,13 @@ class MultiVariableTracker(Tracker):
         for var_name in self.var_list:
             var_values = self.model.__dict__[var_name]
             var_values = np.asarray(var_values, copy=False)
-            self.vars_data[var_name][self.tracking_counter] = var_values[self._node_inds]
+
+            if var_values.ndim > 1:
+                var_val = var_values.flat[self._node_inds]
+            else:
+                var_val = var_values[self._node_inds]
+
+            self.vars_data[var_name][self.tracking_counter] = var_val
         
     @property
     def output(self):

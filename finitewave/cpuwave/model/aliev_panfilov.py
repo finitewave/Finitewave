@@ -1,17 +1,6 @@
 
 from finitewave.cpuwave.model._cardiac_model import CardiacModel
 
-from finitewave.cpuwave.model.kernel._load_ops import load_ops
-
-
-try:
-    ops = load_ops("aliev_panfilov")
-except KeyError as e:
-    raise ImportError(
-        "Aliev-Panfilov model ops not found. "
-        "Install model package: pip install finitewave-model-aliev-panfilov"
-    ) from e
-
 
 class AlievPanfilov(CardiacModel):
     """
@@ -60,11 +49,11 @@ class AlievPanfilov(CardiacModel):
     https://doi.org/10.1016/0960-0779(95)00089-5.
     """
 
+    model_name = "aliev_panfilov"
+
     def __init__(self, memory_save=False):
         """
         Initializes the AlievPanfilov instance with default parameters.
         """
         super().__init__(memory_save)
         self.D_model = 1.
-        self.ops = ops
-        self._initialize_variables_and_parameters(ops)

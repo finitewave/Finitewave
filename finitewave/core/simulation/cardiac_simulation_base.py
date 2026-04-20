@@ -117,7 +117,7 @@ class CardiacSimulationBase:
             True if the simulation should terminate, False otherwise.
         """
         max_iters = int(np.ceil(self.t_max / self.dt))
-        return (self.t > self.t_max) or (self.step > max_iters)
+        return np.isclose(self.t, self.t_max, atol=1e-6) or (self.step > max_iters)
 
     def clone(self):
         """

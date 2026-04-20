@@ -1,17 +1,6 @@
 
 from ._cardiac_model import CardiacModel
 
-from .kernel._load_ops import load_ops
-
-
-try:
-    ops = load_ops("bueno_orovio")
-except KeyError as e:
-    raise ImportError(
-        "Bueno-Orovio model ops not found. "
-        # "Install model package: pip install finitewave-model-bueno-orovio"
-    ) from e
-
 
 class BuenoOrovio(CardiacModel):
     """
@@ -91,6 +80,7 @@ class BuenoOrovio(CardiacModel):
     https://doi.org/10.1016/j.jtbi.2008.03.029
 
     """
+    model_name = "bueno_orovio"
 
     def __init__(self, memory_save=False):
         """
@@ -98,5 +88,3 @@ class BuenoOrovio(CardiacModel):
         """
         super().__init__(memory_save)
         self.D_model = 0.1171
-        self.ops = ops
-        self._initialize_variables_and_parameters(ops)

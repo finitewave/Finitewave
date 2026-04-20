@@ -90,12 +90,13 @@ class CardiacSimulation(CardiacSimulationBase):
             self.state_loader.load()
 
         bar_desc = self._create_bar_desc()
-        iters = int(np.ceil((self.t_max - self.t) / self.dt))
+        iters = int(np.floor((self.t_max - self.t) / self.dt))
 
         for _ in tqdm(range(iters), total=iters, desc=bar_desc, disable=not prog_bar):
             if self.iter_step():
                 break
         
+        # Last iteration tracking
         if self.tracker_sequence:
             self.tracker_sequence.tracker_next()
     
@@ -103,6 +104,13 @@ class CardiacSimulation(CardiacSimulationBase):
         """
         Performs a single iteration of the simulation.
         """
+        if self.check_termination():
+
+            if self.state_saver:
+                self.state_saver.save()
+
+            return True
+
         if self.tracker_sequence:
             self.tracker_sequence.tracker_next()
 
@@ -115,17 +123,11 @@ class CardiacSimulation(CardiacSimulationBase):
         self.t += self.dt
         self.step += 1
 
+        if self.state_saver:
+            self.state_saver.save()
+
         if self.command_sequence:
             self.command_sequence.execute_next()
-
-        if self.check_termination():
-            if self.state_saver:
-                self.state_saver.save()
-
-            if self.tracker_sequence:
-                self.tracker_sequence.track_next()
-
-            return True
 
         return False
 

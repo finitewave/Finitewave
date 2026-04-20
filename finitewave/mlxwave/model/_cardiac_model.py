@@ -30,6 +30,8 @@ class CardiacModel(CardiacModelCPU):
     prepacing_generator : KernelGenerator
         Object that generates the signle-cell `prepacing_kernel` function for the model.
     """
+    model_name = None
+    finitewave_model = True
 
     def __init__(self):
         """

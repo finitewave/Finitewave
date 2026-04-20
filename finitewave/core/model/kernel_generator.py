@@ -93,11 +93,13 @@ class KernelGenerator:
         """
         func_name = func.__name__
         src = inspect.getsource(func)
+        src = textwrap.dedent(src)
         tree = ast.parse(src)
 
         func_node = tree.body[0]
 
         new_body = []
+        return_count = 0
         for node in func_node.body:
             # Remove docstring
             if (
@@ -106,15 +108,19 @@ class KernelGenerator:
                 and isinstance(node.value.value, str)
             ):
                 continue
-
-            # Skip all return statements completely
+            
+            # Remove return statements and count them to ensure there's only one (if any)
             if isinstance(node, ast.Return):
+                return_count += 1
+                if return_count > 1:
+                    raise ValueError("Multiple return statements are not supported in kernel functions.")
                 continue
 
             new_body.append(node)
 
         module = ast.Module(body=new_body, type_ignores=[])
         func_body = ast.unparse(module)
+        func_body = textwrap.dedent(func_body)
         return func_name, func_body
     
     def generate_observers(self) -> tuple:

@@ -46,35 +46,47 @@ The final membrane potential distribution is displayed using matplotlib,
 revealing the characteristic spiral pattern.
 """
 
-
 import matplotlib.pyplot as plt
 
-import finitewave as fw
+import finitewave.mlxwave as fw
+import numpy as np
+import mlx.core as mx
 
-# set up the tissue:
-n = 256
-tissue = fw.CardiacTissue2D([n, n])
 
+stim_prepacing = fw.StimPrepacing(dt=0.005)
+stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration=2.)
+stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
+
+# create model object and set up parameters
+courtemanche = fw.TenTusscherPanfilov2006()
+courtemanche.prepacing(stim_prepacing)
+
+
+# create a tissue of size 400x400 with cardiomycytes:
+n = 400
+tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(time=0, volt_value=1,
-                                             x1=0, x2=n, y1=0, y2=5))
-stim_sequence.add_stim(fw.StimVoltageCoord2D(time=50, volt_value=1,
-                                             x1=n//2, x2=n, y1=0, y2=n))
+stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
+                                           x_min=0, x_max=n//2,
+                                           y_min=0, y_max=n))
+stim_sequence.add_stim(fw.StimVoltageCoord(time=310, volt_value=1,
+                                           x_min=0, x_max=n,
+                                           y_min=0, y_max=n//2))
+# create model object and set up parameters:
+simulation = fw.CardiacSimulation(dt=0.01, t_max=500)
+simulation.cardiac_model = courtemanche
+simulation.cardiac_tissue = tissue
+simulation.stim_sequence = stim_sequence
 
-# create model object:
-aliev_panfilov = fw.AlievPanfilov2D()
-# set up numerical parameters:
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.3
-aliev_panfilov.t_max = 150
-# add the tissue and the stim parameters to the model object:
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
+# run the model:
+simulation.run()
 
-aliev_panfilov.run()
+u = simulation.cardiac_model.output("u")
 
 # show the potential map at the end of calculations:
-plt.imshow(aliev_panfilov.u)
+plt.figure()
+plt.imshow(u, cmap="inferno")
+plt.colorbar(label="Membrane Potential")
 plt.show()

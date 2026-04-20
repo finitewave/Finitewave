@@ -45,8 +45,6 @@ class CardiacModel(CardiacModelBase):
         self.tissue_indexes = None
         self.ionic_kernel_generator = IonicNumbaGenerator()
         self.prepacing_generator = PrepacingNumbaGenerator()
-        self._model_func = {}
-        self._ionic_step_func = None
 
     def initialize(self, simulation):
         """
@@ -202,7 +200,7 @@ class CardiacModel(CardiacModelBase):
             var_data = getattr(self, f"{prefix}{name}")
             var_data[:] = value
 
-    def _initialize_variables_and_parameters(self, ops):
+    def initialize_variables_and_parameters(self):
         """
         Initializes the model's variables and parameters based on the provided ops object.
         
@@ -211,8 +209,8 @@ class CardiacModel(CardiacModelBase):
         ops : Ops
             Object containing the model's variables and parameters.
         """
-        self.default_parameters = ops.get_parameters()
-        self.default_variables = ops.get_variables()
+        self.default_parameters = self.ops.get_parameters()
+        self.default_variables = self.ops.get_variables()
 
         self.state_vars = self.default_variables.keys()
         self.state_pars = list(self.default_parameters.keys())

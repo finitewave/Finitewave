@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import copy
+from importlib.metadata import entry_points
 
 
 class CardiacModelBase(ABC):
@@ -31,6 +32,9 @@ class CardiacModelBase(ABC):
     observers : list
         List of observer functions to be called inside the `ionic_kernel`.
     """
+    model_name = None
+    finitewave_model = True
+
     def __init__(self):
         self.u = None
         self.rhs = None
@@ -45,6 +49,10 @@ class CardiacModelBase(ABC):
 
         self.observers = []
 
+        if self.finitewave_model:
+            self.ops = self.load_ops(self.model_name)
+            self.initialize_variables_and_parameters()
+
     @abstractmethod
     def initialize(self, simulation):
         pass
@@ -52,6 +60,47 @@ class CardiacModelBase(ABC):
     @abstractmethod
     def run(self):
         pass
+
+    def _discover(self) -> dict:
+        eps = entry_points()
+        group = "finitewave.models"
+        if hasattr(eps, "select"):
+            selected = eps.select(group=group)
+        else:
+            selected = eps.get(group, [])
+        return {ep.name: ep for ep in selected}
+    
+    @abstractmethod
+    def initialize_variables_and_parameters(self):
+        pass
+
+
+    def load_ops(self, model_name: str):
+        """
+        Loads the finitewave model.
+        
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to load, which should correspond to an entry
+            point in the 'finitewave.models' group.
+
+        Returns
+        -------
+        module
+            The operations module for the specified model, containing necessary
+            functions for model execution.
+        """
+        REQS = ("get_variables", "get_parameters", "ionic_step")
+        eps = self._discover()
+        if model_name not in eps:
+            raise KeyError(f"Model '{model_name}' not found via entry point group 'finitewave.models'.")
+        mod = eps[model_name].load()   # ops package
+        ops = getattr(mod, "ops", mod)
+        for name in REQS:
+            if not hasattr(ops, name):
+                raise ValueError(f"Model '{model_name}' missing '{name}' in ops.")
+        return ops
 
     def clone(self):
         """

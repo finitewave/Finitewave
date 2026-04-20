@@ -1,17 +1,6 @@
 
 from ._cardiac_model import CardiacModel
 
-from .kernel._load_ops import load_ops
-
-
-try:
-    ops = load_ops("luo_rudy_91")
-except KeyError as e:
-    raise ImportError(
-        "Luo–Rudy 1991 model ops not found."
-        # "Install model package: pip install finitewave-model-luo-rudy91"
-    ) from e
-
 
 class LuoRudy91(CardiacModel):
     """
@@ -68,8 +57,9 @@ class LuoRudy91(CardiacModel):
     PMID: 1709839.
 
     """
+
+    model_name = "luo_rudy_91"
+
     def __init__(self):
         super().__init__()
         self.D_model = 0.1
-        self.ops = ops
-        self._initialize_variables_and_parameters(ops)

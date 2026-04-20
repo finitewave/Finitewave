@@ -1,16 +1,5 @@
 from ._cardiac_model import CardiacModel
 
-from .kernel._load_ops import load_ops
-
-
-try:
-    ops = load_ops("fenton_karma")
-except KeyError as e:
-    raise ImportError(
-        "Fenton-Karma model ops not found. "
-        # "Install model package: pip install finitewave-model-fenton-karma"
-    ) from e
-
 
 class FentonKarma(CardiacModel):
     """
@@ -76,11 +65,17 @@ class FentonKarma(CardiacModel):
             
     """
 
+    model_name = "fenton_karma"
+
     def __init__(self, memory_save=False):
         """
         Initializes the Fenton-Karma instance with default parameters.
+
+        Parameters
+        ----------
+        memory_save : bool
+            Only for consistency with cpuwave version, mlx version always uses
+            memory saving mode.
         """
-        super().__init__(memory_save)
+        super().__init__()
         self.D_model = 0.1
-        self._initialize_variables_and_parameters(ops)
-        self._initialize_model_func(ops, jit_ops)
