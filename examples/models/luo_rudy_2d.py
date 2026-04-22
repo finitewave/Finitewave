@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 import finitewave as fw
 
 n = 100
-m = 10
+m = 100
 dt = 0.01
 t_max = 500
 
@@ -49,7 +49,7 @@ luo_rudy.prepacing(stim_prepacing)
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimCurrentCoord(0, 100., 1, 0, 1, 0, m))
 
-action_pot_tracker = fw.ActionPotentialTracker()
+action_pot_tracker = fw.ActionPotentialTracker(step=100)
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
 action_pot_tracker.node_inds = [[n//2, m//2]]
@@ -58,9 +58,7 @@ action_pot_tracker.step = 1
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
-simulation = fw.CardiacSimulation()
-simulation.dt = dt
-simulation.t_max = t_max
+simulation = fw.CardiacSimulation(dt=dt, t_max=t_max, backend="jax")
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = luo_rudy
@@ -80,8 +78,7 @@ axs[0].set_ylabel('Voltage (mV)')
 axs[0].set_title('Prepacing Protocol')
 axs[0].grid()
 
-time = np.arange(len(action_pot_tracker.output)) * simulation.dt
-axs[1].plot(time, action_pot_tracker.output, label=f"cell_{n//2}_{m//2}")
+axs[1].plot(action_pot_tracker.tracking_times, action_pot_tracker.output, label=f"cell_{n//2}_{m//2}")
 axs[1].set_xlabel('Time (ms)')
 axs[1].set_ylabel('Voltage (mV)')
 axs[1].set_title('Action Potential')

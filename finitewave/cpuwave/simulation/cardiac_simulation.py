@@ -1,4 +1,4 @@
-import copy
+from typing import Literal
 import warnings
 from tqdm import tqdm
 import numpy as np
@@ -9,7 +9,7 @@ from finitewave.core.simulation.cardiac_simulation_base import (
 )
 from .diffusion.diffusion_model import DiffusionModel
 from finitewave.cpuwave.solver.forward_euler_solver import ForwardEulerSolver
-from finitewave.cpuwave.solver.crank_nicolson_cg_solver import CrankNicolsonCGSolver
+from finitewave.cpuwave.solver.crank_nicolson_solver import CrankNicolsonSolver
 
 
 class CardiacSimulation(CardiacSimulationBase):
@@ -55,10 +55,29 @@ class CardiacSimulation(CardiacSimulationBase):
     track_solution : bool
         Whether to track the solution at previous time steps for use in trackers.
     """
-    def __init__(self, dt=None, t_max=None):
-        super().__init__(dt, t_max)
+    def __init__(
+            self,
+            dt : float | None = None,
+            t_max : float | None = None,
+            backend : Literal["numpy", "numba", "mlx", "jax"] = "numba",
+            array_dtype : str = "float64"):
+        """
+        Initializes the CardiacSimulation instance.
+        
+        Parameters
+        ----------
+        dt : float, optional
+            Time step for the simulation. If None, it must be set before running.
+        t_max : float, optional
+            Maximum time for the simulation. If None, it must be set before running.
+        backend : str, optional
+            The backend to use for computations. Default is "numba".
+        array_dtype : str, optional
+            The data type for numerical computations. Default is "float64".
+            If backend does not support "float64", it will use "float32".
+        """
+        super().__init__(dt, t_max, backend, array_dtype)
         self.diffusion_model = DiffusionModel()
-        self.track_solution = False
 
     def initialize(self):
 
@@ -174,6 +193,6 @@ class CardiacSimulation(CardiacSimulationBase):
             return ForwardEulerSolver()
 
         if self.cardiac_tissue.meta["type"] == "Elements":
-            return CrankNicolsonCGSolver()
+            return CrankNicolsonSolver()
 
         raise ValueError("Unsupported tissue type")

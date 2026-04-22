@@ -1,8 +1,8 @@
 
-from .crank_nicolson_cg_solver import CrankNicolsonCGSolver
+from .crank_nicolson_solver import CrankNicolsonSolver
 
 
-class BackwardEulerCGSolver(CrankNicolsonCGSolver):
+class BackwardEulerCGSolver(CrankNicolsonSolver):
     """Implements the Backward Euler implicit time integration method
     with Conjugate Gradient solver for implicit diffusion step.
 
@@ -23,3 +23,11 @@ class BackwardEulerCGSolver(CrankNicolsonCGSolver):
         dt = self.simulation.dt
         self.a_lhs_matrix = mass + dt * stiff
         self.a_rhs_matrix = mass
+
+        if self.simulation.backend.sparse_support:
+            self.a_lhs_matrix = self.crs_to_numpy(self.a_lhs_matrix)
+            self.a_rhs_matrix = self.crs_to_numpy(self.a_rhs_matrix)
+
+        else:
+            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix)
+            self.a_rhs_matrix = self.csr_to_ellpack(self.a_rhs_matrix)

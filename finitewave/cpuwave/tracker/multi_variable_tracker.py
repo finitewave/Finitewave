@@ -68,6 +68,7 @@ class MultiVariableTracker(Tracker):
             self.var_list = self.model.state_vars
 
         self._node_inds = self._compute_node_inds(simulation.cardiac_tissue, simulation.cardiac_model)
+        self._node_inds = self.simulation.backend.wrap_indexes(self._node_inds)
 
         # Initialize storage for each variable to be tracked
         for var_name in self.var_list:
@@ -76,14 +77,14 @@ class MultiVariableTracker(Tracker):
             
             var_val = getattr(self.model, var_name)
             
-            if var_val.size < max(self._node_inds) + 1:
+            if var_val.size < self._node_inds.max() + 1:
                 msg = (f"Some node indices are out of bounds for variable " +
                        f"'{var_name}' with size {var_val.size}.")
                 raise ValueError(msg)
             
-            var_val = np.asarray(var_val)
-            self.vars_data[var_name] = np.zeros((len(self.tracking_times), len(self._node_inds)),
-                                                dtype=var_val.dtype)
+            var_val = np.zeros((len(self.tracking_times), len(self._node_inds)),
+                                dtype=np.float64)
+            self.vars_data[var_name] = self.simulation.backend.wrap(var_val)
 
     def _compute_node_inds(self, cardiac_tissue, cardiac_model):
         """
@@ -105,7 +106,8 @@ class MultiVariableTracker(Tracker):
         mesh = cardiac_tissue.mesh
 
         if len(mesh.shape) == 1:
-            return np.atleast_1d(self.node_inds)
+            flat_ind = np.atleast_1d(self.node_inds)
+            return flat_ind
         
         flat_ind = np.ravel_multi_index(np.atleast_2d(self.node_inds).T, mesh.shape)
 
@@ -130,14 +132,10 @@ class MultiVariableTracker(Tracker):
         """
         for var_name in self.var_list:
             var_values = self.model.__dict__[var_name]
-            var_values = np.asarray(var_values, copy=False)
-
-            if var_values.ndim > 1:
-                var_val = var_values.flat[self._node_inds]
-            else:
-                var_val = var_values[self._node_inds]
-
-            self.vars_data[var_name][self.tracking_counter] = var_val
+            var_val = self.simulation.backend.select_values(var_values, self._node_inds)
+            self.vars_data[var_name] = self.simulation.backend.set_values(
+                self.vars_data[var_name], self.tracking_counter, var_val
+            )
         
     @property
     def output(self):

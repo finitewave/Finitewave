@@ -1,10 +1,10 @@
-import textwrap
 import numpy as np
+import textwrap
 from finitewave.core.model.kernel_generator import KernelGenerator
-from ._func_builder import build_func, wrap_numba_func
+from ._func_builder import wrap_jax_func, build_func
 
 
-class IonicNumbaGenerator(KernelGenerator):
+class IonicJaxGenerator(KernelGenerator):
     """
     Class for generating numba CPU kernel function to update state variables
     and compute the ionic current (rhs) of the cardiac model.
@@ -34,46 +34,6 @@ class IonicNumbaGenerator(KernelGenerator):
         super().__init__()
         self.kernel_func_name = kernel_func_name
         self.common_args = ["dt", "indexes", "rhs", "u"]
-    
-    def _update_indexing(self, name, arrays):
-        """
-        Indexing that is used for updating state variables with new values.
-
-        Parameters
-        ----------
-        name : str
-            The name of the variable to update.
-        arrays : list of str
-            List of array variable names used in the step function.
-
-        Returns
-        -------
-        str
-            The indexing string to use for updating the variable.
-        """
-        if name in arrays:
-            return f"{name}.flat[idx]"
-        return name
-        
-    def _assign_indexing(self, name, arrays):
-        """
-        Indexing that is used to assign state variables to temporary (old) value.
-
-        Parameters
-        ----------
-        name : str
-            The name of the variable to assign.
-        arrays : list of str
-            List of array variable names used in the step function.
-
-        Returns
-        -------
-        str
-            The indexing string to use for assigning the variable.
-        """
-        if name in arrays:
-            return f"{name}.flat[idx]"
-        return name
     
     def _generate_args(self, vars, base="", suffix="", exclude=[]):
         """
@@ -134,70 +94,6 @@ class IonicNumbaGenerator(KernelGenerator):
         """
         Generate code for setting up input variables before the loop."""
         return ""
-
-    def generate_loop(self, indent):
-        """
-        Generate code for the loop that iterates over the indexes.
-
-        Parameters
-        ----------
-        indent : int
-            The number of spaces to use for indentation.
-
-        Returns
-        -------
-        str
-            The header for the loop that iterates over the indexes.
-        """
-        loop = """\
-            for i in range(len(indexes)):
-                idx = indexes[i]
-        """
-        return self._add_indent(loop, indent)
-    
-    def generate_assignments(self, arrays, indent):
-        """
-        Generate code for assigning arrays values to temporary (old) variables.
-
-        Parameters
-        ----------
-        arrays : list of str
-            List of array names to assign.
-        indent : int
-            The number of spaces to use for indentation.
-
-        Returns
-        -------
-        str
-            Code for assigning arrays values to temporary (old) variables.
-        """
-        asign_vars = "\n".join(f"{var}_old = {self._assign_indexing(var, arrays)}"
-                               for var in arrays if var != "rhs")
-        return self._add_indent(asign_vars, indent)
-    
-    def generate_update_states(self, state_vars, arrays, indent):
-        """
-        Generate code for updating state variables with new values after the step.
-
-        Parameters
-        ----------
-        state_vars : list of str
-            List of state variable names to update.
-        arrays : list of str
-            List of array names to use for indexing.
-        indent : int
-            The number of spaces to use for indentation.
-
-        Returns
-        -------
-        str
-            Code for updating state variables with new values after the step.
-        """
-        update_vars = [var for var in state_vars if var != "u"]
-        update_vars += ["rhs"]
-
-        update_vars = "\n".join(f"{self._update_indexing(var, arrays)} = {var}_new" for var in update_vars)
-        return self._add_indent(update_vars, indent)
     
     def generate_output(self, output_args, indent):
         """
@@ -259,7 +155,6 @@ class IonicNumbaGenerator(KernelGenerator):
         body = self._add_indent(body, 16)
 
         func_body = f"""\
-            @njit(fastmath=True)
             def {func_name}({input_args}):
                 {body}
                 return {output_args}
@@ -267,12 +162,13 @@ class IonicNumbaGenerator(KernelGenerator):
 
         func_body = textwrap.dedent(func_body).strip()
 
-        signature_inputs = "dt"
-        signature_inputs = self._generate_args(arrays, signature_inputs, suffix="_old", exclude=["rhs"])
-        signature_inputs = self._generate_args(scalars, signature_inputs)
+        # print("\nGenerated step function:")
+        # print(func_body)
+
+        signature_inputs = input_args
     
-        signature_returns = "rhs_new"
-        signature_returns = self._generate_args(state_vars, signature_returns, suffix="_new", exclude=["u"])
+        signature_returns = "rhs"
+        signature_returns = self._generate_args(state_vars, signature_returns, suffix="", exclude=["u"])
         signature_returns = self._generate_args(obs_args, signature_returns)
 
         func_signature = f"{signature_returns} = {func_name}({signature_inputs})"
@@ -306,13 +202,9 @@ class IonicNumbaGenerator(KernelGenerator):
 
         return expr_lines, set(expr_args), set(kernel_args)
 
-    def generate_body(self, step_func, arrays, scalars, state_vars,
-                      observers=[], output_args=[]):
+    def generate_body(self, step_func, arrays, scalars, state_vars, observers=[], output_args=[]):
         """Generate numba CPU kernel."""
         input_setup = self.generate_input_setup(arrays, scalars, indent=16)
-        loop = self.generate_loop(indent=16)
-        asign_vars = self.generate_assignments(arrays, indent=20)
-        update_states = self.generate_update_states(state_vars, arrays, indent=20)
         obs, obs_args, obs_kernel_args = self.generate_observers(observers, state_vars, indent=20)
         output = self.generate_output(output_args, indent=16)
 
@@ -324,14 +216,11 @@ class IonicNumbaGenerator(KernelGenerator):
         step_func_name, step_func_signature, step_func_body = step_res
 
         kernel_func =f"""\
-            @njit(parallel=True, fastmath=True)
+            @jax.jit
             def {self.kernel_func_name}({kernel_args_str}):
                 {input_setup}
-                {loop}
-                    {asign_vars}\n
-                    {step_func_signature}
-                    {update_states}
-                    {obs}
+                {step_func_signature}
+                {obs}
                 {output}
             """
         kernel_func = textwrap.dedent(kernel_func).strip()
@@ -340,8 +229,7 @@ class IonicNumbaGenerator(KernelGenerator):
         # print(kernel_func)
         return step_func_name, step_func_body, kernel_func, kernel_args
     
-    def generate_kernel(self, ops, arrays, scalars, state_vars,
-                        observers=[], output_args=[]):
+    def generate_kernel(self, ops, arrays, scalars, state_vars, observers=[], output_args=[]):
         """
         Generate the kernel function by combining the step function, model function, and observers.
         
@@ -372,12 +260,15 @@ class IonicNumbaGenerator(KernelGenerator):
         step_func = ops.ionic_step
         res = self.generate_body(step_func, arrays, scalars, state_vars, observers, output_args)
         step_func_name, step_func_body, kernel_func, kernel_args = res
-
-        model_func, glb_funcs = wrap_numba_func(ops)
+        
+        model_func, glb_funcs = wrap_jax_func(ops)
         
         # sort and make it hashable to ensure consistent ordering for caching
         glb_funcs = tuple(sorted(glb_funcs.items()))
         model_func = tuple(sorted(model_func.items()))
+
+        # print("\nGenerated step function:")
+        # print(step_func_body)
 
         step_func = build_func(
             step_func_name,
@@ -413,15 +304,16 @@ class IonicNumbaGenerator(KernelGenerator):
         kernel_args : list of str
             List of argument names that the kernel function expects.
         """
-        ops = model.ops
         observers = model.observers
         arrays, scalars = self._collect_model_arrays(model)
-        arrays = ["rhs"] + arrays
+        # arrays = ["rhs"] + arrays
         state_vars = model.state_vars
         output_args = ["rhs"] + [var for var in state_vars if var != "u"]
 
-        kernel_func, kernel_args = self.generate_kernel(ops, arrays, scalars,
-                                                        state_vars, observers, output_args)
+        kernel_func, kernel_args = self.generate_kernel(model.ops,
+                                                        arrays, scalars,
+                                                        state_vars, observers,
+                                                        output_args)
         return kernel_func, kernel_args
 
     def _collect_model_arrays(self, model):
@@ -449,3 +341,43 @@ class IonicNumbaGenerator(KernelGenerator):
                 arrays.append(param)
 
         return arrays, scalars
+
+
+
+# from finitewave.mlxwave.model.kernel._load_ops import load_ops
+
+
+# ops = load_ops("aliev_panfilov")
+
+# model_func = {}
+# arrays = ops.get_variables().keys()
+# scalars = ops.get_parameters().keys()
+# state_vars = ops.get_variables().keys()
+# output_args = ["rhs"] + [var for var in state_vars if var != "u"]
+
+
+# generator = IonicMlxGenerator()
+# # generator.generate_body(ionic_step, arrays, scalars, state_vars, output_args=output_args)
+# kernel_func, kernel_args = generator.generate_kernel(ops, arrays, scalars, state_vars, output_args=output_args)
+
+
+# import mlx.core as mx
+
+# u = mx.zeros(10, dtype=mx.float32)
+# v = mx.zeros(10, dtype=mx.float32)
+
+# a = 0.1
+# k = 8.0
+# eps = 0.01
+# mu1 = 0.2
+# mu2 = 0.3
+# dt = 0.01
+
+# # rhs, v = kernel_func(dt, u, v, a, k, eps, mu1, mu2)
+
+# def calc_rhs(u, v, a, k):
+#     return -k * u * (u - a) * (u - 1) - u * v
+
+# print(ops.calc_rhs(u, v, a, k))
+
+# rhs = calc_rhs(u, v, a, k)

@@ -92,11 +92,14 @@ class CardiacModelBase(ABC):
             functions for model execution.
         """
         REQS = ("get_variables", "get_parameters", "ionic_step")
+
         eps = self._discover()
         if model_name not in eps:
             raise KeyError(f"Model '{model_name}' not found via entry point group 'finitewave.models'.")
+        
         mod = eps[model_name].load()   # ops package
         ops = getattr(mod, "ops", mod)
+
         for name in REQS:
             if not hasattr(ops, name):
                 raise ValueError(f"Model '{model_name}' missing '{name}' in ops.")

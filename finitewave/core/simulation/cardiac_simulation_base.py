@@ -1,4 +1,5 @@
 import copy
+from typing import Literal
 import numpy as np
 
 
@@ -43,7 +44,12 @@ class CardiacSimulationBase:
     npfloat : type
         The floating-point type used for numerical computations.
     """
-    def __init__(self, dt=None, t_max=None):
+    def __init__(
+            self,
+            dt : float | None = None,
+            t_max : float | None = None,
+            backend : Literal["numpy", "numba", "mlx", "jax"] = "numba",
+            array_dtype : str = "float64"):
         self.meta = {}
         self.cardiac_tissue = None
         self.stim_sequence = None
@@ -60,8 +66,46 @@ class CardiacSimulationBase:
         self.t_max = t_max
         self.t = 0
         self.step = 0
+        self.backend = self.select_backend(backend, array_dtype)
 
-        self.npfloat = np.float64
+    def select_backend(
+            self,
+            backend_name : Literal["numpy", "numba", "mlx", "jax"],
+            array_dtype : str = "float64"):
+        """
+        Selects the computational backend for the simulation.
+
+        Parameters
+        ----------
+        backend_name : Literal["numpy", "numba", "mlx", "jax"]
+            The name of the backend to use. Supported values are "numpy", "numba", "mlx", and "jax".
+
+        Raises
+        ------
+        ValueError
+            If an unsupported backend name is provided.
+        """
+        if backend_name == "numpy":
+            from .simulation_backend import SimulationBackend
+            backend = SimulationBackend()
+            backend.float_dtype = np.dtype(array_dtype)
+            return backend  
+        
+        if backend_name == "numba":
+            from .simulation_backend import NumbaBackend
+            backend = NumbaBackend()
+            backend.float_dtype = np.dtype(array_dtype)
+            return backend
+        
+        if backend_name == "mlx":
+            from .simulation_backend import MlxBackend
+            return MlxBackend()
+        
+        if backend_name == "jax":
+            from .simulation_backend import JaxBackend
+            return JaxBackend()
+        
+        raise ValueError(f"Unsupported backend: {backend_name}")
 
     def initialize(self):
         """

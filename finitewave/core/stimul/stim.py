@@ -34,6 +34,7 @@ class Stim(ABC):
         self.t = time
         self.duration = duration
         self.passed = False
+        self.stim_area = None
 
     @abstractmethod
     def stimulate(self, simulation):
@@ -42,12 +43,12 @@ class Stim(ABC):
         """
         pass
 
-    @abstractmethod
     def initialize(self, simulation):
         """
         Prepares the stimulation for application.
         """
-        pass
+        self.simulation = simulation
+        self.stim_indexes = self.stim_area.build_stim_indexes(simulation)
 
     def update_status(self, simulation):
         """

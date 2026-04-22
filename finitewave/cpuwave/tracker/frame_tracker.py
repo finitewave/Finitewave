@@ -118,7 +118,7 @@ class FrameTracker(Tracker):
 
         if self.aggregate:
             self.frames[self.tracking_counter] = frame.astype(self.output_dtype)
-        return
+            return
 
         dir_path = Path(self.path, self.dir_name)
         np.save(

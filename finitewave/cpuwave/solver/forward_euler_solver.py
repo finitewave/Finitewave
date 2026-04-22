@@ -1,5 +1,5 @@
+import numpy as np
 from scipy import sparse
-from .linalg.numba_solvers import forward_euler
 from .solver import Solver
 
 
@@ -29,6 +29,7 @@ class ForwardEulerSolver(Solver):
         self.rhs = None
         self.myo_indexes = None
         self.num_iterations = []
+        self.linalg_method = None
 
     def initialize(self, simulation):
         """Initializes the Forward Euler solver with the given simulation.
@@ -39,11 +40,28 @@ class ForwardEulerSolver(Solver):
             The simulation object containing the cardiac and diffusion models.
         """
         self.simulation = simulation
-        self.u_old = simulation.cardiac_model.u.copy()
+        self.u_old = simulation.backend.copy(simulation.cardiac_model.u)
         self.u = simulation.cardiac_model.u
         self.rhs = simulation.cardiac_model.rhs
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
+        self.select_method(simulation.backend)
+
+    def select_method(self, backend):
+        if backend.name == "numba":
+            from .numba_linalg.numba_methods import NumbaEuler
+            self.linalg_method = NumbaEuler()
+            return
+
+        if backend.name == "mlx":
+            from .mlx_linalg.mlx_methods import MlxEuler
+            self.linalg_method = MlxEuler()
+            return
+        
+        if backend.name == "jax":
+            from .jax_linalg.jax_methods import JaxEuler
+            self.linalg_method = JaxEuler()
+            return
 
     def assemble_system(self):
         """Assembles the system matrix for the Forward Euler method.
@@ -64,6 +82,11 @@ class ForwardEulerSolver(Solver):
         mass_lumped = mass.sum(axis=1).A.ravel()
         mass_inv = sparse.diags(1 / mass_lumped)
         self.a_lhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
+        
+        if self.simulation.backend.sparse_support:
+            self.a_lhs_matrix = self.crs_to_numpy(self.a_lhs_matrix)
+        else:
+            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix)
 
     def run(self):
         """Performs a single time step using the Forward Euler method.
@@ -78,9 +101,9 @@ class ForwardEulerSolver(Solver):
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
         self.u_old, self.u = self.u, self.u_old
-
-        forward_euler(self.a_lhs_matrix, self.u_old, self.rhs,
-                      self.simulation.dt, self.myo_indexes, self.u)
-
+        
+        self.u = self.linalg_method.solve(*self.a_lhs_matrix, self.u_old, self.rhs,
+                                          self.simulation.dt, self.myo_indexes, self.u)
+        self.u = self.linalg_method.evaluate(self.u, self.simulation.step)
         self.simulation.cardiac_model.u = self.u
         self.num_iterations.append(1)
