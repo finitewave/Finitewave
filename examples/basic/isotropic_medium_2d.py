@@ -43,8 +43,8 @@ stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration
 stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
 
 # create model object and set up parameters
-courtemanche = fw.FentonKarma()
-# courtemanche.prepacing(stim_prepacing)
+courtemanche = fw.Courtemanche()
+courtemanche.prepacing(stim_prepacing)
 
 
 # create a tissue of size 400x400 with cardiomycytes:

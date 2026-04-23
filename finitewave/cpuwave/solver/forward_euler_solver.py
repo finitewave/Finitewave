@@ -40,8 +40,9 @@ class ForwardEulerSolver(Solver):
             The simulation object containing the cardiac and diffusion models.
         """
         self.simulation = simulation
-        self.u_old = simulation.backend.copy(simulation.cardiac_model.u)
+        self.num_iterations = []
         self.u = simulation.cardiac_model.u
+        self.u_old = simulation.backend.copy(self.u)
         self.rhs = simulation.cardiac_model.rhs
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()

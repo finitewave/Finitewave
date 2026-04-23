@@ -100,8 +100,13 @@ simulation.cardiac_tissue = tissue
 
 simulation.initialize()
 
-model.u[:] = state_tracker.output['u'][spiral_map]
-model.v[:] = state_tracker.output['v'][spiral_map]
+u = state_tracker.output['u'][spiral_map]
+v = state_tracker.output['v'][spiral_map]
+
+state_vars = {'u': u.flatten(),
+              'v': v.flatten()}
+
+model.set_variables(state_vars)
 
 # run the model:
 simulation.run(initialize=False)

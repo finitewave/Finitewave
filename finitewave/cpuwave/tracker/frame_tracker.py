@@ -26,7 +26,7 @@ class FrameTracker(Tracker):
     """
 
     def __init__(self, aggregate=False, dir_name="snapshots", var_name="u",
-                 overwrite=True, output_dtype=None, **kwargs):
+                 overwrite=True, output_dtype="float32", **kwargs):
         """
         Initializes the FrameGridTracker with default parameters.
 
@@ -42,7 +42,7 @@ class FrameTracker(Tracker):
         overwrite : bool, optional
             Whether to overwrite existing frames (default is True).
         output_dtype : dtype, optional
-            Data type for the saved frames (default is None).
+            Data type for the saved frames (default is "float32").
             If None, it will be set to the simulation's default floating-point type.
         **kwargs
             Additional keyword arguments for the base Tracker class.
@@ -66,9 +66,6 @@ class FrameTracker(Tracker):
             The cardiac tissue model object containing the data to be tracked.
         """
         super().initialize(simulation)
-
-        if self.output_dtype is None:
-            self.output_dtype = simulation.npfloat
 
         if self.aggregate:
             self._make_array()

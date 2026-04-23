@@ -93,7 +93,7 @@ class ElementDiffusionModel(DiffusionModelBase):
 
         dim_tissue = tissue.coords.shape[1]
 
-        diffusion = np.eye(dim_tissue, dtype=simulation.npfloat)
+        diffusion = np.eye(dim_tissue, dtype=np.float64)
 
         if tissue.fibers is not None:
             diffusion = (d_ac * np.eye(dim_tissue)[np.newaxis, :, :] +
@@ -101,7 +101,7 @@ class ElementDiffusionModel(DiffusionModelBase):
                           tissue.fibers[:, :, np.newaxis] @
                           tissue.fibers[:, np.newaxis, :]))
 
-        conductivity = (d_model * tissue.conductivity *
-                        np.ones(len(tissue.elems), dtype=simulation.npfloat))
+        conductivity = (d_model * tissue.conductivity * 
+                        np.ones(len(tissue.elems), dtype=np.float64))
         diffusion = diffusion * conductivity[:, np.newaxis, np.newaxis]
         return diffusion

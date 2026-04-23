@@ -48,30 +48,29 @@ class CrankNicolsonSolver(Solver):
         """
         self.simulation = simulation
         self.num_iterations = []
-        self.b = np.zeros_like(simulation.cardiac_model.u)
         self.u = simulation.cardiac_model.u
-        self.u_new = self.u.copy()
-        self.myo_indexes = simulation.cardiac_model.myo_indexes
+        self.b = simulation.backend.wrap(0. * self.u)
+        self.u_old = simulation.backend.copy(self.u)
         self.rhs = simulation.cardiac_model.rhs
+        self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
         self.select_method(simulation.backend)
 
     def select_method(self, backend):
         if backend.name == "numba":
-            from .numba_linalg.numba_methods import NumbaEuler
-            self.linalg_method = NumbaEuler()
+            from .numba_linalg.numba_methods import NumbaCG
+            self.linalg_method = NumbaCG()
             return
 
         if backend.name == "mlx":
-            from .mlx_linalg.mlx_methods import MlxEuler
-            self.linalg_method = MlxEuler()
+            from .mlx_linalg.mlx_methods import MlxCG
+            self.linalg_method = MlxCG()
             return
         
         if backend.name == "jax":
-            from .jax_linalg.jax_methods import JaxEuler
-            self.linalg_method = JaxEuler()
+            from .jax_linalg.jax_methods import JaxCG
+            self.linalg_method = JaxCG()
             return
-
 
     def assemble_system(self):
         """Assembles the system matrices for the Crank-Nicolson method.
@@ -105,23 +104,21 @@ class CrankNicolsonSolver(Solver):
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
-
-        self.u_old, self.u = self.u, self.u_old  # Swap references for in-place updates
+        # Swap references for in-place updates
+        self.u_old, self.u = self.u, self.u_old
         # Explicit step for the reaction term (rhs of ionic model)
-        self.u = self.method.cg(self.simulation.dt, self.rhs, self.u,
-                                self.myo_indexes)
+        self.u = self.linalg_method.axpy(self.simulation.dt, self.rhs, self.u_old,
+                                         self.myo_indexes, self.u)
         # Implicit step for the diffusion term
-        self.b = matvec_numba(self.a_rhs_matrix.indptr,
-                              self.a_rhs_matrix.indices,
-                              self.a_rhs_matrix.data, self.u, self.b,
-                              self.myo_indexes)
-        self.u, success = cg_numba(self.a_lhs_matrix, self.b, self.u,
-                                   self.myo_indexes, atol=self.atol,
-                                   maxiter=self.maxiter)
-        if success < 0:
+        self.b = self.linalg_method.matvec(*self.a_rhs_matrix, self.u,
+                                           self.myo_indexes, self.b)
+        self.u, n_iter = self.linalg_method.solve(*self.a_lhs_matrix, self.b, 
+                                                  self.u, self.myo_indexes,
+                                                  atol=self.atol, maxiter=self.maxiter)
+        if n_iter < 0:
             warnings.warn("Diffusion kernel solution accuracy is not reached")
 
-        self.num_iterations.append(success)
+        self.num_iterations.append(n_iter)
         self.simulation.cardiac_model.u = self.u
         return self.u
 

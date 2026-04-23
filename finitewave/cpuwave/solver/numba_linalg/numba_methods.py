@@ -1,5 +1,6 @@
 import numpy as np
 from .numba_linalg import (
+    matvec_numba,
     dot_numba,
     b_m_matvec_numba,
     ax_p_y_numba,
@@ -54,6 +55,57 @@ class NumbaCG():
         pass
     
     @staticmethod
+    def axpy(a, x, y, indexes, out):
+        """Performs the axpy operation:
+        out[indexes] = a * x[indexes] + y[indexes]
+
+        Parameters
+        ----------
+        a : float
+            Scalar multiplier for x.
+        x : np.ndarray
+            Input vector x.
+        y : np.ndarray
+            Input vector y.
+        indexes : np.ndarray
+            Array of indexes where the solution is defined.
+        out : np.ndarray
+            Output vector to store the result of the axpy operation.
+
+        Returns
+        -------
+        np.ndarray
+            Updated solution vector after the axpy operation.
+        """
+        return ax_p_y_numba(a, x, y, indexes, out)
+    
+    @staticmethod
+    def matvec(indptr, indices, data, x, indexes, out):
+        """Performs the matrix-vector multiplication for a sparse matrix in CRS format.
+
+        Parameters
+        ----------
+        indptr : np.ndarray
+            The index pointer array of the CRS format.
+        indices : np.ndarray
+            The column indices of the non-zero elements in CRS format.
+        data : np.ndarray
+            The non-zero values of the matrix in CRS format.
+        x : np.ndarray
+            Input vector to be multiplied by the matrix.
+        indexes : np.ndarray
+            Array of indexes where the solution is defined.
+        out : np.ndarray
+            Output vector to store the result of the matrix-vector multiplication.
+
+        Returns
+        -------
+        np.ndarray
+            Updated solution vector after the matrix-vector multiplication.
+        """
+        return matvec_numba(indptr, indices, data, x, out, indexes)
+    
+    @staticmethod
     def solve(indptr, indices, data, b, x, indexes, rtol=None, atol=1e-6, maxiter=100):
         """ Conjugate Gradient solver for Ax = b for x, where A is a sparse
         matrix given in CSR format.
@@ -95,26 +147,27 @@ class NumbaCG():
         p = np.empty_like(r)
         p = copyto_numba(r, p, indexes)
 
-        r_dot_r = dot_numba(r, r, indexes)
+        r_norm = dot_numba(r, r, indexes)
 
-        if np.sqrt(r_dot_r) < atol:
+        if np.sqrt(r_norm) < atol:
             return x, 0
 
         for iteration in range(maxiter):
-            r_dot_r_prev = r_dot_r
 
             q, p_dot_q = matvec_and_dot_numba(indptr, indices, data, p, q, indexes)
 
-            alpha = r_dot_r / p_dot_q
-            x, r, r_dot_r = y_pm_ax_numba(alpha, p, x, q, r, indexes)
+            alpha = r_norm / p_dot_q
 
-            if np.sqrt(r_dot_r) < atol:
+            x, r, r_norm_new = y_pm_ax_numba(alpha, p, x, q, r, indexes)
+
+            if np.sqrt(r_norm_new) < atol:
                 return x, iteration
 
-            beta = r_dot_r / r_dot_r_prev
+            beta = r_norm_new / r_norm
             p = ax_p_y_numba(beta, p, r, indexes, p)
+            r_norm = r_norm_new
 
-        return x, -1
+        return x, iteration
 
 
 class PreconditionedCG(NumbaCG):

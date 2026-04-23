@@ -1,7 +1,7 @@
 import numpy as np
 import pyvista as pv
 
-import finitewave.mlxwave as fw
+import finitewave as fw
 
 
 # create a tissue of size 50x50 with 200x200 points:
@@ -19,12 +19,12 @@ stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, size, 0, 1))
 stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation()
+simulation = fw.CardiacSimulation(backend="numba")
 simulation.dt = 0.01
 simulation.t_max = 30
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.Courtemanche()
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 # set up the solver:
 # simulation.solver = fw.ForwardEulerSolver()
