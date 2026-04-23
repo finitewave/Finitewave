@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 import finitewave as fw
 
 n = 100
-m = 100
+m = 5
 dt = 0.01
 t_max = 500
 
@@ -58,7 +58,7 @@ action_pot_tracker.step = 1
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(action_pot_tracker)
 
-simulation = fw.CardiacSimulation(dt=dt, t_max=t_max, backend="jax")
+simulation = fw.CardiacSimulation(dt=dt, t_max=t_max)
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = luo_rudy

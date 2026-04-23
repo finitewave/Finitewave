@@ -52,7 +52,6 @@ class Tracker(ABC):
         self.simulation = simulation
         n_measurements = 1 + int(np.ceil((min(self.end_time, simulation.t_max) - self.start_time) / 
                                           (simulation.dt * self.step)))
-        print(n_measurements)
         self.tracking_times = - np.ones((n_measurements,), dtype=float)
 
     @abstractmethod

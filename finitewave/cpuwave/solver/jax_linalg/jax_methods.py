@@ -13,6 +13,6 @@ class JaxEuler:
     @staticmethod
     @jax.jit
     def solve(indices, data, u_old, rhs, dt, indexes, u):
-        u = u_old.at[indexes].set(jnp.sum(data * u_old[indexes][indices], axis=1) + 
+        u = u_old.at[indexes].set(jnp.sum(data * u_old[indices], axis=1) + 
                                   dt * rhs[indexes])
         return u

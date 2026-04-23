@@ -67,7 +67,7 @@ class MultiVariableTracker(Tracker):
         if self.var_list is None:
             self.var_list = self.model.state_vars
 
-        self._node_inds = self._compute_node_inds(simulation.cardiac_tissue, simulation.cardiac_model)
+        self._node_inds = self._compute_flat_inds(simulation.cardiac_tissue, simulation.cardiac_model)
         self._node_inds = self.simulation.backend.wrap_indexes(self._node_inds)
 
         # Initialize storage for each variable to be tracked
@@ -86,7 +86,7 @@ class MultiVariableTracker(Tracker):
                                 dtype=np.float64)
             self.vars_data[var_name] = self.simulation.backend.wrap(var_val)
 
-    def _compute_node_inds(self, cardiac_tissue, cardiac_model):
+    def _compute_flat_inds(self, cardiac_tissue, cardiac_model):
         """
         Computes the cell indices for tracking based on the mesh and memory
         saving settings.
@@ -104,18 +104,11 @@ class MultiVariableTracker(Tracker):
             The computed cell indices for tracking.
         """
         mesh = cardiac_tissue.mesh
+        tissue_indexes = cardiac_model.tissue_indexes
 
-        if len(mesh.shape) == 1:
-            flat_ind = np.atleast_1d(self.node_inds)
-            return flat_ind
-        
         flat_ind = np.ravel_multi_index(np.atleast_2d(self.node_inds).T, mesh.shape)
-
-        if not cardiac_model.memory_save:
-            return flat_ind
-
         ind = - np.ones(mesh.size, dtype=int)
-        ind[cardiac_model.tissue_indexes] = np.arange(cardiac_model.tissue_indexes.size)
+        ind[tissue_indexes] = np.arange(tissue_indexes.size)
         flat_ind = ind[flat_ind]
 
         if np.any(flat_ind < 0):

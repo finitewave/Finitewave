@@ -60,7 +60,7 @@ class CardiacModel(CardiacModelBase):
         self._allocate_arrays(simulation)
         self.compute_indexes(simulation.cardiac_tissue)
         self._initialize_ionic_kernel()
-        self.ionic_kernel_args = self._collect_ionic_kernel_args()
+        self._collect_ionic_kernel_args()
 
     def _default_ionic_kernel(self, backend):
 
@@ -226,7 +226,16 @@ class CardiacModel(CardiacModelBase):
                 continue
 
             var_data = getattr(self, f"{prefix}{name}")
-            var_data[:] = value
+
+            if not hasattr(value, "size") or value.size == 1:
+                value = value * np.ones_like(var_data)
+
+            if value.shape != var_data.shape:
+                raise ValueError(f"Shape of provided value for variable '{name}' does not match model variable shape.")
+
+            value = self.simulation.backend.wrap(value)
+
+            setattr(self, f"{prefix}{name}", value)
 
     def initialize_variables_and_parameters(self):
         """
@@ -316,6 +325,8 @@ class CardiacModel(CardiacModelBase):
             val = getattr(self, name)
             val = self.backend.wrap(val)
             kernel_args.append(val)
+
+        self.ionic_kernel_args = kernel_args
         return kernel_args
 
     def _collect_prepacing_kernel_args(self):

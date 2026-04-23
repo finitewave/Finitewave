@@ -82,11 +82,12 @@ class ForwardEulerSolver(Solver):
         mass_lumped = mass.sum(axis=1).A.ravel()
         mass_inv = sparse.diags(1 / mass_lumped)
         self.a_lhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
+        self.myo_indexes = self.simulation.cardiac_model.myo_indexes
         
         if self.simulation.backend.sparse_support:
             self.a_lhs_matrix = self.crs_to_numpy(self.a_lhs_matrix)
         else:
-            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix)
+            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix, self.myo_indexes)
 
     def run(self):
         """Performs a single time step using the Forward Euler method.

@@ -14,14 +14,14 @@ class StateSaver:
     passed : bool
         Whether the state has been saved.
     model : CardiacModel
-        The model instance for which the state will be saved or saved.
+        The model instance for which the state will be saved or loaded.
     time : float
         The time at which to save the state of the simulation.
-    cell_ind : int
-        The index of the cell to save.
+    node_inds : int
+        The index of the node to save.
     """
 
-    def __init__(self, path=".", time=-1, cell_ind=None):
+    def __init__(self, path=".", time=-1, node_inds=None):
         """
         Initializes the state keeper with the given path.
 
@@ -33,27 +33,30 @@ class StateSaver:
         time : float, optional
             The time at which to save the state of the simulation.
             The default is -1 (save at the end of the simulation).
-        cell_ind : int, optional
-            The index of the cell to save.
-            The default is None (save all cells).
+        node_inds : int, optional
+            The index of the node to save.
+            The default is None (save all nodes).
         """
         self.path = path
         self.passed = False
         self.model = None
         self.time = time
-        self.cell_ind = cell_ind
+        self.node_inds = node_inds
 
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
         Initializes the state keeper with the given model.
 
         Parameters
         ----------
-        model : CardiacModel
-            The model instance for which the state will be saved or saved.
+        simulation : CardiacSimulation
+            The simulation instance for which the state will be saved or loaded.
         """
-        self.model = model
+        self.simulation = simulation
         self.passed = self.path == ""
+
+        if self.node_inds is not None:
+            self._node_inds = self._compute_flat_inds()
 
     def save(self):
         """
@@ -67,20 +70,18 @@ class StateSaver:
         if self.passed:
             return
 
-        if self.time < 0 and self.model.t < self.model.t_max:
+        if self.time < 0 and self.simulation.t < self.simulation.t_max:
             return
 
-        if self.time >= 0 and self.model.t < self.time:
+        if self.time >= 0 and self.simulation.t < self.time:
             return
-
-        self.model.diffusion_model.update_output()
 
         if not Path(self.path).exists():
             Path(self.path).mkdir(parents=True, exist_ok=True)
 
-        for var in self.model.state_vars:
-            self._save_variable(Path(self.path).joinpath(var + ".npy"),
-                                self.model.__dict__[var])
+        for var in self.simulation.cardiac_model.state_vars:
+            var_data = getattr(self.simulation.cardiac_model, var)
+            self._save_variable(Path(self.path).joinpath(var + ".npy"), var_data)
 
         self.passed = True
 
@@ -96,10 +97,43 @@ class StateSaver:
         var : numpy.ndarray
             The variable to be saved.
         """
-        if self.cell_ind is not None:
-            var = var[self.cell_ind]
+        if self.node_inds is not None:
+            var = np.array(var)
+            var = var.flat[self._node_inds]
 
         np.save(var_path, var)
+
+    def _compute_flat_inds(self):
+        """
+        Computes the cell indices for tracking based on the mesh and memory
+        saving settings.
+
+        Parameters
+        ----------
+        cardiac_tissue : object
+            The cardiac tissue object containing the mesh information.
+        cardiac_model : object
+            The cardiac model object containing the memory saving settings.
+
+        Returns
+        -------
+        list or list of lists with two indices
+            The computed cell indices for tracking.
+        """
+        cardiac_model = self.simulation.cardiac_model
+        mesh = self.simulation.cardiac_tissue.mesh
+
+        flat_ind = np.ravel_multi_index(np.atleast_2d(self.node_inds).T, mesh.shape)
+
+        ind = - np.ones(mesh.size, dtype=int)
+        ind[cardiac_model.tissue_indexes] = np.arange(cardiac_model.tissue_indexes.size)
+        flat_ind = ind[flat_ind]
+
+        if np.any(flat_ind < 0):
+            non_tissue_inds = np.array(self.node_inds)[flat_ind < 0]
+            raise ValueError(f"Specified nodes {non_tissue_inds} are not part of the tissue.")
+
+        return flat_ind
 
 
 class StateSaverCollection(StateSaver):
@@ -114,16 +148,16 @@ class StateSaverCollection(StateSaver):
         super().__init__()
         self.savers = []
 
-    def initialize(self, model):
-        """ Initializes the state saver collection with the given model.
+    def initialize(self, simulation):
+        """ Initializes the state saver collection with the given simulation.
 
         Parameters
         ----------
-        model : CardiacModel
-            The model instance for which the state will be saved or saved.
+        simulation : CardiacSimulation
+            The simulation instance for which the state will be saved or loaded.
         """
         for saver in self.savers:
-            saver.initialize(model)
+            saver.initialize(simulation)
 
     def save(self):
         """ Applies the save method to each StateSaver object in the

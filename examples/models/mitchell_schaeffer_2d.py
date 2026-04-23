@@ -34,14 +34,14 @@ import finitewave as fw
 # create a tissue:
 n = 100
 m = 5
-tissue = fw.CardiacTissue2D([n, m])
+tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, 5, 0, m))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, 5, 0, m))
 
 # create model object and set up parameters:
-mitchell_schaeffer = fw.MitchellSchaeffer2D()
+mitchell_schaeffer = fw.MitchellSchaeffer()
 mitchell_schaeffer.dt = 0.01
 mitchell_schaeffer.dr = 0.25
 mitchell_schaeffer.t_max = 500
@@ -50,7 +50,7 @@ mitchell_schaeffer.cardiac_tissue = tissue
 mitchell_schaeffer.stim_sequence = stim_sequence
 
 tracker_sequence = fw.TrackerSequence()
-action_pot_tracker = fw.ActionPotential2DTracker()
+action_pot_tracker = fw.ActionPotentialTracker()
 # to specify the mesh node under the measuring - use the cell_ind field:
 # eather list or list of lists can be used
 action_pot_tracker.cell_ind = [[50, 3]]

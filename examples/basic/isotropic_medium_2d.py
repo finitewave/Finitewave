@@ -43,13 +43,14 @@ stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration
 stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
 
 # create model object and set up parameters
-courtemanche = fw.BuenoOrovio()
-courtemanche.prepacing(stim_prepacing)
+courtemanche = fw.FentonKarma()
+# courtemanche.prepacing(stim_prepacing)
 
 
 # create a tissue of size 400x400 with cardiomycytes:
 n = 1000
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+# tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.2)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -58,7 +59,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=30, backend="jax")
+simulation = fw.CardiacSimulation(dt=0.01, t_max=100, backend="mlx")
 simulation.cardiac_model = courtemanche
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence

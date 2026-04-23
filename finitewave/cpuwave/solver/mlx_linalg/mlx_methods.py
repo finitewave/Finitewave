@@ -42,7 +42,7 @@ class MlxEuler:
         np.ndarray
             Updated solution vector after the Forward Euler step.
         """
-        u[indexes] = mx.sum(data * u_old[indexes][indices], axis=1) + dt * rhs[indexes]
+        u[indexes] = mx.sum(data * u_old[indices], axis=1) + dt * rhs[indexes]
         return u
 
 

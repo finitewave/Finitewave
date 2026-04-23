@@ -36,7 +36,7 @@ class Solver(ABC):
         """
         return crs_matrix.indptr, crs_matrix.indices, crs_matrix.data
     
-    def csr_to_ellpack(self, csr_matrix):
+    def csr_to_ellpack(self, csr_matrix, indexes=None):
         """Converts a sparse matrix in CSR format to ELLPACK format.
 
         Parameters
@@ -65,5 +65,9 @@ class Solver(ABC):
 
         ellpack_indices = self.simulation.backend.wrap_indexes(ellpack_indices)
         ellpack_data = self.simulation.backend.wrap(ellpack_data)
-        
+
+        if indexes is not None:
+            indexes = self.simulation.backend.wrap_indexes(indexes)
+            ellpack_indices = indexes[ellpack_indices]
+
         return ellpack_indices, ellpack_data
