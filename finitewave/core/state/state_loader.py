@@ -59,9 +59,8 @@ class StateLoader:
 
         for var in self.model.state_vars:
             val = self._load_variable(Path(self.path), var)
-            self.model.set_variables({var: val})
+            self.model.update_state_variables({var: val})
 
-        self.model._collect_ionic_kernel_args()
         self.passed = True
 
     def _load_variable(self, var_path, var_name):

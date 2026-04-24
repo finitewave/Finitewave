@@ -48,7 +48,7 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimCurrentCoord(time=0, curr_value=10, duration=0.1,
                                            x_min=0, x_max=1, y_min=0, y_max=m))
 
-stim_prepacing = fw.StimPrepacing(dt=0.01)
+stim_prepacing = fw.StimSingleCell(dt=0.01)
 stim_prepacing.add_stim(n_beats=5, cycle_length=40, curr_value=1, duration=0.1)
 stim_prepacing.add_stim(n_beats=5, cycle_length=30, curr_value=1, duration=0.1)
 stim_prepacing.add_stim(n_beats=5, cycle_length=25, curr_value=1, duration=0.1)

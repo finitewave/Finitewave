@@ -7,6 +7,7 @@
 # from .ten_tusscher_panfilov_2006 import TenTusscherPanfilov2006
 # from .courtemanche import Courtemanche
 from .cardiac_model import CardiacModel
+from .single_cell_model import SingleCellModel
 
 class AlievPanfilov(CardiacModel):
     model_name = "aliev_panfilov"

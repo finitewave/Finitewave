@@ -1,11 +1,11 @@
 import numpy as np
 
 
-class StimPrepacing:
-    """Class representing a prepacing sequence."""
+class StimSingleCell:
+    """Class representing a single cell stimulus."""
     def __init__(self, dt):
         """
-        Initializes the StimPrepacing instance.
+        Initializes the StimSingleCell instance.
 
         Parameters
         ----------

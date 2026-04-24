@@ -82,8 +82,9 @@ class MultiVariableTracker(Tracker):
                        f"'{var_name}' with size {var_val.size}.")
                 raise ValueError(msg)
             
-            var_val = np.zeros((len(self.tracking_times), len(self._node_inds)),
-                                dtype=np.float64)
+            init_val = getattr(self.model, f"init_{var_name}", None)
+            var_val = np.ones((len(self.tracking_times), len(self._node_inds)),
+                                dtype=np.float64) * init_val
             self.vars_data[var_name] = self.simulation.backend.wrap(var_val)
 
     def _compute_flat_inds(self, cardiac_tissue, cardiac_model):

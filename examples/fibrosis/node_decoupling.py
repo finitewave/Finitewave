@@ -23,7 +23,7 @@ for i in range(5):
     stim_sequence.add_stim(fw.StimVoltageCoord(time=stim_time, volt_value=1,
                                                x_min=0, x_max=5,
                                                y_min=0, y_max=m))
-prepacing = fw.StimPrepacing(dt=0.01)
+prepacing = fw.StimSingleCell(dt=0.01)
 prepacing.add_stim(n_beats=5, cycle_length40, stim_duration=0.1, stim_amplitude=2.)
 prepacing.add_stim(n_beats=5, cycle_length30, stim_duration=0.1, stim_amplitude=2.)
 prepacing.add_stim(n_beats=5, cycle_length25, stim_duration=0.1, stim_amplitude=2.)

@@ -3,7 +3,7 @@ import numpy as np
 import finitewave as fw
 
 
-stim_prepacing = fw.StimPrepacing(dt=0.01)
+stim_prepacing = fw.StimSingleCell(dt=0.01)
 stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=1., duration=.2)
 
 # create model object and set up parameters

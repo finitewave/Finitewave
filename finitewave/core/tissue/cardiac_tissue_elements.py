@@ -1,5 +1,7 @@
 import numpy as np
+import pyvista as pv
 from .cardiac_tissue_base import CardiacTissueBase
+from finitewave.core.numerics.fem.elements.element_type import ElementType
 
 
 class CardiacTissueElements(CardiacTissueBase):
@@ -45,6 +47,9 @@ class CardiacTissueElements(CardiacTissueBase):
             A string indicating the type of elements.
         """
         super().__init__()
+        if not ElementType.is_valid(elem_type):
+            raise ValueError(f"Invalid element type: {elem_type}.")
+
         self.meta["shape"] = elem_type
         self.meta["type"] = "Elements"
         self.meta["dim"] = coords.shape[1]
@@ -102,16 +107,6 @@ class CardiacTissueElements(CardiacTissueBase):
         return myo_elems_mask
     
     @property
-    def myo_on_tissue_indexes(self):
-        """
-        Returns
-        -------
-        numpy.ndarray
-            The indices of the ``tissue_indexes`` where mesh value is ``1``.
-        """
-        return self.myo_indexes
-    
-    @property
     def tissue_indexes(self):
         """
         Returns
@@ -120,6 +115,3 @@ class CardiacTissueElements(CardiacTissueBase):
             The flat indices of the ``mesh`` where value is greater than ``0``.
         """
         return np.arange(self.mesh.size)
-    
-    def _remove_islands(self):
-        return

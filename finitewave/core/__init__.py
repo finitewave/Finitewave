@@ -13,7 +13,7 @@ from finitewave.core.state import (
 from finitewave.core.tracker import TrackerSequence
 from finitewave.core.stimul import (
     StimSequence,
-    StimPrepacing,
+    StimSingleCell,
     StimVoltageCollection,
     StimCurrentCoord,
     StimCurrentMatrix,
@@ -27,6 +27,8 @@ from finitewave.core.tissue import (
     CardiacTissueElements,
 )
 
+from .numerics import ElementType
+
 __all__ = [
     "Command",
     "CommandSequence",
@@ -35,7 +37,7 @@ __all__ = [
     "StateSaver",
     "StateSaverCollection",
     "StimSequence",
-    "StimPrepacing",
+    "StimSingleCell",
     "StimVoltageCollection",
     "StimCurrentCoord",
     "StimCurrentMatrix",
@@ -46,4 +48,5 @@ __all__ = [
     "TrackerSequence",
     "CardiacTissueGrid",
     "CardiacTissueElements",
+    "ElementType"
 ]

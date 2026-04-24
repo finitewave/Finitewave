@@ -1,7 +1,7 @@
-from .ionic_numba_kernel import IonicNumbaGenerator
+from .ionic_numba_kernel import IonicNumbaKernel
 
 
-class PrepacingNumbaGenerator(IonicNumbaGenerator):
+class SingleCellNumbaKernel(IonicNumbaKernel):
     def __init__(self, kernel_func_name="prepacing_kernel"):
         super().__init__(kernel_func_name)
         self.common_args = ["stim_values", "dt", "u"]

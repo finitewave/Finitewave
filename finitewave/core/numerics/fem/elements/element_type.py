@@ -6,4 +6,10 @@ class ElementType:
     """
     TRIANGLE = "Triangle"
     QUAD = "Quadrilateral"
-    TETRAHEDRON = "Tetrahedron"
+    TETRA = "Tetrahedra"
+
+    values = [TRIANGLE, QUAD, TETRA]
+
+    @staticmethod
+    def is_valid(name):
+        return name in ElementType.values

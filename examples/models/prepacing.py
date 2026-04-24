@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import finitewave as fw
 
-prepacing = fw.StimPrepacing(dt=0.01)
+prepacing = fw.StimSingleCell(dt=0.01)
 prepacing.add_stim(n_beats=3, cycle_length40, stim_duration=0.1, stim_amplitude=2.)
 prepacing.add_stim(n_beats=3, cycle_length30, stim_duration=0.1, stim_amplitude=2.)
 prepacing.add_stim(n_beats=2, cycle_length25, stim_duration=0.1, stim_amplitude=2.)

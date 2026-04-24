@@ -40,7 +40,7 @@ t_max = 500
 tissue = fw.CardiacTissueGrid((n, m), dr=0.1)
 
 # create model object and set up parameters
-stim_prepacing = fw.StimPrepacing(dt)
+stim_prepacing = fw.StimSingleCell(dt)
 stim_prepacing.add_stim(n_beats=10, cycle_length=1000., curr_value=100, duration=0.5)
 
 luo_rudy = fw.LuoRudy91()

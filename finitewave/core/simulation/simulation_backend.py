@@ -10,7 +10,7 @@ class SimulationBackend:
         self.sparse_support = True
 
     def wrap(self, arr):
-        if hasattr(arr, "size") and arr.size > 1:
+        if hasattr(arr, "__array_namespace__") and arr.size > 1:
             return self._backend.array(arr, dtype=self.float_dtype)
 
         return arr
@@ -22,11 +22,15 @@ class SimulationBackend:
         return arr.flat[inds]
     
     def set_values(self, arr, inds, values):
+        arr[inds] = values
+        return arr
+    
+    def set_flat_values(self, arr, inds, values):
         inds = np.atleast_1d(inds)
         arr.flat[inds] = values
         return arr
 
-    def add_values(self, arr, inds, values):
+    def add_flat_values(self, arr, inds, values):
         arr.flat[inds] += values
         return arr
 
@@ -57,12 +61,16 @@ class MlxBackend(SimulationBackend):
 
     def select_values(self, arr, inds):
         return arr[inds]
-
+    
     def set_values(self, arr, inds, values):
         arr[inds] = values
         return arr
+
+    def set_flat_values(self, arr, inds, values):
+        arr[inds] = values
+        return arr
     
-    def add_values(self, arr, inds, values):
+    def add_flat_values(self, arr, inds, values):
         arr[inds] += values
         return arr
     
@@ -82,12 +90,16 @@ class JaxBackend(SimulationBackend):
 
     def select_values(self, arr, inds):
         return arr[inds]
-
+    
     def set_values(self, arr, inds, values):
         arr = arr.at[inds].set(values)
         return arr
+
+    def set_flat_values(self, arr, inds, values):
+        arr = arr.at[inds].set(values)
+        return arr
     
-    def add_values(self, arr, inds, values):
+    def add_flat_values(self, arr, inds, values):
         arr = arr.at[inds].add(values)
         return arr
     

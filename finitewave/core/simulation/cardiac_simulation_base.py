@@ -48,7 +48,7 @@ class CardiacSimulationBase:
             self,
             dt : float | None = None,
             t_max : float | None = None,
-            backend : Literal["numpy", "numba", "mlx", "jax"] = "numba",
+            backend : Literal["numba", "mlx", "jax"] = "numba",
             array_dtype : str = "float64"):
         self.meta = {}
         self.cardiac_tissue = None
@@ -70,27 +70,21 @@ class CardiacSimulationBase:
 
     def select_backend(
             self,
-            backend_name : Literal["numpy", "numba", "mlx", "jax"],
+            backend_name : Literal["numba", "mlx", "jax"],
             array_dtype : str = "float64"):
         """
         Selects the computational backend for the simulation.
 
         Parameters
         ----------
-        backend_name : Literal["numpy", "numba", "mlx", "jax"]
-            The name of the backend to use. Supported values are "numpy", "numba", "mlx", and "jax".
+        backend_name : Literal["numba", "mlx", "jax"]
+            The name of the backend to use. Supported values are "numba", "mlx", and "jax".
 
         Raises
         ------
         ValueError
             If an unsupported backend name is provided.
         """
-        if backend_name == "numpy":
-            from .simulation_backend import SimulationBackend
-            backend = SimulationBackend()
-            backend.float_dtype = np.dtype(array_dtype)
-            return backend  
-        
         if backend_name == "numba":
             from .simulation_backend import NumbaBackend
             backend = NumbaBackend()

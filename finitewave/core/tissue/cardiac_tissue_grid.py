@@ -87,16 +87,6 @@ class CardiacTissueGrid(CardiacTissueBase):
         Returns
         -------
         numpy.ndarray
-            The flat indices of the ``mesh`` where value is ``1``.
-        """
-        return np.flatnonzero(self.mesh == 1)
-
-    @property
-    def myo_on_tissue_indexes(self):
-        """
-        Returns
-        -------
-        numpy.ndarray
             The indices of the ``tissue_indexes`` where mesh value is ``1``.
         """
         mesh = self.mesh[self.mesh > 0]

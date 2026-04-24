@@ -53,7 +53,7 @@ import numpy as np
 import mlx.core as mx
 
 
-stim_prepacing = fw.StimPrepacing(dt=0.005)
+stim_prepacing = fw.StimSingleCell(dt=0.005)
 stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration=2.)
 stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
 

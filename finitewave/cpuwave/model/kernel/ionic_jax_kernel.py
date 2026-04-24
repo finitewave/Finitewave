@@ -4,7 +4,7 @@ from finitewave.core.model.kernel_generator import KernelGenerator
 from ._func_builder import wrap_jax_func, build_func
 
 
-class IonicJaxGenerator(KernelGenerator):
+class IonicJaxKernel(KernelGenerator):
     """
     Class for generating numba CPU kernel function to update state variables
     and compute the ionic current (rhs) of the cardiac model.
@@ -356,7 +356,7 @@ class IonicJaxGenerator(KernelGenerator):
 # output_args = ["rhs"] + [var for var in state_vars if var != "u"]
 
 
-# generator = IonicMlxGenerator()
+# generator = IonicMlxKernel()
 # # generator.generate_body(ionic_step, arrays, scalars, state_vars, output_args=output_args)
 # kernel_func, kernel_args = generator.generate_kernel(ops, arrays, scalars, state_vars, output_args=output_args)
 

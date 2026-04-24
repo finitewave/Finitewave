@@ -46,7 +46,8 @@ class ForwardEulerSolver(Solver):
         self.rhs = simulation.cardiac_model.rhs
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
-        self.select_method(simulation.backend)
+        if self.linalg_method is None:
+            self.select_method(simulation.backend)
 
     def select_method(self, backend):
         if backend.name == "numba":

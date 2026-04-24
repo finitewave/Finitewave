@@ -43,31 +43,36 @@ The final membrane potential is visualized using matplotlib.
 Chaotic activity is indicated by irregular, fragmented wavefronts.
 
 """
-
+import numpy as np
 import matplotlib.pyplot as plt
 import finitewave as fw
 
 n = 200
-tissue = fw.CardiacTissue2D((n, n))
+tissue = fw.CardiacTissueGrid((n, n), dr=0.25)
 
 stim_sequence = fw.StimSequence()
 
-stim_sequence.add_stim(fw.StimVoltageCoord2D(0, 1, 0, n, 0, n//2))
-stim_sequence.add_stim(fw.StimVoltageCoord2D(31, 1, 0, n//2, 0, n))
+stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, n, 0, n//2))
+stim_sequence.add_stim(fw.StimVoltageCoord(31, 1, 0, n//2, 0, n))
 # extra stimuli to break the spiral waves: 
-stim_sequence.add_stim(fw.StimCurrentCoord2D(75, 3, 3, 90, 100, n//2, n))
-stim_sequence.add_stim(fw.StimCurrentCoord2D(125, 3, 3, 90, 100, n//2, n))
+stim_sequence.add_stim(fw.StimCurrentCoord(75, 3, 3, 90, 100, n//2, n))
+stim_sequence.add_stim(fw.StimCurrentCoord(125, 3, 3, 90, 100, n//2, n))
 
 # Set up the Aliev-Panfilov model:
-aliev_panfilov = fw.AlievPanfilov2D()
-aliev_panfilov.dt = 0.01
-aliev_panfilov.dr = 0.25
-aliev_panfilov.t_max = 195
-aliev_panfilov.cardiac_tissue = tissue
-aliev_panfilov.stim_sequence = stim_sequence
+stim_prepacing = fw.StimSingleCell(dt=0.01)
+stim_prepacing.add_stim(n_beats=30, cycle_length=30., curr_value=2., duration=.1)
 
-aliev_panfilov.run()
+aliev_panfilov = fw.AlievPanfilov()
+aliev_panfilov.prepacing(stim_prepacing)
 
-plt.imshow(aliev_panfilov.u, cmap='plasma')
+simulation = fw.CardiacSimulation(dt=0.01, t_max=195, backend="numba")
+simulation.cardiac_model = aliev_panfilov
+simulation.cardiac_tissue = tissue
+simulation.stim_sequence = stim_sequence
+
+simulation.run()
+
+plt.imshow(aliev_panfilov.output(), cmap='plasma')
+plt.colorbar(label="Membrane Potential")
 plt.title("Chaotic pattern")
 plt.show()

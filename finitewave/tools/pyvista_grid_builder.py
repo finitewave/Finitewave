@@ -196,8 +196,10 @@ class PyVistaSurfaceGrid(pv.PolyData):
         elems : np.array
             Elements of the mesh.
         """
-        faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
-        self.indices = np.arange(elems.shape[0])
+        if coords.shape[1] == 2:
+            coords = np.hstack([coords, np.zeros((coords.shape[0], 1))])
+
+        faces = np.hstack([np.full((elems.shape[0], 1), elems.shape[1]), elems]).ravel()
         super().__init__(coords, faces)
 
 
@@ -224,22 +226,31 @@ class PyVistaTetraGrid(pv.UnstructuredGrid):
         as_surface : bool, optional
             If True, build a surface mesh. Default is False.
         """
-        faces = np.hstack([[elems.shape[1], *elem] for elem in elems])
-        cell_types = np.full(elems.shape[0], pv.VTK_TETRA)
-        grid = pv.UnstructuredGrid(faces, cell_types, coords)
+        cells = np.hstack([np.full((elems.shape[0], 1), 4), elems]).ravel()
+        celltypes = np.full(elems.shape[0], pv.CellType.TETRA, dtype=np.uint8)
+
+        grid = pv.UnstructuredGrid(cells, celltypes, coords)
+        grid.point_data['point_idx'] = np.arange(coords.shape[0])
+        grid.cell_data['cell_idx'] = np.arange(elems.shape[0])
         
         self.as_surface = as_surface
         if as_surface:
             grid = grid.extract_surface(algorithm="geometry")
 
-        self.indices = grid.cell_data['idx']   
+        self.point_idx = grid.point_data['point_idx']
+        self.cell_idx = grid.cell_data['cell_idx']
         super().__init__(grid)
 
     def __setitem__(self, name, value):
-        if self.as_surface:
-            self.cell_data[name] = value[*self.indices, ...]
-        else:
-            super().__setitem__(name, value)
+        if self.as_surface and value.shape[0] == self.n_points:
+            self.point_data[name] = value[self.point_idx, ...]
+            return
+        
+        if self.as_surface and value.shape[0] == self.n_cells:
+            self.cell_data[name] = value[self.cell_idx, ...]
+            return
+        
+        super().__setitem__(name, value)
 
 
 class PyVistaMeshGrid(pv.UnstructuredGrid):

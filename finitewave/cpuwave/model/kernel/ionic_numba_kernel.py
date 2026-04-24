@@ -4,7 +4,7 @@ from finitewave.core.model.kernel_generator import KernelGenerator
 from ._func_builder import build_func, wrap_numba_func
 
 
-class IonicNumbaGenerator(KernelGenerator):
+class IonicNumbaKernel(KernelGenerator):
     """
     Class for generating numba CPU kernel function to update state variables
     and compute the ionic current (rhs) of the cardiac model.

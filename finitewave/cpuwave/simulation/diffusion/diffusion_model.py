@@ -1,5 +1,6 @@
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 
+from finitewave.core.numerics.fem.elements.element_type import ElementType
 from finitewave.core.numerics.fem.elements.triangle_element import LinearTriangleElement
 from finitewave.core.numerics.fem.elements.quadrilateral_element import LinearQuadrilateralElement
 from finitewave.core.numerics.fem.elements.tetrahedral_element import LinearTetrahedralElement
@@ -67,17 +68,17 @@ class DiffusionModel(DiffusionModelBase):
         raise ValueError(f"Unknown tissue type: {self.simulation.cardiac_tissue.meta['type']}")
 
     def _default_assembler(self):
-        if self.simulation.cardiac_tissue.meta['shape'] == 'Triangle':
+        if self.simulation.cardiac_tissue.meta['shape'] == ElementType.TRIANGLE:
             assembler = ElementDiffusionModel()
             assembler.reference_element = LinearTriangleElement()
             return assembler
 
-        if self.simulation.cardiac_tissue.meta['shape'] == 'Quadrilateral':
+        if self.simulation.cardiac_tissue.meta['shape'] == ElementType.QUAD:
             assembler = ElementDiffusionModel()
             assembler.reference_element = LinearQuadrilateralElement()
             return assembler
 
-        if self.simulation.cardiac_tissue.meta['shape'] == 'Tetrahedral':
+        if self.simulation.cardiac_tissue.meta['shape'] == ElementType.TETRA:
             assembler = ElementDiffusionModel()
             assembler.reference_element = LinearTetrahedralElement()
             return assembler
