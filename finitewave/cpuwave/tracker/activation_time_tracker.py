@@ -24,14 +24,14 @@ class ActivationTimeTracker(Tracker):
 
     """
 
-    def __init__(self, threshold=-40, file_name="act_time"):
+    def __init__(self, threshold=-40, file_name="act_time", **kwargs):
         """
         Initializes the ActivationTimeTracker with default parameters.
         """
-        Tracker.__init__(self)
+        super().__init__(**kwargs)
         self.act_t = np.ndarray         # Array to store activation times
-        self.threshold = threshold            # Threshold for activation (in mV)
-        self.file_name = file_name  # Default file name for saving data
+        self.threshold = threshold      # Threshold for activation (in mV)
+        self.file_name = file_name      # Default file name for saving data
 
     def initialize(self, simulation):
         """
@@ -47,6 +47,8 @@ class ActivationTimeTracker(Tracker):
         self.simulation = simulation
         # Initialize activation time array with -1 to indicate unactivated cells
         self.act_t = - np.ones_like(self.simulation.cardiac_model.u)
+        self.act_t = self.simulation.backend.wrap(self.act_t)
+        super().initialize(simulation)
 
     def _track(self):
         """
@@ -58,9 +60,9 @@ class ActivationTimeTracker(Tracker):
         """
         # Update activation times where they are still -1 and the membrane
         # potential exceeds the threshold
-        self.act_t = np.where((self.act_t < 0)
-                              & (self.simulation.cardiac_model.u > self.threshold),
-                              self.simulation.t, self.act_t)
+        self.act_t = self.simulation.backend.lib.where(
+            (self.act_t < 0) & (self.simulation.cardiac_model.u > self.threshold),
+            self.simulation.t, self.act_t)
 
     @property
     def output(self):
@@ -72,4 +74,7 @@ class ActivationTimeTracker(Tracker):
         np.ndarray
             The array containing the activation time of each cell in the grid.
         """
-        return self.act_t
+        tissue_indexes = self.simulation.cardiac_tissue.tissue_indexes
+        output = np.zeros_like(self.simulation.cardiac_tissue.mesh, dtype=np.float64)
+        output.flat[tissue_indexes] = np.asarray(self.act_t)
+        return output

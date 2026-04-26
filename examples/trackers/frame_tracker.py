@@ -14,15 +14,16 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            x_min=n//2 - 3, x_max=n//2 + 3,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
 
-frame_tracker = fw.FrameTracker(aggregate=True, var_name="u",
-                                output_dtype=np.float32, step=1000)
+frame_tracker = fw.FrameTracker(aggregate=True,
+                                var_name="u",
+                                output_dtype=np.float32,
+                                step=10,
+                                keep_shape=True)
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(frame_tracker)
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.t_max = 31
+simulation = fw.CardiacSimulation(dt=0.01, t_max=31, backend="jax")
 simulation.cardiac_model = fw.BuenoOrovio()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
@@ -34,6 +35,7 @@ simulation.run()
 fig, axs = plt.subplots(ncols=2, nrows=2)
 for i, ax in enumerate(axs.flat):
     ax.imshow(frame_tracker.output[i])
-    ax.set_title(f"t = {frame_tracker.tracking_times[i]:.2f} ms")
+    ax.set_title(f"Frame = {i} (t = {frame_tracker.tracking_times[i]:.0f} ms)")
+    ax.axis("off")
 plt.tight_layout()
 plt.show()

@@ -53,9 +53,10 @@ class GridDiffusionModel(DiffusionModelBase):
         self.diffusion = self.compute_diffusion_tensor(
             mesh, tissue.conductivity, tissue.fibers, tissue.D_al, tissue.D_ac, model.D_model
         )
+        myo_indexes = tissue.tissue_indexes[tissue.myo_indexes]
         self.connectivity_diffusion = self.convert_to_connectivity(self.diffusion, tissue.connectivity)
         self.weights = self.stencil.compute_system_matrices(mesh, self.connectivity_diffusion,
-                                                            tissue.dr, tissue.myo_indexes,
+                                                            tissue.dr, myo_indexes,
                                                             reindex=True)
         return self.weights
 

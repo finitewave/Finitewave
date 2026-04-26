@@ -58,7 +58,7 @@ class ElementDiffusionModel(DiffusionModelBase):
         """
         tissue = self.simulation.cardiac_tissue
 
-        indexes = tissue.myo_indexes
+        indexes = tissue.tissue_indexes[tissue.myo_indexes]
         coords = tissue.coords
         elems = tissue.myo_elements
 

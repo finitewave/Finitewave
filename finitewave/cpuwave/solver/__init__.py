@@ -1,3 +1,3 @@
 from .forward_euler_solver import ForwardEulerSolver
-from .backward_euler_cg_solver import BackwardEulerCGSolver
+from .backward_euler_solver import BackwardEulerSolver
 from .crank_nicolson_solver import CrankNicolsonSolver

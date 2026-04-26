@@ -7,7 +7,7 @@ from numba.typed import List
 from finitewave.core.tracker.tracker import Tracker
 
 
-class SpiralWaveCoreTrackerFDM(Tracker):
+class SpiralWaveCoreTracker(Tracker):
     """
     A class to track spiral wave tips in a cardiac tissue model.
 
@@ -26,7 +26,7 @@ class SpiralWaveCoreTrackerFDM(Tracker):
 
     def __init__(self):
         """
-        Initializes the SpiralWaveCoreTrackerFDM with default parameters.
+        Initializes the SpiralWaveCoreTracker with default parameters.
         """
         Tracker.__init__(self)
         self.threshold = 0.5

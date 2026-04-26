@@ -53,30 +53,27 @@ import numpy as np
 import mlx.core as mx
 
 
-stim_prepacing = fw.StimSingleCell(dt=0.005)
-stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration=2.)
-stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
+stim_prepacing = fw.StimSingleCell(dt=0.01)
+stim_prepacing.add_stim(n_beats=30, cycle_length=50., curr_value=2., duration=0.1)
+stim_prepacing.add_stim(n_beats=10, cycle_length=30., curr_value=2., duration=0.1)
 
 # create model object and set up parameters
-courtemanche = fw.TenTusscherPanfilov2006()
-courtemanche.prepacing(stim_prepacing)
+cardiac_model = fw.AlievPanfilov()
+cardiac_model.prepacing(stim_prepacing, history=True)
 
+# plt.plot(cardiac_model.pacing_times, cardiac_model.u_pacing)
+# plt.show()
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n = 300
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
-stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
-                                           x_min=0, x_max=n//2,
-                                           y_min=0, y_max=n))
-stim_sequence.add_stim(fw.StimVoltageCoord(time=310, volt_value=1,
-                                           x_min=0, x_max=n,
-                                           y_min=0, y_max=n//2))
+stim_sequence = fw.StimS1S2Cross(tissue, s1_time=0, s2_time=23, voltage_value=1)
+
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=500)
-simulation.cardiac_model = courtemanche
+simulation = fw.CardiacSimulation(dt=0.01, t_max=200, backend="mlx")
+simulation.cardiac_model = cardiac_model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 

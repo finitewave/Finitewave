@@ -2,7 +2,7 @@
 from .crank_nicolson_solver import CrankNicolsonSolver
 
 
-class BackwardEulerCGSolver(CrankNicolsonSolver):
+class BackwardEulerSolver(CrankNicolsonSolver):
     """Implements the Backward Euler implicit time integration method
     with Conjugate Gradient solver for implicit diffusion step.
 
@@ -10,8 +10,8 @@ class BackwardEulerCGSolver(CrankNicolsonSolver):
     ----------
     Inherits all attributes from CrankNicolsonCGSolver.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, atol=1e-8, maxiter=100):
+        super().__init__(atol=atol, maxiter=maxiter)
 
     def assemble_system(self):
         """Assembles the system matrix for the Backward Euler method.

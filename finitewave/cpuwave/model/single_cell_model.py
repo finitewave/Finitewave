@@ -34,17 +34,18 @@ class SingleCellModel:
         kernel_args = self.collect_kernel_args(kernel_args_order)
 
         dt = self.stim_sequence.dt
-        stim_values = self.stim_sequence.stim_sequence
+        stim_current = self.stim_sequence.stim_current
 
         u = self.cardiac_model.init_u
         
         if history:
-            self.times = dt * np.arange(len(stim_values))
-            self.u_history = np.zeros(len(stim_values), dtype=np.float32)
+            self.times = dt * np.arange(len(stim_current))
+            self.stim_current = stim_current
+            self.u_history = np.zeros(len(stim_current), dtype=np.float32)
             self.u_history[0] = u
             kernel_args = [self.u_history] + kernel_args
 
-        state_vals = kernel(stim_values, dt, u, *kernel_args)
+        state_vals = kernel(stim_current, dt, u, *kernel_args)
 
         state_vars = dict(zip(self.cardiac_model.state_vars, state_vals))
         return state_vars

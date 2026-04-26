@@ -27,9 +27,9 @@ class CrankNicolsonSolver(Solver):
     mass_matrix : scipy.sparse.csr_matrix
         The mass matrix from the diffusion model.
     """
-    def __init__(self):
-        self.maxiter = 100
-        self.atol = 1e-8
+    def __init__(self, atol=1e-8, maxiter=100):
+        self.maxiter = maxiter
+        self.atol = atol
         self.num_iterations = []
         self.b = None
         self.u = None

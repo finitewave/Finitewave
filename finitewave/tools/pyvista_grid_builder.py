@@ -263,7 +263,7 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
     indices : tuple of np.array
         Indices of the non-empty cells in the original mesh.
     """
-    def __init__(self, mesh, as_surface=False):
+    def __init__(self, mesh, dr=1, as_surface=False):
         """Build a Unstructured Grid from 3D mesh where mesh > 0.
 
         Parameters:
@@ -277,30 +277,36 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
         """
         self._mesh = mesh
         grid = pv.ImageData()
-        grid.dimensions = np.array(mesh.shape) + 1
-        grid.spacing = (1, 1, 1)
-        grid.cell_data['mesh'] = mesh.astype(float).flatten(order='F')
-        grid.cell_data['idx'] = np.arange(mesh.size)
+        grid.dimensions = np.array(mesh.shape[::-1]) + 1
+        grid.spacing = (dr, dr, dr)
+        grid.cell_data['mesh'] = mesh.astype(float).flatten(order='C')
+        grid.cell_data['full_idx'] = np.arange(mesh.size)
+        self.n_full_cells = grid.n_cells
 
         # Threshold the mesh to remove empty cells
         grid = grid.threshold(0.5)
-        self.n_full_cells = grid.n_cells
+        self.n_grid_cells = grid.n_cells
+        grid.cell_data["grid_idx"] = np.arange(self.n_grid_cells)
         
         self.as_surface = as_surface
     
         if as_surface:
             grid = grid.extract_surface(algorithm="geometry")
 
-        self.indices = np.unravel_index(grid.cell_data['idx'], mesh.shape, order='F')
+        self.n_surface_cells = grid.n_cells
+
+        # self.indices = np.unravel_index(grid.cell_data['idx'], mesh.shape, order='F')
         super().__init__(grid)
     
     def __setitem__(self, key, value):
+        value = np.asarray(value)
         if value.shape[:3] == self._mesh.shape:
-            self.cell_data[key] = value[*self.indices, ...]
-        elif not self.as_surface and value.shape[0] == self.n_full_cells:
-            value_full = np.zeros(self._mesh.shape + value.shape[1:], dtype=value.dtype)
-            value_full[self._mesh > 0.5] = value
-            self.cell_data[key] = value_full[*self.indices, ...]
+            inds = np.unravel_index(self.cell_data['full_idx'], self._mesh.shape, order='C')
+            self.cell_data[key] = value[*inds, ...]
+        elif value.shape[0] == self.n_full_cells:
+            self.cell_data[key] = value[self.cell_data['full_idx'], ...]
+        elif value.shape[0] == self.n_grid_cells:
+            self.cell_data[key] = value[self.cell_data['grid_idx'], ...]
         else:
             super().__setitem__(key, value)
                     

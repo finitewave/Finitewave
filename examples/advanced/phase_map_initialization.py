@@ -92,7 +92,7 @@ model = fw.AlievPanfilov()
 model.prepacing(stim_prepacing)
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation()
+simulation = fw.CardiacSimulation(backend='mlx')
 simulation.dt = 0.01
 simulation.t_max = 100
 simulation.cardiac_model = model
@@ -106,15 +106,17 @@ v = state_tracker.output['v'][spiral_map]
 state_vars = {'u': u.flatten(),
               'v': v.flatten()}
 
-model.set_variables(state_vars)
+model.update_state_variables(state_vars)
 
 # run the model:
 simulation.run(initialize=False)
+
+u = model.output("u")
 
 # show the potential map at the end of calculations:
 fig, axs = plt.subplots(ncols=2, sharex=True, sharey=True)
 axs[0].imshow(spiral_map, cmap='viridis', origin='lower')
 axs[0].set_title('Initial Phase Map')
-axs[1].imshow(model.u, cmap='inferno', origin='lower')
+axs[1].imshow(u, cmap='inferno', origin='lower')
 axs[1].set_title('Transmembrane Potential')
 plt.show()

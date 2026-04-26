@@ -25,8 +25,9 @@ class FrameTracker(Tracker):
         Overwrite existing frames.
     """
 
-    def __init__(self, aggregate=False, dir_name="snapshots", var_name="u",
-                 overwrite=True, output_dtype="float32", **kwargs):
+    def __init__(self, aggregate=False, path=".", dir_name="frames", var_name="u",
+                 overwrite=True, output_dtype="float32", keep_shape=False,
+                 **kwargs):
         """
         Initializes the FrameGridTracker with default parameters.
 
@@ -35,8 +36,10 @@ class FrameTracker(Tracker):
         aggregate : bool, optional
             Whether to aggregate frames into a single array.
             If False, frames will be saved individually.
+        path : str, optional
+            Base path for saving frames (default is current directory).
         dir_name : str, optional
-            Directory name for saving frames (default is "snapshots").
+            Directory name for saving frames (default is "frames").
         var_name : str, optional
             Name of the target array to capture (default is "u").
         overwrite : bool, optional
@@ -44,16 +47,22 @@ class FrameTracker(Tracker):
         output_dtype : dtype, optional
             Data type for the saved frames (default is "float32").
             If None, it will be set to the simulation's default floating-point type.
+        keep_shape : bool, optional
+            Whether to keep the original shape of the tracked variable in the output.
+             If False, the output will be flattened array with length equal to
+             the number of tissue nodes (default is False).
         **kwargs
             Additional keyword arguments for the base Tracker class.
         """
         super().__init__(**kwargs)
         self.aggregate = aggregate
+        self.path = "."
         self.dir_name = dir_name
         self.var_name = var_name
         self.output_dtype = output_dtype
         self.overwrite = overwrite
         self.frames = None
+        self.keep_shape = keep_shape
 
     def initialize(self, simulation):
         """
@@ -92,9 +101,13 @@ class FrameTracker(Tracker):
         t_min = self.start_time
         dt = self.simulation.dt
         n_frames = int((t_max - t_min) / (self.step * dt)) + 1
-        var_data = self.simulation.cardiac_model.__dict__[self.var_name]
 
-        self.frames = np.zeros((n_frames, *var_data.shape))
+        if self.keep_shape:
+            output_shape = self.simulation.cardiac_tissue.mesh.shape
+        else:
+            output_shape = self.simulation.cardiac_model.__dict__[self.var_name].shape
+
+        self.frames = np.zeros((n_frames, *output_shape), dtype=self.output_dtype)
 
     def _make_dir(self):
         if not Path(self.path, self.dir_name).is_dir():
@@ -110,15 +123,40 @@ class FrameTracker(Tracker):
 
         The frames are saved in the specified directory as NumPy files.
         """
-        frame = self.simulation.cardiac_model.__dict__[self.var_name]
-        
+        frame_raw = self.simulation.cardiac_model.__dict__[self.var_name]
+        frame_raw = np.asarray(frame_raw, dtype=self.output_dtype)
+
+        if self.keep_shape:
+            frame = self._reshape_to_mesh(frame_raw)
+        else:
+            frame = frame_raw
 
         if self.aggregate:
-            self.frames[self.tracking_counter] = frame.astype(self.output_dtype)
+            self.frames[self.tracking_counter] = frame
             return
 
         dir_path = Path(self.path, self.dir_name)
         np.save(
             dir_path.joinpath(str(self.tracking_counter)).with_suffix(".npy"),
-            frame.astype(self.output_dtype),
+            frame,
         )
+
+    def _reshape_to_mesh(self, frame):
+        """
+        Reshapes a flattened frame back to the original mesh shape.
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            The flattened frame to be reshaped.
+
+        Returns
+        -------
+        np.ndarray
+            The reshaped frame with the original mesh shape.
+        """
+        output_shape = self.simulation.cardiac_tissue.mesh.shape
+        tissue_indexes = self.simulation.cardiac_tissue.tissue_indexes
+        reshaped_frame = np.full(output_shape, np.nan, dtype=self.output_dtype)
+        reshaped_frame.flat[tissue_indexes] = frame
+        return reshaped_frame

@@ -67,56 +67,26 @@ class MultiVariableTracker(Tracker):
         if self.var_list is None:
             self.var_list = self.model.state_vars
 
-        self._node_inds = self._compute_flat_inds(simulation.cardiac_tissue, simulation.cardiac_model)
-        self._node_inds = self.simulation.backend.wrap_indexes(self._node_inds)
+        self._node_inds = self._flatten_inds(simulation.cardiac_tissue.mesh,
+                                             simulation.cardiac_model.tissue_indexes,
+                                             self.node_inds)
 
         # Initialize storage for each variable to be tracked
         for var_name in self.var_list:
             if not hasattr(self.model, var_name):
                 raise ValueError(f"Variable '{var_name}' not found in model.")
             
-            var_val = getattr(self.model, var_name)
+            var_data = getattr(self.model, var_name)
             
-            if var_val.size < self._node_inds.max() + 1:
+            if var_data.size < self._node_inds.max() + 1:
                 msg = (f"Some node indices are out of bounds for variable " +
-                       f"'{var_name}' with size {var_val.size}.")
+                       f"'{var_name}' with size {var_data.size}.")
                 raise ValueError(msg)
             
             init_val = getattr(self.model, f"init_{var_name}", None)
-            var_val = np.ones((len(self.tracking_times), len(self._node_inds)),
+            var_data = np.ones((len(self.tracking_times), len(self._node_inds)),
                                 dtype=np.float64) * init_val
-            self.vars_data[var_name] = self.simulation.backend.wrap(var_val)
-
-    def _compute_flat_inds(self, cardiac_tissue, cardiac_model):
-        """
-        Computes the cell indices for tracking based on the mesh and memory
-        saving settings.
-
-        Parameters
-        ----------
-        cardiac_tissue : object
-            The cardiac tissue object containing the mesh information.
-        cardiac_model : object
-            The cardiac model object containing the memory saving settings.
-
-        Returns
-        -------
-        list or list of lists with two indices
-            The computed cell indices for tracking.
-        """
-        mesh = cardiac_tissue.mesh
-        tissue_indexes = cardiac_model.tissue_indexes
-
-        flat_ind = np.ravel_multi_index(np.atleast_2d(self.node_inds).T, mesh.shape)
-        ind = - np.ones(mesh.size, dtype=int)
-        ind[tissue_indexes] = np.arange(tissue_indexes.size)
-        flat_ind = ind[flat_ind]
-
-        if np.any(flat_ind < 0):
-            non_tissue_inds = np.array(self.node_inds)[flat_ind < 0]
-            raise ValueError(f"Specified nodes {non_tissue_inds} are not part of the tissue.")
-
-        return flat_ind
+            self.vars_data[var_name] = self.simulation.backend.wrap(var_data)
 
     def _track(self):
         """
@@ -125,10 +95,10 @@ class MultiVariableTracker(Tracker):
         This method should be called at each time step of the simulation.
         """
         for var_name in self.var_list:
-            var_values = self.model.__dict__[var_name]
-            var_val = self.simulation.backend.select_values(var_values, self._node_inds)
+            var_data = self.model.__dict__[var_name]
+            var_vals = self.simulation.backend.select_values(var_data, self._node_inds)
             self.vars_data[var_name] = self.simulation.backend.set_values(
-                self.vars_data[var_name], self.tracking_counter, var_val
+                self.vars_data[var_name], self.tracking_counter, var_vals
             )
         
     @property

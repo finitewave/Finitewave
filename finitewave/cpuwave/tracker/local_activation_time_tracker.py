@@ -65,9 +65,10 @@ class LocalActivationTimeTracker(Tracker):
             The cardiac tissue model object containing the data to be tracked.
         """
         self.simulation = simulation
-        # Initialize with a single layer of -1 (no activation)
-        self.act_t = [-np.ones_like(self.simulation.cardiac_model.u)]
-        # self.act_t[0] = self.simulation.backend.wrap(self.act_t[0])
+        self.act_t = [
+            -self.simulation.backend.lib.ones_like(
+                self.simulation.cardiac_model.u)
+        ]
         self.activated = False
         super().initialize(simulation)
 
@@ -113,7 +114,9 @@ class LocalActivationTimeTracker(Tracker):
         t_simulation : float
             The current simulation time.
         """
-        self.act_t[-1] = np.where(cross_mask, t_simulation, self.act_t[-1])
+        self.act_t[-1] = self.simulation.backend.lib.where(
+            cross_mask, t_simulation, self.act_t[-1]
+        )
     
     def _extend_act_t(self, cross_mask):
         """
@@ -125,8 +128,9 @@ class LocalActivationTimeTracker(Tracker):
             A binary array indicating which cells crossed the threshold in
             the current time step.
         """
-        if np.any(self.act_t[-1][cross_mask] > -1):
-            self.act_t.append(-np.ones_like(self.act_t[-1]))
+        if self.simulation.backend.lib.any(cross_mask & (self.act_t[-1] > -1)):
+            new_act_t = - self.simulation.backend.lib.ones_like(self.act_t[-1])
+            self.act_t.append(new_act_t)
     
     def is_crossed_threshold(self, u):
         """
@@ -157,7 +161,16 @@ class LocalActivationTimeTracker(Tracker):
         np.ndarray
             The array containing the activation times for each cell.
         """
-        return np.array(self.act_t)
+        tissue_indexes = self.simulation.cardiac_tissue.tissue_indexes
+        
+        act_t = []
+        for act_t_layer in self.act_t:
+            act_t_layer = np.asanyarray(act_t_layer)
+            act_t_full = - np.ones_like(self.simulation.cardiac_tissue.mesh, dtype=np.float64)
+            act_t_full.flat[tissue_indexes] = act_t_layer
+            act_t.append(act_t_full)
+
+        return np.array(act_t)
     
     def activation_map(self, time_min, time_max):
         """
@@ -179,7 +192,7 @@ class LocalActivationTimeTracker(Tracker):
         lat_array = self.output
         closest_indices = np.argmax(lat_array >= time_min, axis=0)
 
-        lat_map = np.take_along_axis(lat_array, closest_indices[None, ...],
-                                     axis=0)[0]
+        lat_map = np.take_along_axis(lat_array, closest_indices[None, ...], axis=0)[0]
         lat_map[lat_map > time_max] = np.nan
+        lat_map[lat_map < time_min] = np.nan
         return lat_map

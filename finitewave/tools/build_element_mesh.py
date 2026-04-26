@@ -66,7 +66,6 @@ def build_quadrilateral_mesh(n, m, x_range, y_range):
     """
     x = np.linspace(x_range[0], x_range[1], n+1)
     y = np.linspace(y_range[0], y_range[1], m+1)
-    print(len(x), len(y))
     xv, yv = np.meshgrid(x, y)
     coords = np.vstack([xv.ravel(), yv.ravel(), np.zeros_like(xv.ravel())]).T
 
@@ -79,7 +78,6 @@ def build_quadrilateral_mesh(n, m, x_range, y_range):
             v2 = v0 + n + 1
             v3 = v2 + 1
             elems[j * n + i] = [v0, v1, v3, v2]
-    elems = np.array(elems)
 
     return coords, elems
 

@@ -64,6 +64,9 @@ class AsymmetricStencil(Stencil):
         weights = []
 
         ijk = np.array(np.unravel_index(indexes, mesh.shape))
+        if np.any(mesh[*ijk] == 0):
+            breakpoint()
+
         for axis in range(mesh.ndim):
             r, c, w = self.compute_diffusion_along_axis(mesh, diffusion, dr, ijk, axis)
             rows.append(r)

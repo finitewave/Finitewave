@@ -89,18 +89,16 @@ simulation.stim_sequence = stim_sequence
 # initialize and run simulation: compute weights, add stimuls, trackers etc.
 simulation.run()
 
-u = simulation.cardiac_model.u
+u = simulation.cardiac_model.output("u")
 mesh = tissue.mesh
 # visualize the wavefront at the end of calculations:
-mesh_builder = fw.VisMeshBuilder3D()
-grid = mesh_builder.build_mesh(u > 0.1)
-grid = mesh_builder.add_scalar(u, 'u')
-# Create full mesh for context
-full_mesh_builder = fw.VisMeshBuilder3D()
-full_grid = full_mesh_builder.build_mesh(mesh)
-full_grid = full_mesh_builder.add_scalar(u, 'u')
+
+full_grid = fw.PyVistaMeshGrid(mesh, as_surface=True)
+full_grid["u"] = u
+grid = fw.PyVistaMeshGrid(u > 0.1, as_surface=True)
+grid["u"] = simulation.cardiac_model.u
 
 pl = pv.Plotter()
 pl.add_mesh(grid, scalars='u', cmap='RdBu_r', clim=[0, 1])
-pl.add_mesh(full_grid, scalars='u', cmap='RdBu_r', opacity=0.3)
+pl.add_mesh(full_grid, scalars='u', cmap='RdBu_r', clim=[0, 1], opacity=0.3)
 pl.show()

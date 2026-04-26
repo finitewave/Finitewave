@@ -10,7 +10,7 @@ import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
 
-import finitewave.mlxwave as fw
+import finitewave as fw
 
 
 path = Path(__file__).parent.parent
@@ -26,15 +26,15 @@ tissue.mesh = mesh
 # fibrosis_pattern.generate(tissue.mesh.shape, tissue.mesh)
 
 # create model object:
-tp06 = fw.TenTusscherPanfilov2006()
+tp06 = fw.LuoRudy91()
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(fw.StimVoltageCoord(0, -20,
+stim_sequence.add_stim(fw.StimCurrentCoord(0, 100, 1,
                                            0, mesh.shape[0],
                                            0, mesh.shape[0],
-                                           0, 30))
+                                           0, 5))
 # add the tissue and the stim parameters to the model object:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=0.01)
+simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="mlx")
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 # initialize model: compute weights, add stimuls, trackers etc.
@@ -42,6 +42,10 @@ simulation.cardiac_model = tp06
 simulation.run()
 
 # show the potential map at the end of calculations
+
+grid = fw.PyVistaMeshGrid(tissue.mesh, as_surface=True)
+grid["u"] = simulation.cardiac_model.u
+grid.plot(scalars="u", cmap="RdBu_r", show_edges=False, show_scalar_bar=True)
 
 # # visualize the ventricle in 3D
 # grid = fw.PyVistaMeshGrid(tissue.mesh, as_surface=True)

@@ -4,7 +4,7 @@ from .ionic_numba_kernel import IonicNumbaKernel
 class SingleCellNumbaKernel(IonicNumbaKernel):
     def __init__(self, kernel_func_name="prepacing_kernel"):
         super().__init__(kernel_func_name)
-        self.common_args = ["stim_values", "dt", "u"]
+        self.common_args = ["stim_current", "dt", "u"]
 
     @property
     def history(self):
@@ -14,11 +14,11 @@ class SingleCellNumbaKernel(IonicNumbaKernel):
     def history(self, value):
         self._history = value
 
-        if self._history and "u_pacing" not in self.common_args:
-            self.common_args += ["u_pacing"]
+        if self._history and "u_history" not in self.common_args:
+            self.common_args += ["u_history"]
 
-        elif not self._history and "u_pacing" in self.common_args:
-            self.common_args.remove("u_pacing")
+        elif not self._history and "u_history" in self.common_args:
+            self.common_args.remove("u_history")
    
     def generate_loop(self, indent) -> str:
         """
@@ -28,8 +28,8 @@ class SingleCellNumbaKernel(IonicNumbaKernel):
             The header for the loop that iterates over the indexes.
         """
         loop = """\
-            for idx in range(1, len(stim_values)):
-                u = u + dt * stim_values.flat[idx-1]
+            for idx in range(1, len(stim_current)):
+                u = u + dt * stim_current.flat[idx-1]
         """
         return self._add_indent(loop, indent)
 
@@ -43,7 +43,7 @@ class SingleCellNumbaKernel(IonicNumbaKernel):
         update_vars = "\n".join(f"{self._update_indexing(var, arrays)} = {var}_new" for var in state_vars if var != "u")
         update_vars += "\nu = u + dt * rhs_new"
         if self.history:
-            update_vars += "\nu_pacing.flat[idx] = u"
+            update_vars += "\nu_history.flat[idx] = u"
         return self._add_indent(update_vars, indent)
 
     def generate_output(self, output_args, indent) -> str:

@@ -2,7 +2,7 @@ import finitewave as fw
 import numpy as np
 import matplotlib.pyplot as plt
 
-cardiac_model = fw.Courtemanche()
+cardiac_model = fw.LuoRudy91()
 
 stim_sequence = fw.StimSingleCell(dt=0.01)
 stim_sequence.add_stim(n_beats=10, cycle_length=1000, curr_value=20, duration=2)

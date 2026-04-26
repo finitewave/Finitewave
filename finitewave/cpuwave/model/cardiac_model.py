@@ -140,7 +140,7 @@ class CardiacModel(CardiacModelBase):
         var_mesh.flat[tissue_indexes] = var_data.astype(dtype)
         return var_mesh
        
-    def prepacing(self, stim_prepacing, history=True):
+    def prepacing(self, stim_prepacing, history=False):
         """
         Prepaces the model using the provided stimulation sequence.
         
@@ -159,6 +159,7 @@ class CardiacModel(CardiacModelBase):
 
         if history:
             self.pacing_times = cell_model.times
+            self.pacing_stims = cell_model.stim_current
             self.u_pacing = cell_model.u_history
 
         # update initial conditions with the final state after prepacing

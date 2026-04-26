@@ -4,19 +4,19 @@ import numpy as np
 class SimulationBackend:
     def __init__(self):
         self.name = "numpy"
-        self._backend = np
+        self.lib = np
         self.float_dtype = np.float64
         self.int_dtype = np.int64
         self.sparse_support = True
 
     def wrap(self, arr):
         if hasattr(arr, "__array_namespace__") and arr.size > 1:
-            return self._backend.array(arr, dtype=self.float_dtype)
+            return self.lib.array(arr, dtype=self.float_dtype)
 
         return arr
     
     def wrap_indexes(self, arr):
-        return self._backend.array(arr, dtype=self.int_dtype)
+        return self.lib.array(arr, dtype=self.int_dtype)
     
     def select_values(self, arr, inds):
         return arr.flat[inds]
@@ -43,7 +43,7 @@ class NumbaBackend(SimulationBackend):
         super().__init__()
         import numpy as np
         self.name = "numba"
-        self._backend = np
+        self.lib = np
         self.float_dtype = np.float64
         self.int_dtype = np.int64
         self.sparse_support = True
@@ -54,7 +54,7 @@ class MlxBackend(SimulationBackend):
         super().__init__()
         import mlx.core as mx
         self.name = "mlx"
-        self._backend = mx
+        self.lib = mx
         self.float_dtype = mx.float32  # MLX performs better with float32
         self.int_dtype = mx.int32
         self.sparse_support = False    # MLX does not support sparse matrices
@@ -75,7 +75,7 @@ class MlxBackend(SimulationBackend):
         return arr
     
     def copy(self, arr):
-        return self._backend.array(arr, dtype=self.float_dtype)
+        return self.lib.array(arr, dtype=self.float_dtype)
 
 
 class JaxBackend(SimulationBackend):
@@ -83,7 +83,7 @@ class JaxBackend(SimulationBackend):
         super().__init__()
         import jax.numpy as jnp
         self.name = "jax"
-        self._backend = jnp
+        self.lib = jnp
         self.float_dtype = jnp.float32 # JAX performs better with float32
         self.int_dtype = jnp.int32
         self.sparse_support = False    # JAX does not support sparse matrices
@@ -104,4 +104,4 @@ class JaxBackend(SimulationBackend):
         return arr
     
     def copy(self, arr):
-        return self._backend.array(arr, dtype=self.float_dtype, copy=True)
+        return self.lib.array(arr, dtype=self.float_dtype, copy=True)

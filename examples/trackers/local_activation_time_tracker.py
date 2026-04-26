@@ -64,30 +64,20 @@ import finitewave as fw
 n = 200
 tissue = fw.CardiacTissueGrid([n, n], dr=0.3)
 
-model = fw.BuenoOrovio()
+model = fw.AlievPanfilov()
 
 # induce spiral wave:
-stim_sequence = fw.StimSequence()
-stim_sequence.add_stim(
-    fw.StimVoltageCoord(time=0, volt_value=1, x_min=0, x_max=n, y_min=0, y_max=5)
-    )
-stim_sequence.add_stim(
-    fw.StimVoltageCoord(time=600, volt_value=1, x_min=0, x_max=n, y_min=0, y_max=5)
-    )
+stim_sequence = fw.StimS1S2Cross(tissue, s1_time=0, s2_time=31, voltage_value=1)
 
 # set up the tracker:
-lat_tracker = fw.LocalActivationTimeTracker(threshold=0.5)
-lat_tracker.step = 100
-lat_tracker.start_time = 0
-lat_tracker.end_time = 800
+lat_tracker = fw.LocalActivationTimeTracker(threshold=0.5, step=1, 
+                                            start_time=100, end_time=200)
 
 tracker_sequence = fw.TrackerSequence()
 tracker_sequence.add_tracker(lat_tracker)
 
 # set up the simulation:
-simulation = fw.CardiacSimulation(backend="mlx")
-simulation.dt = 0.01
-simulation.t_max = 800
+simulation = fw.CardiacSimulation(dt=0.01, t_max=200, backend="numba")
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = model
 simulation.stim_sequence = stim_sequence
@@ -96,28 +86,25 @@ simulation.tracker_sequence = tracker_sequence
 # run the simulation:
 simulation.run()
 
-plt.imshow(model.u.reshape((n, n)))
-plt.show()
-
 # plot the activation time map:
-time_bases = [0, 600]  # time bases to plot the activation time map
+time_bases = [100, 150 ]  # time bases to plot the activation time map
 print(f'Number of LATs: {len(lat_tracker.output)}')
 
-X, Y = np.mgrid[0:n:1, 0:n:1]
-
-fig, axs = plt.subplots(ncols=len(time_bases), figsize=(15, 5))
+fig, axs = plt.subplots(ncols=len(time_bases), figsize=(5 * len(time_bases), 5))
 
 if len(time_bases) == 1:
     axs = [axs]
 
 for i, ax in enumerate(axs):
     time_min = time_bases[i]
-    time_max = time_bases[i] + 100
+    time_max = time_bases[i] + 28
 
     lat_map = lat_tracker.activation_map(time_min, time_max).reshape(n, n)
 
-    ax.imshow(lat_map, cmap='viridis', origin='lower')
-    ax.set_title(f'Activation time: {time_bases[i]} time units')
+    ax.imshow(lat_map, cmap='hsv', origin='lower')
+    ax.set_title(f'LAT after {time_bases[i]} time units')
     cbar = fig.colorbar(ax.images[0], ax=ax, orientation='vertical')
-    cbar.set_label('Activation Time (time units)')
+    cbar.set_label('LAT (time units)')
+
+# plt.tight_layout()
 plt.show()

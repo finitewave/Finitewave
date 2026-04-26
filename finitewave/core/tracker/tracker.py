@@ -81,6 +81,36 @@ class Tracker(ABC):
         self.tracking_counter += 1
         self.iter_counter += 1
 
+    def _flatten_inds(self, mesh, tissue_indexes, node_inds):
+        """
+        Computes the cell indices for tracking based on the mesh and memory
+        saving settings.
+
+        Parameters
+        ----------
+        cardiac_tissue : object
+            The cardiac tissue object containing the mesh information.
+        cardiac_model : object
+            The cardiac model object containing the memory saving settings.
+
+        Returns
+        -------
+        list or list of lists with two indices
+            The computed cell indices for tracking.
+        """
+
+        flat_ind = np.ravel_multi_index(np.atleast_2d(node_inds).T, mesh.shape)
+        ind = - np.ones(mesh.size, dtype=int)
+        ind[tissue_indexes] = np.arange(tissue_indexes.size)
+        flat_ind = ind[flat_ind]
+
+        if np.any(flat_ind < 0):
+            non_tissue_inds = np.array(node_inds)[flat_ind < 0]
+            raise ValueError(f"Specified nodes {non_tissue_inds} are not part of the tissue.")
+
+        flat_ind = self.simulation.backend.wrap_indexes(flat_ind)
+        return flat_ind
+
     def clone(self):
         """
         Creates a deep copy of the current tracker instance.

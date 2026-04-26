@@ -59,7 +59,7 @@ class CardiacSimulation(CardiacSimulationBase):
             self,
             dt : float | None = None,
             t_max : float | None = None,
-            backend : Literal["numpy", "numba", "mlx", "jax"] = "numba",
+            backend : Literal["numba", "mlx", "jax"] = "numba",
             array_dtype : str = "float64"):
         """
         Initializes the CardiacSimulation instance.

@@ -66,7 +66,7 @@ stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimCurrentCoord(0, 5, 0.1, 0, 3, 0, m))
 
 # set up tracker parameters:
-node_inds = [[0, 5], [70, 5]]
+node_inds = [[30, 5], [70, 5]]
 action_pot_tracker = fw.ActionPotentialTracker(node_inds)
 
 tracker_sequence = fw.TrackerSequence()
@@ -74,7 +74,7 @@ tracker_sequence.add_tracker(action_pot_tracker)
 
 # set up simulation parameters:
 simulation = fw.CardiacSimulation(dt=0.01, t_max=50)
-simulation.cardiac_model = fw.AlievPanfilov(memory_save=False)
+simulation.cardiac_model = fw.AlievPanfilov()
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 simulation.tracker_sequence = tracker_sequence
@@ -85,7 +85,7 @@ simulation.run()
 # plot the action potential
 time = action_pot_tracker.tracking_times
 act_pot = action_pot_tracker.act_pot
-u = simulation.cardiac_model.u
+u = simulation.cardiac_model.output("u")
 
 fig, axs = plt.subplots(ncols=2, width_ratios=[0.3, 1])
 
@@ -96,8 +96,9 @@ axs[0].scatter(np.array(action_pot_tracker.node_inds)[:, 1],
                label='Tracked Nodes')
 
 for i, (x, y) in enumerate(node_inds):
-    axs[1].plot(time, act_pot[:, i], label=f"Node [{x}, {y}]")
-axs[1].legend(title='Aliev-Panfilov Model')
+    axs[1].plot(time, act_pot[:, i], label=f"[{x}, {y}]")
+axs[1].legend(title='Nodes')
 axs[1].set_xlabel('Time (ms)')
 axs[1].set_ylabel('Membrane Potential (mV)')
+axs[1].set_title('Action Potential at Tracked Nodes')
 plt.show()

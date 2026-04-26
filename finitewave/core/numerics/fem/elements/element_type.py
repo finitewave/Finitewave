@@ -9,6 +9,8 @@ class ElementType:
     TETRA = "Tetrahedra"
 
     values = [TRIANGLE, QUAD, TETRA]
+    surface = [TRIANGLE, QUAD]
+    volume = [TETRA]
 
     @staticmethod
     def is_valid(name):
