@@ -60,42 +60,25 @@ import numpy as np
 import finitewave as fw
 
 # set up the tissue:
-n = 100
-
-# 
-cardiac_model = fw.Courtemanche()
-cardiac_model.gkur_coeff *= 0.5
-cardiac_model.gto *= 0.5
-cardiac_model.gcal *= 0.3
+n, m = 300, 20
 
 # induce the spiral wave:
 stim_sequence = fw.StimSequence()
-
-for i in range(10):
-    stim_time = i * 300
-    stim_sequence.add_stim(fw.StimVoltageCoord(stim_time, 1,
-                                                   0, n,
-                                                   0, 5,
-                                                   0, 5))
+stim_sequence.add_stim(fw.StimVoltageCoord(10, 1, 0, 5, 0, m))
 
 tracker_sequence = fw.TrackerSequence()
 # create an ECG tracker:
-ecg_tracker = fw.ECGGridTracker()
-ecg_tracker.start_time = 5
-ecg_tracker.step = 10
-ecg_tracker.measure_coords = np.array([[n//2, n//2, 20],
-                                       [10, n//2, 20],
-                                       [n//2, 3*n//4, 20],])
+ecg_tracker = fw.ECGTracker(step=10)
+ecg_tracker.measure_coords = np.array([[n//2, m//2, 5],
+                                       [5, m//2, 5],
+                                       [n//2, 0, 5],])
 
 tracker_sequence.add_tracker(ecg_tracker)
 
-simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.dr = 0.25
-simulation.t_max = 100
+simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="jax")
 # add the tissue and the stim parameters to the model object:
-simulation.cardiac_tissue = fw.CardiacTissueGrid([n, n, 5])
-simulation.cardiac_model = fw.AlievPanfilov()
+simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m], dr=0.1)
+simulation.cardiac_model = fw.LuoRudy91()
 simulation.stim_sequence = stim_sequence
 simulation.tracker_sequence = tracker_sequence
 
@@ -103,14 +86,20 @@ simulation.run()
 
 colors = ['tab:blue', 'tab:orange', 'tab:green']
 
-fig, axs = plt.subplots(ncols=2)
-axs[0].imshow(simulation.cardiac_model.u[:, :, 3])
+fig, axs = plt.subplots(ncols=2, width_ratios=[0.3, 1])
+axs[0].imshow(simulation.cardiac_model.output("u"), origin='lower')
 for i, y in enumerate(ecg_tracker.output.T):
     coord = ecg_tracker.measure_coords[i]
     axs[0].scatter(coord[1], coord[0], color=colors[i])
-    x = (ecg_tracker.start_time +
-         np.arange(len(y)) * simulation.dt * ecg_tracker.step)
-    axs[1].plot(x, y, '-o', color=colors[i], label=f'{coord}')
+    x = ecg_tracker.tracking_times
+    axs[1].plot(x, y, '-', color=colors[i], label=f'{coord}')
+    # add vertical lines for stimulus times
+    for stim in stim_sequence.sequence:
+        axs[1].axvline(stim.t, color='gray', linestyle='--', alpha=0.5)
+      
+    axs[1].set_xlabel('Time (ms)')
+    axs[1].set_ylabel('Voltage (mV)')
+    axs[1].set_title('ECG Signals')
 
 axs[1].legend(title='Electrodes')
 plt.show()
