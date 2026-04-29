@@ -13,7 +13,7 @@ def _require_3d_tools(format: str):
         raise ImportError(
             "3D animation requires natural sorting of frame files.\n"
             "Install optional dependencies with:\n"
-            "  pip install \"finitewave[tools]\""
+            "  pip install natsort"
         ) from e
 
     # pyvista is required
@@ -23,22 +23,20 @@ def _require_3d_tools(format: str):
         raise ImportError(
             "3D animation requires PyVista.\n"
             "Install optional dependencies with:\n"
-            "  pip install \"finitewave[tools]\""
+            "  pip install pyvista"
         ) from e
 
     # Optional but highly recommended: explicit check for ffmpeg when writing mp4
     # because many PyVista movie pipelines rely on system FFmpeg.
     if format == "mp4":
-        import shutil
-        if shutil.which("ffmpeg") is None:
-            raise RuntimeError(
-                "MP4 export requires system FFmpeg (missing `ffmpeg` in PATH).\n\n"
-                "Install FFmpeg:\n"
-                "  - Ubuntu/Debian: sudo apt-get install ffmpeg\n"
-                "  - macOS: brew install ffmpeg\n"
-                "  - Conda: conda install -c conda-forge ffmpeg\n"
-                "  - Windows: winget install Gyan.FFmpeg\n"
-            )
+        try:
+            import imageio_ffmpeg 
+        except ImportError as e:
+            raise ImportError(
+                "MP4 export requires imageio-ffmpeg.\n"
+                "Install optional dependencies with:\n"
+                "  pip install imageio-ffmpeg"
+            ) from e
 
     return natsorted, pv
 

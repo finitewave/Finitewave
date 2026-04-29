@@ -35,7 +35,8 @@ dependencies = [
   "finitewave-model-luo-rudy-91>=0.5.0",
   "finitewave-model-mitchell-schaeffer>=0.5.0",
   "finitewave-model-ten-tusscher-panfilov-2006>=0.5.0",
-  "imageio==2.31.4",
+  "imageio>=2.31.4",
+  "imageio-ffmpeg>=0.4.9",
   "scikit-image>=0.22.0",
 ]
 
