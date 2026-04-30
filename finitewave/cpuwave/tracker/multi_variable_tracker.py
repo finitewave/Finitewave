@@ -70,6 +70,11 @@ class MultiVariableTracker(Tracker):
         self._node_inds = self._flatten_inds(simulation.cardiac_tissue.mesh,
                                              simulation.cardiac_model.tissue_indexes,
                                              self.node_inds)
+        
+        t_max = min(self.simulation.t_max, self.end_time)
+        t_min = self.start_time
+        dt = self.simulation.dt
+        n_frames = int((t_max - t_min) / (self.step * dt)) + 1
 
         # Initialize storage for each variable to be tracked
         for var_name in self.var_list:
@@ -84,8 +89,7 @@ class MultiVariableTracker(Tracker):
                 raise ValueError(msg)
             
             init_val = getattr(self.model, f"init_{var_name}", None)
-            var_data = np.ones((len(self.tracking_times), len(self._node_inds)),
-                                dtype=np.float64) * init_val
+            var_data = np.ones((n_frames, len(self._node_inds)), dtype=np.float64) * init_val
             self.vars_data[var_name] = self.simulation.backend.wrap(var_data)
 
     def _track(self):

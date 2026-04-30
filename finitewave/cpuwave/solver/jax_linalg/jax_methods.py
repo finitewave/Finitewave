@@ -49,6 +49,12 @@ class JaxEuler:
 class JaxCG:
     def __init__(self):
         pass
+    
+    @staticmethod
+    @jax.jit
+    def axmy(a, x, y, indexes, out):
+        out = out.at[indexes].set(a * x[indexes] - y[indexes])
+        return out
 
     @staticmethod
     @jax.jit

@@ -49,7 +49,13 @@ class Tracker(ABC):
         simulation : Simulation
             The simulation object to which the tracker will be attached.
         """
+        dt = simulation.dt * self.step
+        start_time = self.start_time
+        end_time = min(self.end_time, simulation.t_max)
+        
         self.simulation = simulation
+        self.iter_counter = 0
+        self.n_iterations = int(np.ceil((end_time - start_time) / dt))
 
     @property
     def tracking_times(self):

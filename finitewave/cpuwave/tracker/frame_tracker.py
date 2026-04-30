@@ -100,7 +100,7 @@ class FrameTracker(Tracker):
         t_max = min(self.simulation.t_max, self.end_time)
         t_min = self.start_time
         dt = self.simulation.dt
-        n_frames = int((t_max - t_min) / (self.step * dt)) + 1
+        n_frames = int((t_max - t_min) / (self.step * dt))
 
         if self.keep_shape:
             output_shape = self.simulation.cardiac_tissue.mesh.shape

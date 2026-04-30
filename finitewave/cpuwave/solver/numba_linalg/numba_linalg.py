@@ -125,13 +125,13 @@ def dot_numba(x, y, indexes):
 
 
 @njit(parallel=True, fastmath=True, cache=True)
-def ay_p_x_numba(a, x, y, indexes, out):
-    """Computes out = a * y + x in place.
+def ax_m_y_numba(a, x, y, indexes, out):
+    """Computes out = a * x - y in place.
     """
     n = len(indexes)
     for i in prange(n):
         ii = indexes[i]
-        out.flat[ii] = a * y.flat[ii] + x.flat[ii]
+        out.flat[ii] = a * x.flat[ii] - y.flat[ii]
     return out
 
 

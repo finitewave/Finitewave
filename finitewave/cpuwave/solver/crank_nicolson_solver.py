@@ -51,6 +51,7 @@ class CrankNicolsonSolver(Solver):
         self.u = simulation.cardiac_model.u
         self.b = simulation.backend.wrap(0. * self.u)
         self.u_old = simulation.backend.copy(self.u)
+        self.u_old_2 = simulation.backend.copy(self.u)
         self.rhs = simulation.cardiac_model.rhs
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
@@ -106,19 +107,21 @@ class CrankNicolsonSolver(Solver):
         self.rhs = self.simulation.cardiac_model.rhs
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
         # Swap references for in-place updates
-        self.u_old, self.u = self.u, self.u_old
+        self.u_old, self.u_old_2, self.u = self.u, self.u_old, self.u_old_2
         # Explicit step for the reaction term (rhs of ionic model)
         self.u = self.linalg_method.axpy(self.simulation.dt, self.rhs, self.u_old,
                                          self.myo_indexes, self.u)
         # Implicit step for the diffusion term
         self.b = self.linalg_method.matvec(*self.a_rhs_matrix, self.u,
                                            self.myo_indexes, self.b)
+        # Better initial guess for CG solver using the previous two time steps
+        self.u = self.linalg_method.axmy(2., self.u_old, self.u_old_2, self.myo_indexes, self.u)
         self.u, n_iter = self.linalg_method.solve(*self.a_lhs_matrix, self.b, 
                                                   self.u, self.myo_indexes,
                                                   atol=self.atol, maxiter=self.maxiter)
         if n_iter < 0:
             warnings.warn("Diffusion kernel solution accuracy is not reached")
-
+        
         self.num_iterations.append(n_iter)
         self.simulation.cardiac_model.u = self.u
         return self.u

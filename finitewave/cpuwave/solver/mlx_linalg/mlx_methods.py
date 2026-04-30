@@ -52,6 +52,12 @@ class MlxCG:
 
     @staticmethod
     @mx.compile
+    def axmy(a, x, y, indexes, out):
+        out[indexes] = a * x[indexes] - y[indexes]
+        return out
+
+    @staticmethod
+    @mx.compile
     def axpy(a, x, y, indexes, out):
         """
         Performs the axpy operation:
@@ -105,7 +111,7 @@ class MlxCG:
         return out
     
     @staticmethod
-    def solve(indices, data, b, x0, indexes, atol=1e-8, maxiter=100):
+    def solve(indices, data, b, x0, indexes, atol=1e-8, maxiter=1):
         """
         Conjugate Gradient solver for Ax = b where A is represented in ELLPACK format.
         
@@ -138,10 +144,10 @@ class MlxCG:
         # Initial residual and direction
         # r = b - A@x
         x = x0[indexes]
-        r = b[indexes] - mx.sum(data * x0[indexes][indices], axis=1)
+        r = b[indexes] - mx.sum(data * x[indices], axis=1)
         p = r
         r_norm = mx.sum(r * r)
-        
+
         for i in range(maxiter):
 
             x, r, p, r_norm = cg_step(data, indices, x, r, p, r_norm)

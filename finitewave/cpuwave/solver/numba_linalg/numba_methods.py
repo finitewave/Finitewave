@@ -4,6 +4,7 @@ from .numba_linalg import (
     dot_numba,
     b_m_matvec_numba,
     ax_p_y_numba,
+    ax_m_y_numba,
     matvec_and_dot_numba,
     matvec_p_ay_numba,
     y_pm_ax_numba,
@@ -53,7 +54,11 @@ class NumbaEuler:
 class NumbaCG():
     def __init__(self):
         pass
-    
+
+    @staticmethod
+    def axmy(a, x, y, indexes, out):
+        return ax_m_y_numba(a, x, y, indexes, out)
+
     @staticmethod
     def axpy(a, x, y, indexes, out):
         """Performs the axpy operation:

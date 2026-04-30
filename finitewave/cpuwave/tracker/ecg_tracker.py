@@ -101,8 +101,8 @@ class ECGTracker(Tracker):
         dr = self.simulation.cardiac_tissue.dr
         
         tr_current = (u - u_old - dt * rhs)
-        tr_current = self.simulation.backend.select_values(tr_current, self.myo_indexes) / dt
-        ecg = self.ecg_func(self._measure_coords, tr_current, *self.myo_coords, dr,
+        tr_current = self.simulation.backend.select_values(tr_current, self.myo_indexes)
+        ecg = self.ecg_func(self._measure_coords, tr_current, *self.myo_coords, dr, dt,
                             self.distance_power, self.extracellular_conductivity)
         return ecg
 
@@ -139,7 +139,7 @@ def ecg_func(backend):
         from numba import njit, prange
 
         @njit(parallel=True, fastmath=True)
-        def calc_ecg_numba(coords, tr_current, i, j, k, dr, distance_power=1.0, cond=1.0):
+        def calc_ecg_numba(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
 
             n = coords.shape[0]
             ecg = np.empty(n, dtype=tr_current.dtype)
@@ -149,7 +149,7 @@ def ecg_func(backend):
                 ds = (i - x) ** 2 + (j - y) ** 2 + (k - z) ** 2
                 ds = np.where(ds == 0, 1, ds)
                 d = np.sqrt(ds) ** distance_power
-                ecg[c] = np.sum(tr_current / (d * dr)) / (4 * math.pi * cond)
+                ecg[c] = np.sum(tr_current / (d * dr * dt)) / (4 * math.pi * cond)
 
             return ecg
         
@@ -160,12 +160,12 @@ def ecg_func(backend):
         import jax.numpy as jnp
 
         @jax.jit
-        def calc_ecg_jax(coords, tr_current, i, j, k, dr, distance_power=1.0, cond=1.0):
+        def calc_ecg_jax(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
             def single_ecg(_, coord):
                 x, y, z = coord
                 ds = jnp.maximum((i - x)**2 + (j - y)**2 + (k - z)**2, dr)
                 d = jnp.sqrt(ds) ** distance_power
-                result = jnp.sum(tr_current / d) / (4 * jnp.pi * cond)
+                result = jnp.sum(tr_current / (d * dt)) / (4 * jnp.pi * cond)
                 return None, result
 
             # Scan loops on-device, keeping memory usage low
@@ -179,19 +179,20 @@ def ecg_func(backend):
         import math
 
         @mx.compile
-        def single_ecg(coord, tr_current, i, j, k, dr, distance_power=1.0, cond=1.0):
+        def single_ecg(coord, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
             x, y, z = coord
             ds = mx.maximum((i - x)**2 + (j - y)**2 + (k - z)**2, dr)
             d = mx.sqrt(ds) ** distance_power
-            result = mx.sum(tr_current / d) / (4 * math.pi * cond)
+            result = mx.sum(tr_current / (d * dt)) / (4 * math.pi * cond)
             return result
         
         vmap_ecg = mx.vmap(single_ecg, in_axes=(0, None, None, None, None, None, None, None))
         compiled_ecg = mx.compile(vmap_ecg)
 
 
-        def calc_ecg_mlx(coords, tr_current, i, j, k, dr, distance_power=1.0, cond=1.0):
+        def calc_ecg_mlx(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
             dr = mx.array(dr)
+            dt = mx.array(dt)
             distance_power = mx.array(distance_power)
             cond = mx.array(cond)
 
