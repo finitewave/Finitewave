@@ -241,6 +241,20 @@ class CardiacModel(ABC):
         """
         return copy.deepcopy(self)
     
+    def reset_variables_to_defaults(self):
+        """
+        Resets the state variables to their default initial conditions.
+        """
+        for name, value in self.default_variables.items():
+            setattr(self, f"init_{name}", value)
+
+    def reset_parameters_to_defaults(self):
+        """
+        Resets the parameters to their default values.
+        """
+        for name, value in self.default_parameters.items():
+            setattr(self, name, value)
+    
     def _initialize_variables_and_parameters(self, ops):
         self.default_parameters = ops.get_parameters()
         self.default_variables = ops.get_variables()
@@ -249,22 +263,19 @@ class CardiacModel(ABC):
         self.state_pars = list(self.default_parameters.keys())
 
         # expose parameters as direct attributes (scalar or array)
-        for name, value in self.default_parameters.items():
-            setattr(self, name, value)
+        self.reset_parameters_to_defaults()
 
         # expose initial conditions as init_*
-        for name, value in self.default_variables.items():
-            setattr(self, f"init_{name}", value)
-
-        # declare arrays (optional, for readability/debug)
-        for name in self.default_variables.keys():
-            setattr(self, name, np.ndarray)      
+        self.reset_variables_to_defaults() 
 
     def _allocate_state_arrays(self):
         # allocate state arrays
         for name in self.default_variables.keys():
             init_val = getattr(self, f"init_{name}")
-            setattr(self, name, init_val * np.ones_like(self.u, dtype=self.npfloat))
+            if isinstance(init_val, np.ndarray):
+                setattr(self, name, init_val)
+            else:
+                setattr(self, name, init_val * np.ones_like(self.u, dtype=self.npfloat))
             if name == 'u':
                 self.u_new = self.u.copy()
 
