@@ -156,13 +156,6 @@ flux through their boundaries. These different notations help distinguish
 between areas of healthy tissue, empty spaces, and regions of fibrosis or
 infarction.
 
-.. note::
-
-    To satisfy boundary conditions, every Finitewave mesh must include boundary 
-    nodes (marked as ``0``). This can be easily achieved using the
-    ``add_boundaries()`` method, which automatically adds rows of empty nodes
-    around the edges of the mesh. You should apply this method if you modify the
-    ``mesh``, for example by adding fibrosis.
 
 You can also utilize ``0`` nodes to define complex geometries and pathways,
 or to model organ-level structures. For example, to simulate the
@@ -487,10 +480,8 @@ steps described above:
     else:
         plt.show()
 
-.. The output should look like this:
+The output should look like this:
 
-.. .. image-sg:: /usage/images/quick_start_001.png
-..   :alt: Aliev-Panfilov 2D model
-..   :srcset: /usage/images/quick_start_001.png
-..   :class: sphx-glr-single-img
-
+.. image:: images/quick_start_output.png
+   :alt: Aliev-Panfilov 2D model
+   :width: 600px

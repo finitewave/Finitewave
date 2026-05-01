@@ -55,7 +55,6 @@ nk = 10
 # create tissue object:
 tissue = fw.CardiacTissue3D([n, n, nk])
 tissue.mesh = np.ones([n, n, nk], dtype="uint8")
-tissue.add_boundaries()
 
 # create model object:
 aliev_panfilov = fw.AlievPanfilov3D()

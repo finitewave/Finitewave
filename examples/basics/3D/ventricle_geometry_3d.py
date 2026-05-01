@@ -65,7 +65,6 @@ fibers[mesh > 0] = fibers_list
 # set up the tissue with fibers orientation:
 tissue = fw.CardiacTissue3D(mesh.shape)
 tissue.mesh = mesh
-tissue.add_boundaries()
 tissue.fibers = fibers
 
 # set up stimulation parameters:

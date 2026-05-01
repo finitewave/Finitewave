@@ -25,8 +25,6 @@ tissue.mesh = mesh
 fibrosis_pattern = fw.Diffuse3DPattern(0, mesh.shape[0], 0, mesh.shape[1], 0, mesh.shape[2], 0.20)
 fibrosis_pattern.generate(tissue.mesh.shape, tissue.mesh)
 
-tissue.add_boundaries()
-
 # create model object:
 tp06 = fw.TP063D()
 # set up numerical parameters:

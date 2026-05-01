@@ -51,8 +51,6 @@ nk = 10
 tissue = fw.CardiacTissue3D([n, nj, nk])
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = np.ones([n, nj, nk], dtype="uint8")
-# add empty nodes on the sides (elems = 0):
-tissue.add_boundaries()
 
 # add a conductivity array, all elements = 1.0 -> normal conductvity:
 tissue.cond = np.ones([n, nj, nk])
