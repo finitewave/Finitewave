@@ -9,14 +9,17 @@ tags:
   - fibrosis
 authors:
   - name: Timur Nezlobinsky
-    orcid: 0000-0002-0009-1542
+    orcid: 0009-0005-8299-5295
     affiliation: 1
     corresponding: true
   - name: Arstanbek Okenov
+    orcid: 0009-0008-8435-9921
     affiliation: 1
   - name: Nele Vandersickel
+    orcid: 0000-0002-8827-5302
     affiliation: 1
   - name: Alexander V Panfilov
+    orcid: 0000-0003-2643-642X
     affiliation: 1
 affiliations:
  - name: Ghent University, Belgium
