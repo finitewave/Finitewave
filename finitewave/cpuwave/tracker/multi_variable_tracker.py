@@ -74,7 +74,7 @@ class MultiVariableTracker(Tracker):
         t_max = min(self.simulation.t_max, self.end_time)
         t_min = self.start_time
         dt = self.simulation.dt
-        n_frames = int((t_max - t_min) / (self.step * dt)) + 1
+        n_frames = int(np.round((t_max - t_min) / (self.step * dt))) + 1
 
         # Initialize storage for each variable to be tracked
         for var_name in self.var_list:

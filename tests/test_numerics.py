@@ -1,14 +1,40 @@
+import pytest
 import numpy as np
 import finitewave as fw
 import matplotlib.pyplot as plt
 
 
-def test_isotropic_stencil(mesh, diffusion, dr, indexes):
+def test_isotropic_stencil():
+    dr = 0.3
+    d = 0.5
+    K_diag = 4 * d / dr**2
+    mesh = np.ones((3, 3))
+    indexes = np.flatnonzero(mesh == 1)
+    diffusion = np.zeros(mesh.shape + (mesh.ndim, mesh.ndim))
+    diffusion[..., 0, 0] = d
+    diffusion[..., 1, 1] = d
+
+    K_diag = [K_diag] * len(indexes)
+    M_diag = [1.0] * len(indexes)
+
     stencil = fw.IsotropicStencil()
     K, M = stencil.compute_system_matrices(mesh, diffusion, dr, indexes)
-    plt.imshow(K.toarray(), cmap='viridis')
-    plt.colorbar()
-    plt.show()
+
+    assert K.shape == (len(indexes), len(indexes))
+    assert M.shape == (len(indexes), len(indexes))
+    assert pytest.approx(K.sum(axis=1), abs=1e-6) == 0.0
+    np.testing.assert_allclose(K.diagonal(), K_diag, atol=1e-6)
+    np.testing.assert_allclose(M.diagonal(), M_diag, atol=1e-6)
+
+    mesh[0, 0] = 2
+    indexes = np.flatnonzero(mesh == 1)
+    K, M = stencil.compute_system_matrices(mesh, diffusion, dr, indexes, reindex=True)
+
+    assert K.shape == (len(indexes), len(indexes))
+    assert M.shape == (len(indexes), len(indexes))
+    assert pytest.approx(K.sum(axis=1), abs=1e-6) == 0.0
+    np.testing.assert_allclose(K.diagonal(), K_diag[:len(indexes)], atol=1e-6)
+    np.testing.assert_allclose(M.diagonal(), M_diag[:len(indexes)], atol=1e-6)
 
 
 def test_asymmetric_stencil(mesh, diffusion, dr, indexes):
@@ -47,27 +73,29 @@ def test_element_assembler(coords, elems):
     print("Gradients shape:", grads.shape)
 
 
-alpha = np.pi / 4
-D_al = 3.0
-D_ac = 1.0
-mesh = np.ones((3, 3))
-mesh[2, 2] = 0
-diffusion = np.zeros(mesh.shape + (mesh.ndim, mesh.ndim))
-diffusion[..., 0, 0] = D_ac + (D_al - D_ac) * np.cos(alpha) * np.cos(alpha)
-diffusion[..., 0, 1] = (D_al - D_ac) * np.cos(alpha) * np.sin(alpha)
-diffusion[..., 1, 0] = (D_al - D_ac) * np.sin(alpha) * np.cos(alpha)
-diffusion[..., 1, 1] = D_ac + (D_al - D_ac) * np.sin(alpha) * np.sin(alpha)
-dr = 1.0
-indexes = np.flatnonzero(mesh == 1)
+test_isotropic_stencil()
 
-# test_isotropic_stencil(mesh, diffusion, dr, indexes)
-# test_asymmetric_stencil(mesh, diffusion, dr, indexes)
-# test_symmetric_stencil(mesh, diffusion, dr, indexes)
+# alpha = np.pi / 4
+# D_al = 3.0
+# D_ac = 1.0
+# mesh = np.ones((3, 3))
+# mesh[2, 2] = 0
+# diffusion = np.zeros(mesh.shape + (mesh.ndim, mesh.ndim))
+# diffusion[..., 0, 0] = D_ac + (D_al - D_ac) * np.cos(alpha) * np.cos(alpha)
+# diffusion[..., 0, 1] = (D_al - D_ac) * np.cos(alpha) * np.sin(alpha)
+# diffusion[..., 1, 0] = (D_al - D_ac) * np.sin(alpha) * np.cos(alpha)
+# diffusion[..., 1, 1] = D_ac + (D_al - D_ac) * np.sin(alpha) * np.sin(alpha)
+# dr = 1.0
+# indexes = np.flatnonzero(mesh == 1)
 
-# (0, 1) - (0.5, 1) - (1, 1)
-#   
-# (0, 0) ------------ (1, 0)
+# # test_isotropic_stencil(mesh, diffusion, dr, indexes)
+# # test_asymmetric_stencil(mesh, diffusion, dr, indexes)
+# # test_symmetric_stencil(mesh, diffusion, dr, indexes)
 
-coords = np.array([[0, 0], [1, 0], [0, 1], [0.6, 1], [1, 1]])
-elems = np.array([[0, 1, 2], [1, 2, 3], [1, 3, 4]])
-test_element_assembler(coords, elems)
+# # (0, 1) - (0.5, 1) - (1, 1)
+# #   
+# # (0, 0) ------------ (1, 0)
+
+# coords = np.array([[0, 0], [1, 0], [0, 1], [0.6, 1], [1, 1]])
+# elems = np.array([[0, 1, 2], [1, 2, 3], [1, 3, 4]])
+# test_element_assembler(coords, elems)
