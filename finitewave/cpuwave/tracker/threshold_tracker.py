@@ -4,7 +4,7 @@ import numpy as np
 from .variable_tracker import VariableTracker
 
 
-class LowThresholdTracker(VariableTracker):
+class ThresholdTracker(VariableTracker):
     """
     A class to track and record the threshold crossing events of a specific cell in
     a cardiac tissue.
@@ -20,7 +20,7 @@ class LowThresholdTracker(VariableTracker):
 
     def __init__(self, node_inds=None, var_name="u", threshold=0.5, **kwargs):
         """
-        Initializes the LowThresholdTracker with default parameters.
+        Initializes the ThresholdTracker with default parameters.
 
         Parameters
         ----------

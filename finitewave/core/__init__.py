@@ -27,12 +27,19 @@ from finitewave.core.tissue import (
     CardiacTissueElements,
 )
 
-from .numerics import ElementType
+from .numerics import (
+    ElementType,
+    IsotropicStencil,
+    AsymmetricStencil
+)
 
 __all__ = [
     "Command",
     "CommandSequence",
     "FibrosisPattern",
+    "Diffuse2DPattern",
+    "Structural2DPattern",
+    "DecouplingPattern",
     "StateLoader",
     "StateSaver",
     "StateSaverCollection",
@@ -48,5 +55,7 @@ __all__ = [
     "TrackerSequence",
     "CardiacTissueGrid",
     "CardiacTissueElements",
-    "ElementType"
+    "ElementType",
+    "IsotropicStencil",
+    "AsymmetricStencil",
 ]

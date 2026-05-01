@@ -47,7 +47,7 @@ class CardiacModel(CardiacModelBase):
         """
         self.simulation = simulation
         self.backend = simulation.backend
-        self.wrap_indexes(simulation.cardiac_tissue)
+        self.wrap_indexes()
         self._select_ionic_kernel_generator(self.backend)
         self._allocate_arrays(simulation)
         self._initialize_ionic_kernel()
@@ -100,17 +100,13 @@ class CardiacModel(CardiacModelBase):
         self.ionic_kernel_args = kernel_args
         return kernel_args
 
-    def wrap_indexes(self, cardiac_tissue):
+    def wrap_indexes(self):
         """
         Computes the myocyte and tissue indexes based on the cardiac tissue mesh.
-
-        Parameters
-        ----------
-        cardiac_tissue : CardiacTissue
-            The cardiac tissue object.
         """
-        self.myo_indexes = self.backend.wrap_indexes(cardiac_tissue.myo_indexes)
-        self.tissue_indexes = self.backend.wrap_indexes(cardiac_tissue.tissue_indexes)
+        tissue = self.simulation.cardiac_tissue
+        self.myo_indexes = self.backend.wrap_indexes(tissue.myo_indexes)
+        self.tissue_indexes = self.backend.wrap_indexes(tissue.tissue_indexes)
 
     def output(self, var_name="u", dtype=np.float64):
         """

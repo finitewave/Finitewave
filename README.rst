@@ -81,8 +81,6 @@ Finitewave requires the following dependencies:
 +-----------------+---------+--------------------------------------------------+
 | numpy           | 1.26.4  | https://pypi.org/project/numpy/                  |
 +-----------------+---------+--------------------------------------------------+
-| pandas          | 2.2.3   | https://pypi.org/project/pandas/                 |
-+-----------------+---------+--------------------------------------------------+
 | pyvista         | 0.44.1  | https://pypi.org/project/pyvista/                |
 +-----------------+---------+--------------------------------------------------+
 | scikit-image    | 0.24.0  | https://pypi.org/project/scikit-image/           |

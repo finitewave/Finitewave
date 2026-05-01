@@ -28,6 +28,6 @@ from .multi_variable_tracker import MultiVariableTracker
 from .ecg_tracker import ECGTracker
 from .frame_tracker import FrameTracker
 from .local_activation_time_tracker import LocalActivationTimeTracker
-from .threshold_tracker import LowThresholdTracker
+from .threshold_tracker import ThresholdTracker
 from .period_tracker import PeriodTracker
 from .animation_tracker import AnimationTracker

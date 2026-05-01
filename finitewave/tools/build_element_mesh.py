@@ -59,7 +59,7 @@ def build_quadrilateral_mesh(n, m, x_range, y_range):
 
     Returns:
     -------
-    coords: (N_nodes, 3) ndarray
+    coords: (N_nodes, 2) ndarray
         Coordinates of the mesh nodes.
     elems: (N_elems, 4) ndarray
         Element connectivity (node indices for each quadrilateral).
@@ -67,7 +67,7 @@ def build_quadrilateral_mesh(n, m, x_range, y_range):
     x = np.linspace(x_range[0], x_range[1], n+1)
     y = np.linspace(y_range[0], y_range[1], m+1)
     xv, yv = np.meshgrid(x, y)
-    coords = np.vstack([xv.ravel(), yv.ravel(), np.zeros_like(xv.ravel())]).T
+    coords = np.vstack([xv.ravel(), yv.ravel()]).T
 
     elems = np.empty((m * n, 4), dtype=np.int64)
 

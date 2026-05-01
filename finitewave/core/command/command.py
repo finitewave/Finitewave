@@ -26,7 +26,7 @@ class Command(ABC):
         self.passed = False
 
     @abstractmethod
-    def execute(self, model):
+    def execute(self, simulation):
         """
         Abstract method for executing the command. This method should be
         implemented by subclasses to define the specific behavior of the
@@ -34,19 +34,19 @@ class Command(ABC):
 
         Parameters
         ----------
-        model : CardiacModel
-            The cardiac model instance on which the command will be executed.
+        simulation : Simulation
+            The simulation instance on which the command will be executed.
         """
         pass
 
-    def update_status(self, model):
+    def update_status(self, simulation):
         """
         Marks the command as executed.
 
         Parameters
         ----------
-        model : CardiacModel
-            The cardiac model instance on which the command was executed
+        simulation : Simulation
+            The simulation instance on which the command was executed
         """
-        self.passed = model.t >= self.t
+        self.passed = simulation.t >= self.t
         return self.passed

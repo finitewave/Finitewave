@@ -1,4 +1,7 @@
 from pathlib import Path
+import numpy as np
+
+from finitewave.core import tissue
 
 from .frame_tracker import FrameTracker
 from finitewave.tools.animation_builder import (
@@ -6,6 +9,13 @@ from finitewave.tools.animation_builder import (
     Image2DBuilder,
     Image3DBuilder
 )
+from finitewave.tools.pyvista_grid_builder import (
+    PyVistaMeshGrid,
+    PyVistaSurfaceGrid,
+    PyVistaTetraGrid
+)
+
+from finitewave.core.numerics.fem.elements.element_type import ElementType
 
 
 class AnimationTracker(FrameTracker):
@@ -64,21 +74,24 @@ class AnimationTracker(FrameTracker):
         else:
             images = None
 
-        if self.simulation.cardiac_tissue.mesh.ndim == 2:
+        tissue = self.simulation.cardiac_tissue
+
+        if tissue.mesh.ndim == 2:
+            upscale_factor = kwargs.get("upscale_factor", 1)
+            restore_input = not self.keep_shape
             image_builder = Image2DBuilder()
-            image_builder.build_from_tissue(self.simulation.cardiac_tissue,
-                                            restore_input=not self.keep_shape,
-                                            clim=clim, cmap=cmap, **kwargs)
-            image_builder.collect_images(path=Path(self.path, self.dir_name),
-                                         images=images)
+            image_builder.build_grid(tissue.mesh, restore_input, upscale_factor)
             
         else:
+            window_size = kwargs.get("window_size", (1920, 1080))
+            grid = self.build_3d_grid(tissue)
+            grid[self.var_name] = np.zeros(tissue.mesh.shape, dtype=float)
             image_builder = Image3DBuilder()
-            image_builder.build_from_tissue(self.simulation.cardiac_tissue,
-                                            scalars=self.var_name,
-                                            clim=clim, cmap=cmap, **kwargs)
-            image_builder.collect_images(path=Path(self.path, self.dir_name),
-                                         images=images)
+            image_builder.scalar_name = self.var_name
+            image_builder.grid = grid
+            image_builder.build_scene(clim=clim, cmap=cmap, window_size=window_size)
+
+        image_builder.collect_images(path=Path(self.path, self.dir_name), images=images)
         
         animation_builder = AnimationBuilder()
         animation_builder.image_builder = image_builder
@@ -88,9 +101,31 @@ class AnimationTracker(FrameTracker):
             animation_name=self.animation_name,
             prog_bar=prog_bar,
             fps=fps,
+            clim=clim,
+            cmap=cmap,
+            **kwargs
         )
 
         self.remove_dir(clear)
+
+    def build_3d_grid(self, tissue):
+
+        if tissue.meta["type"] == "Grid":
+            grid = PyVistaMeshGrid(tissue.mesh, dr=tissue.dr, as_surface=True)
+
+        elif tissue.meta["type"] == "Elements":
+
+            if tissue.meta["shape"] in ElementType.surface:
+                grid = PyVistaSurfaceGrid(tissue.coords, tissue.elems)
+            elif tissue.meta["shape"] == ElementType.TETRA:
+                grid = PyVistaTetraGrid(tissue.coords, tissue.elems, as_surface=True)
+            else:
+                raise ValueError("Invalid element type for 3D image builder")
+
+        else:
+            raise ValueError("Invalid tissue type for 3D image builder")
+                
+        return grid
 
     def remove_dir(self, clear=True):
         if not clear or not Path(self.path, self.dir_name).exists():

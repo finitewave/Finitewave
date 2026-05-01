@@ -35,7 +35,7 @@ Numerical Setup:
 
 Visualization:
 --------------
-- The slab is rendered using `VisMeshBuilder3D`
+- The slab is rendered using `PyVistaMeshGrid` with `as_surface=True` to show the outer surface.
 - The upper half is clipped away for a better internal view
 - Voltage (`u`) is shown using a colormap
 

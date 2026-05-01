@@ -9,25 +9,25 @@ class CommandSequence:
         A list of ``Command`` instances representing the sequence of commands
         to be executed.
 
-    model : CardiacModel
-        The cardiac model instance on which commands will be executed.
+    simulation : CardiacSimulation
+        The simulation instance associated with this command sequence.
     """
 
     def __init__(self):
         self.sequence = []
-        self.model = None
+        self.simulation = None
 
-    def initialize(self, model):
+    def initialize(self, simulation):
         """
-        Initializes the CommandSequence with the specified model and resets
+        Initializes the CommandSequence with the specified simulation and resets
         the execution status of all commands.
 
         Parameters
         ----------
-        model : CardiacModel
-            The cardiac model instance to be used for command execution.
+        simulation : CardiacSimulation
+            The cardiac simulation instance to be used for command execution.
         """
-        self.model = model
+        self.simulation = simulation
         for command in self.sequence:
             command.passed = False
 
@@ -54,6 +54,6 @@ class CommandSequence:
         executed yet.
         """
         for command in self.sequence:
-            if not command.passed and command.update_status(self.model):
-                command.execute(self.model)
+            if not command.passed and command.update_status(self.simulation):
+                command.execute(self.simulation)
 

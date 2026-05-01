@@ -1,6 +1,8 @@
 from pathlib import Path
 import numpy as np
 import pyvista as pv
+import natsort
+from tqdm import tqdm
 
 import finitewave as fw
 
@@ -21,10 +23,26 @@ camera_position = [
 
 pv.global_theme.transparent_background = True
 
-anim_builder = fw.Animation3DBuilder()
-anim_builder.path = path_data
-anim_builder.prog_bar = True
-anim_builder.write(coords=coords, elems=elems, elem_type='Tri', clim=None,
-                   format="gif", camera_position=camera_position,
-                   cmap="magma", window_size=(1920, 1920),
-                   step=4)
+files = natsort.natsorted(list(path_data.glob("*.npy")))
+print(f"Found {len(files)} files")
+
+grid = fw.PyVistaSurfaceGrid(coords, elems)
+grid["u"] = np.zeros(coords.shape[0])
+
+pl = pv.Plotter(off_screen=True, window_size=(1920, 1920))
+# Open a movie file
+pl.open_movie("atrial_lat.gif", framerate=24)
+
+# Add initial mesh
+pl.add_mesh(grid, scalars='u', clim=[0, 28], cmap="inferno")
+pl.show(auto_close=False)
+pl.camera_position = camera_position
+# Run through each frame
+pl.write_frame()  # write initial data
+
+# Update scalars on each frame
+for i in tqdm(range(len(files)), desc="Building animation"):
+    grid["u"] = np.load(files[i])
+    pl.write_frame()
+
+pl.close()

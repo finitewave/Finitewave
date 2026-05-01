@@ -23,7 +23,6 @@ dependencies = [
   "natsort>=8.4.0",
   "pyvista>=0.44.1",
   "ffmpeg-python>=0.2.0",
-  "pandas>=2.2.3",
   "scikit-image>=0.24.0",
 ]
 

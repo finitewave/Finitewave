@@ -1,5 +1,4 @@
 import numpy as np
-import pyvista as pv
 from .cardiac_tissue_base import CardiacTissueBase
 from finitewave.core.numerics.fem.elements.element_type import ElementType
 
@@ -115,3 +114,7 @@ class CardiacTissueElements(CardiacTissueBase):
             The flat indices of the ``mesh`` where value is greater than ``0``.
         """
         return np.arange(self.mesh.size)
+    
+    def clean(self):
+        self.mesh_elems[self.mesh_elems == 2] = 1
+        super().clean()
