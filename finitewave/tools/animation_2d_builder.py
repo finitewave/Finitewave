@@ -103,8 +103,9 @@ class Animation2DBuilder:
             .input('pipe:', format='rawvideo', pix_fmt='rgb24',
                    s=f'{width}x{height}', framerate=fps)
             .output(path_save.as_posix(), pix_fmt='yuv420p')
+            .global_args("-loglevel", "error") # to print only errors from ffmpeg (as we put quiet=False)
             .overwrite_output()
-            .run_async(pipe_stdin=True, quiet=True)
+            .run_async(pipe_stdin=True, pipe_stdout=False, pipe_stderr=False, quiet=False) # there was a deadlock problem when using quiet=True
         )
 
         try:
