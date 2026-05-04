@@ -130,7 +130,7 @@ class FentonKarma(CardiacModel):
         Initializes the Fenton-Karma instance with default parameters.
         """
         super().__init__()
-        self.D_model = 1.
+        self.D_model = 0.1
         self.npfloat    = 'float64'
 
         self._initialize_variables_and_parameters(ops)
