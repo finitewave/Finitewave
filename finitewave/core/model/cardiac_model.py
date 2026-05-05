@@ -141,6 +141,7 @@ class CardiacModel(ABC):
             Whether to (re)initialize the model before running the simulation.
             Default is True.
         """
+        self._check_cfl_condition()
         if initialize:
             self.initialize()
 
@@ -254,7 +255,39 @@ class CardiacModel(ABC):
         """
         for name, value in self.default_parameters.items():
             setattr(self, name, value)
-    
+
+    def _check_cfl_condition(self, safety_factor=0.75):
+        """
+        Checks the CFL stability condition for the explicit diffusion scheme and issues a warning 
+        if it is likely to be violated.
+        """
+        if self.D_model is None:
+            return
+
+        if self.D_model <= 0:
+            return
+
+        dt_limit = self.dr**2 / (2 * self.cardiac_tissue.dimensions * self.D_model)
+        dt_recommended = safety_factor * dt_limit
+
+        if self.dt > dt_limit:
+            warnings.warn(
+                (
+                    "The selected time step may violate the CFL stability "
+                    "condition for the explicit diffusion scheme.\n\n"
+                    f"Current values:\n"
+                    f"  dt = {self.dt}\n"
+                    f"  dr = {self.dr}\n"
+                    f"  D_max = {self.D_model}\n"
+                    f"  dimensions = {self.cardiac_tissue.dimensions}\n\n"
+                    f"Estimated stable dt <= {dt_limit:.6g}\n"
+                    f"Recommended dt <= {dt_recommended:.6g}\n\n"
+                    "Consider decreasing dt, increasing dr, or decreasing D."
+                ),
+                RuntimeWarning,
+                stacklevel=2
+            )
+        
     def _initialize_variables_and_parameters(self, ops):
         self.default_parameters = ops.get_parameters()
         self.default_variables = ops.get_variables()
