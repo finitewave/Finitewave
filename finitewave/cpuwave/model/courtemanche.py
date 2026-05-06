@@ -430,9 +430,10 @@ class Courtemanche(CardiacModel):
         self._initialize_variables_and_parameters(ops)
 
     def initialize(self):
+        """
+        Initializes the model for simulation.
+        """
         super().initialize()
-
-        self._allocate_state_arrays()
 
         gen = self._initialize_kernel(CourtemancheKernel)
     

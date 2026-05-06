@@ -101,6 +101,8 @@ class CardiacModel(ABC):
         self.step = 0
         self.t = 0
 
+        self._allocate_state_arrays()
+
         self.compute_weights()
         self.diffusion_kernel = self.stencil.select_diffusion_kernel()
 

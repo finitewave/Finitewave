@@ -115,8 +115,6 @@ class AlievPanfilov(CardiacModel):
         """
         super().initialize()
 
-        self._allocate_state_arrays()
-
         gen = self._initialize_kernel(AlievPanfilovKernel)
 
         glb = {

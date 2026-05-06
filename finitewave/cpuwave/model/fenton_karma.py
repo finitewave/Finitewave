@@ -141,8 +141,6 @@ class FentonKarma(CardiacModel):
         """
         super().initialize()
 
-        self._allocate_state_arrays()
-
         gen = self._initialize_kernel(FentonKarmaKernel)
         
         glb = {
