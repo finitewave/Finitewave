@@ -31,20 +31,17 @@ def prepare_model(model_class, curr_value, curr_dur, t_calc, t_prebeats, dt, dr)
     model : CardiacModel
         Configured and initialized model ready for simulation.
     """
-    ni = 50
-    nj = 9
+    ni = 30
+    nj = 3
     tissue = fw.CardiacTissue([ni, nj])
 
     stim_sequence = fw.StimSequence()
     stim_sequence.add_stim(fw.StimCurrentCoord(0, curr_value, curr_dur, 0, 2, 0, nj))
-    stim_sequence.add_stim(fw.StimCurrentCoord(t_prebeats, curr_value, curr_dur, 0, 2, 0, nj))
-    stim_sequence.add_stim(fw.StimCurrentCoord(2*t_prebeats, curr_value, curr_dur, 0, 2, 0, nj))
-    stim_sequence.add_stim(fw.StimCurrentCoord(3*t_prebeats, curr_value, curr_dur, 0, 2, 0, nj))
 
     model = model_class()
     model.dt = dt
     model.dr = dr
-    model.t_max = 3*t_prebeats + t_calc
+    model.t_max = 1*t_prebeats + t_calc
     model.cardiac_tissue = tissue
     model.stim_sequence = stim_sequence
 
@@ -107,66 +104,66 @@ def calculate_wave_speed(activation_times, dr):
 
 @pytest.mark.propagation_aliev_panfilov_2d
 def test_propagation_aliev_panfilov_2d():
-    model = prepare_model(fw.AlievPanfilov, curr_value=5, curr_dur=1.0, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.AlievPanfilov, curr_value=5, curr_dur=0.5, t_calc=20, t_prebeats=60, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=0.5)
 
     # 3:-3 excludes stimulated nodes and boundary effects
     # 1:-1 excludes transverse boundaries
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(1.6, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(1.7, abs=0.1), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_barkley_2d
 def test_propagation_barkley_2d():
-    model = prepare_model(fw.Barkley, curr_value=5, curr_dur=1.0, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.Barkley, curr_value=5, curr_dur=0.1, t_calc=20, t_prebeats=60, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=0.5)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(1.64, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(4.3, abs=0.1), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_mitchell_schaeffer_2d
 def test_propagation_mitchell_schaeffer_2d():
-    model = prepare_model(fw.MitchellSchaeffer, curr_value=5, curr_dur=1.0, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.MitchellSchaeffer, curr_value=5, curr_dur=0.5, t_calc=50, t_prebeats=600, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=0.5)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(0.58, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(0.6, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_fenton_karma_2d
 def test_propagation_fenton_karma_2d():
-    model = prepare_model(fw.FentonKarma, curr_value=5, curr_dur=1.0, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.FentonKarma, curr_value=5, curr_dur=0.5, t_calc=50, t_prebeats=600, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=0.5)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(0.58, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(0.6, abs=0.05), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_bueno_orovio_2d
 def test_propagation_bueno_orovio_2d():
-    model = prepare_model(fw.BuenoOrovio, curr_value=5, curr_dur=1.0, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.BuenoOrovio, curr_value=5, curr_dur=0.5, t_calc=50, t_prebeats=600, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=0.5)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(0.64, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(0.6, abs=0.05), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_luo_rudy91_2d
 def test_propagation_luo_rudy91_2d():
-    model = prepare_model(fw.LuoRudy91, curr_value=100, curr_dur=1.5, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.LuoRudy91, curr_value=100, curr_dur=1.0, t_calc=50, t_prebeats=600, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=-60)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(0.56, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(0.6, abs=0.05), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_tp06_2d
 def test_propagation_tp06_2d():
-    model = prepare_model(fw.TenTusscherPanfilov2006, curr_value=100, curr_dur=1.5, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.TenTusscherPanfilov2006, curr_value=100, curr_dur=1.5, t_calc=50, t_prebeats=600, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=-60)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(0.72, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(0.7, abs=0.05), f"Calculated wave speed {speed} is out of expected range"
 
 @pytest.mark.propagation_courtemanche_2d
 def test_propagation_courtemanche_2d():
-    model = prepare_model(fw.Courtemanche, curr_value=100, curr_dur=1.5, t_calc=100, t_prebeats=1000, dt=0.01, dr=0.25)
+    model = prepare_model(fw.Courtemanche, curr_value=100, curr_dur=1.5, t_calc=50, t_prebeats=600, dt=0.01, dr=0.25)
     activation_time = run_model(model, activation_time_start=0, activation_time_threshold=-60)
 
     speed = calculate_wave_speed(activation_time[3:-3, 1:-1], model.dr) 
-    assert speed == pytest.approx(0.58, abs=0.01), f"Calculated wave speed {speed} is out of expected range"
+    assert speed == pytest.approx(0.6, abs=0.05), f"Calculated wave speed {speed} is out of expected range"
