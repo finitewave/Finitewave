@@ -30,14 +30,14 @@ dependencies = [
   "scikit-image>=0.24.0",
 
   # models (default bundle for now)
-  "finitewave-model-aliev-panfilov>=0.5.0",
-  "finitewave-model-barkley>=0.5.0",
-  "finitewave-model-bueno-orovio>=0.5.0",
-  "finitewave-model-courtemanche>=0.5.0",
-  "finitewave-model-fenton-karma>=0.5.0",
-  "finitewave-model-luo-rudy-91>=0.5.0",
-  "finitewave-model-mitchell-schaeffer>=0.5.0",
-  "finitewave-model-ten-tusscher-panfilov-2006>=0.5.0",
+  "finitewave-model-aliev-panfilov>=0.6.0",
+  "finitewave-model-barkley>=0.6.0",
+  "finitewave-model-bueno-orovio>=0.6.0",
+  "finitewave-model-courtemanche>=0.6.0",
+  "finitewave-model-fenton-karma>=0.6.0",
+  "finitewave-model-luo-rudy-91>=0.6.0",
+  "finitewave-model-mitchell-schaeffer>=0.6.0",
+  "finitewave-model-ten-tusscher-panfilov-2006>=0.6.0",
 ]
 
 
