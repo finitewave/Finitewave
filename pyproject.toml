@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "finitewave"
-version = "0.9.1"
+version = "0.9.3"
 requires-python = ">=3.10"
 authors = [
   { name="Timur Nezlobinsky", email="nezlobinsky@gmail.com" },
@@ -16,19 +16,16 @@ license = { text = "MIT" }
 
 dependencies = [
   # core:
-  "numpy>=1.26.4",
+  "numpy<2.0",
   "numba>=0.60.0",
   "scipy>=1.14.1",
   "tqdm>=4.66.5",
-
   # visualization:
   "matplotlib>=3.9.2",
   "natsort>=8.4.0",
   "pyvista>=0.44.1",
   "ffmpeg-python>=0.2.0",
   "pandas>=2.2.3",
-  "scikit-image>=0.24.0",
-
   # models (default bundle for now)
   "finitewave-model-aliev-panfilov>=0.6.0",
   "finitewave-model-barkley>=0.6.0",
@@ -38,6 +35,9 @@ dependencies = [
   "finitewave-model-luo-rudy-91>=0.6.0",
   "finitewave-model-mitchell-schaeffer>=0.6.0",
   "finitewave-model-ten-tusscher-panfilov-2006>=0.6.0",
+  "imageio>=2.31.4",
+  "imageio-ffmpeg>=0.4.9",
+  "scikit-image>=0.22.0",
 ]
 
 

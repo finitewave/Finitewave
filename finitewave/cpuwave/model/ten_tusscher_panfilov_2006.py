@@ -24,15 +24,14 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
     def __init__(self):
         super().__init__()
         self.args_order = [
-         "u", "cai", "casr", "cass", "nai", "Ki",
+            "u", "cai", "casr", "cass", "nai", "ki",
             "m", "h", "j", "xr1", "xr2", "xs", "r", "s",
-            "d", "f", "f2", "fcass", "rr", "oo",
-            "ko", "cao", "nao", "Vc", "Vsr", "Vss", "Bufc", 
-            "Kbufc", "Bufsr", "Kbufsr", "Bufss", "Kbufss",
-            "Vmaxup", "Kup", "Vrel", "k1", "k2", "k3", "k4", "EC",
-            "maxsr", "minsr", "Vleak", "Vxfer", "R", "F", "T", "RTONF", "CAPACITANCE",
-            "gkr", "pKNa", "gk1", "gna", "gbna", "KmK", "KmNa", "knak", "gcal", "gbca",
-            "knaca", "KmNai", "KmCa", "ksat", "n_", "gpca", "KpCa", "gpk", "gto", "gks"
+            "d", "f", "f2", "fcass", "rr",
+            "Ko", "Cao", "Nao", "Vc", "Vsr", "Vss", "Bufc", "Kbufc", 
+            "Bufsr", "Kbufsr", "Bufss", "Kbufss", "Vmaxup", "Kup", "Vrel", "k1", "k2", "k3", "k4",
+            "EC", "maxsr", "minsr", "Vleak", "Vxfer", "R", "F", "T", "Cm",
+            "gKr", "gKs", "gK1", "gto", "gNa", "gbNa", "gCaL", "gbCa", "gpCa", "KpCa", "gpK", "pKNa",
+            "KmK", "KmNa", "pNaK", "kNaCa", "KmNai", "KmCa", "ksat", "gamma", "alpha"
         ]
 
     def generate_body(self) -> str:
@@ -40,9 +39,9 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
         u_new = f"u_new{self._raw_indexing()}"
 
         return f"""\
-        inverseVcF2 = 1.0 / (2 * {model['Vc']} * {model['F']})
-        inverseVcF = 1.0 / ({model['Vc']} * {model['F']})
-        inversevssF2 = 1.0 / (2 * {model['Vss']} * {model['F']})
+        # inverseVcF2 = 1.0 / (2 * {model['Vc']} * {model['F']})
+        # inverseVcF = 1.0 / ({model['Vc']} * {model['F']})
+        # inversevssF2 = 1.0 / (2 * {model['Vss']} * {model['F']})
 
         # Old state
         u_old = {model['u']}
@@ -59,18 +58,17 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
         xr2_old = {model['xr2']}
         xs_old = {model['xs']}
         rr_old = {model['rr']}
-        oo_old = {model['oo']}
 
         casr_old = {model['casr']}
         cass_old = {model['cass']}
         cai_old = {model['cai']}
         nai_old = {model['nai']}
-        ki_old = {model['Ki']}
+        ki_old = {model['ki']}
 
-        Ek = calc_Ek({model['ko']}, ki_old, {model['RTONF']})
-        Ena = calc_Ena({model['nao']}, nai_old, {model['RTONF']})
-        Eks = calc_Eks({model['ko']}, ki_old, {model['nao']}, nai_old, {model['pKNa']}, {model['RTONF']})
-        Eca = calc_Eca({model['cao']}, cai_old, {model['RTONF']})
+        Ek = calc_Ek({model['Ko']}, ki_old, {model['R']}, {model['T']}, {model['F']})
+        Ena = calc_Ena({model['Nao']}, nai_old, {model['R']}, {model['T']}, {model['F']})
+        Eks = calc_Eks({model['Ko']}, ki_old, {model['Nao']}, nai_old, {model['pKNa']}, {model['R']}, {model['T']}, {model['F']})
+        Eca = calc_Eca({model['Cao']}, cai_old, {model['R']}, {model['T']}, {model['F']})
 
         m_inf = calc_m_inf(u_old)
         tau_m = calc_tau_m(u_old)
@@ -84,7 +82,7 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
         tau_j = calc_tau_j(u_old)
         j_new = calc_gating_variable_rush_larsen(j_old, j_inf, tau_j, dt)
         
-        ina = calc_ina(u_old, m_old, h_old, j_old, {model['gna']}, Ena)
+        ina = calc_ina(u_old, m_old, h_old, j_old, {model['gNa']}, Ena)
 
         d_inf = calc_d_inf(u_old)
         tau_d = calc_tau_d(u_old)
@@ -104,8 +102,8 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
 
         ical = calc_ical(
             u_old, d_old, f_old, f2_old,
-            fcass_old, {model['cao']}, cass_old,
-            {model['gcal']}, {model['F']},
+            fcass_old, {model['Cao']}, cass_old,
+            {model['gCaL']}, {model['F']},
             {model['R']}, {model['T']}
         )
 
@@ -129,51 +127,52 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
 
         ikr = calc_ikr(
             u_old, xr1_old, xr2_old, Ek,
-            {model['gkr']}, {model['ko']}
+            {model['gKr']}, {model['Ko']}
         )
 
         xs_inf = calc_xs_inf(u_old)
         tau_xs = calc_tau_xs(u_old)
         xs_new = calc_gating_variable_rush_larsen(xs_old, xs_inf, tau_xs, dt)
 
-        iks = calc_iks(u_old, xs_old, Eks, {model['gks']})
+        iks = calc_iks(u_old, xs_old, Eks, {model['gKs']})
 
-        ik1 = calc_ik1(u_old, Ek, {model['gk1']})
+        ik1 = calc_ik1(u_old, Ek, {model['gK1']})
 
         inaca = calc_inaca(
-            u_old, {model['nao']}, nai_old,
-            {model['cao']}, cai_old,
+            u_old, {model['Nao']}, nai_old,
+            {model['Cao']}, cai_old,
             {model['KmNai']}, {model['KmCa']},
-            {model['knaca']}, {model['ksat']},
-            {model['n_']}, {model['F']},
+            {model['kNaCa']}, {model['ksat']},
+            {model['gamma']},
+            {model['alpha']}, {model['F']},
             {model['R']}, {model['T']}
         )
 
         inak = calc_inak(
-            u_old, nai_old, {model['ko']},
+            u_old, nai_old, {model['Ko']},
             {model['KmK']}, {model['KmNa']},
-            {model['knak']}, {model['F']},
+            {model['pNaK']}, {model['F']},
             {model['R']}, {model['T']}
         )
 
         ipca = calc_ipca(
             cai_old, {model['KpCa']},
-            {model['gpca']}
+            {model['gpCa']}
         )
 
         ipk = calc_ipk(
             u_old, Ek,
-            {model['gpk']}
+            {model['gpK']}
         )
 
         ibna = calc_ibna(
             u_old, Ena,
-            {model['gbna']}
+            {model['gbNa']}
         )
 
         ibca = calc_ibca(
             u_old, Eca,
-            {model['gbca']}
+            {model['gbCa']}
         )
 
         kCaSR = calc_kCaSR(
@@ -184,7 +183,8 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
         k2_ = {model['k2']}*kCaSR
         drr = {model['k4']}*(1-rr_old)-k2_*cass_old*rr_old
         rr_new = rr_old + dt*drr
-        oo_new = k1_*cass_old*cass_old * rr_old/({model['k3']}+k1_*cass_old*cass_old)
+    
+        oo_old = k1_*cass_old*cass_old * rr_old/({model['k3']}+k1_*cass_old*cass_old)
 
         irel = calc_irel(
             oo_old, casr_old, cass_old,
@@ -216,32 +216,33 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
             dt, cass_old,
             {model['Bufss']}, {model['Kbufss']},
             ixfer, irel, ical,
-            {model['CAPACITANCE']},
+            {model['Cm']},
             {model['Vc']}, {model['Vss']},
-            {model['Vsr']}, inversevssF2
+            {model['Vsr']}, {model['F']}
         )
 
         cai_new = calc_cai(
             dt, cai_old,
             {model['Bufc']}, {model['Kbufc']},
             ibca, ipca, inaca, iup, ileak, ixfer,
-            {model['CAPACITANCE']},
+            {model['Cm']},
             {model['Vsr']}, {model['Vc']},
-            inverseVcF2
+            {model['F']}
         )
 
         dnai = calc_dnai(
             ina, ibna,
             inak, inaca,
-            {model['CAPACITANCE']},
-            inverseVcF
+            {model['Cm']},
+            {model['Vc']}, {model['F']}
         )
 
         dki = calc_dki(
             ik1, ito,
             ikr, iks,
             inak, ipk,
-            inverseVcF, {model['CAPACITANCE']}
+            {model['Cm']},
+            {model['Vc']}, {model['F']}
         )
 
         # Commit new state
@@ -261,13 +262,12 @@ class TenTusscherPanfilov2006Kernel(IonicKernelGenerator):
         {model['xs']} = xs_new
 
         {model['rr']} = rr_new
-        {model['oo']} = oo_new
 
         {model['casr']} = casr_new
         {model['cass']} = cass_new
         {model['cai']} = cai_new
         {model['nai']} = nai_old + dt * dnai
-        {model['Ki']} = ki_old + dt * dki
+        {model['ki']} = ki_old + dt * dki
 
         {u_new} = {u_new} + dt * -calc_rhs(
             ikr, iks,
@@ -313,7 +313,7 @@ class TenTusscherPanfilov2006(CardiacModel):
         Calcium concentration in the subsarcolemmal space (mM).
     nai : np.ndarray
         Intracellular sodium concentration (mM).
-    Ki : np.ndarray
+    ki : np.ndarray
         Intracellular potassium concentration (mM).
     m, h, j : np.ndarray
         Gating variables for the fast sodium current.
@@ -346,7 +346,7 @@ class TenTusscherPanfilov2006(CardiacModel):
         Universal gas constant, absolute temperature, and Faraday constant.
     RTONF : float
         Precomputed RT/F value for Nernst equation.
-    CAPACITANCE : float
+    Cm : float
         Membrane capacitance per unit area (μF/cm²).
     gna, gcal, gkr, gks, gk1, gto : float
         Conductances for major ionic channels.

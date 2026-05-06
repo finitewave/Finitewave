@@ -31,7 +31,7 @@ class CourtemancheKernel(IonicKernelGenerator):
             "u", "nai", "ki", "cai",
             "m", "h", "j",
             "oa", "oi", "ua", "ui", "xr", "xs", "d", "f", "fca",
-            "urel", "vrel", "wrel", "irel",
+            "urel", "vrel", "wrel",
             "caup", "carel",
             "nao", "ko", "cao", "R", "T", "F", "Cm",
             "gna", "gk1", "gto", "gcal", "gnab", "gcab",
@@ -67,7 +67,6 @@ class CourtemancheKernel(IonicKernelGenerator):
 
         urel_old = {model['urel']}
         vrel_old = {model['vrel']}
-        irel_old = {model['irel']}
         wrel_old = {model['wrel']}
 
         caup_old = {model['caup']}
@@ -200,7 +199,13 @@ class CourtemancheKernel(IonicKernelGenerator):
             {model['ipcamax']}, cai_old, {model['Cm']}
         )
 
-        Fn = calc_Fn(irel_old, ical, inaca, {model['F']}, {model['Vrel']})
+        irel = calc_irel(
+            urel_old, vrel_old, wrel_old,
+            {model['krel']},
+            carel_old, cai_old
+        )
+
+        Fn = calc_Fn(irel, ical, inaca, {model['F']}, {model['Vrel']})
 
         tau_urel = calc_tau_urel()
         urel_inf = calc_urel_inf(Fn)
@@ -213,12 +218,6 @@ class CourtemancheKernel(IonicKernelGenerator):
         tau_wrel = calc_tau_wrel(u_old)
         wrel_inf = calc_wrel_inf(u_old)
         wrel_new = calc_gating_variable_rush_larsen(wrel_old, wrel_inf, tau_wrel, dt)
-
-        irel_new = calc_irel(
-            urel_old, vrel_old, irel_old, wrel_old,
-            {model['krel']},
-            carel_old, cai_old
-        )
 
         itr = calc_itr(caup_old, carel_old)
         iup = calc_iup({model['iupmax']}, cai_old, {model['kup']})
@@ -241,7 +240,7 @@ class CourtemancheKernel(IonicKernelGenerator):
 
         dcai = calc_dcai(
             cai_old, inaca, ipca, ical, ibca,
-            iup, iupleak, irel_old,
+            iup, iupleak, irel,
             {model['Vrel']}, {model['Vup']},
             {model['trpnmax']}, {model['kmtrpn']},
             {model['cmdnmax']}, {model['kmcmdn']},
@@ -249,7 +248,7 @@ class CourtemancheKernel(IonicKernelGenerator):
         )
 
         dcarel = calc_dcarel(
-            carel_old, itr, irel_old,
+            carel_old, itr, irel,
             {model['csqnmax']}, {model['kmcsqn']}
         )
 
@@ -270,7 +269,6 @@ class CourtemancheKernel(IonicKernelGenerator):
 
         {model['urel']} = urel_new
         {model['vrel']} = vrel_new
-        {model['irel']} = irel_new
         {model['wrel']} = wrel_new
 
         {model['caup']} = caup_old + dt * dcaup

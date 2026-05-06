@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.9.3] May 2026
+
+### Added
+
+- Initial conditions support. Model variables can now be initialized either as scalars (uniform across the tissue)
+  or as arrays (node-wise values). All initial condition fields use the `init_*` prefix.
+  See the **change_initial_conditions.py** example.
+
+- Courant–Friedrichs–Lewy (CFL) condition check to warn about potential instability of the user-defined
+  numerical parameters.
+
+- Propagation tests for validating model conduction velocity.
+
+- **Reentry and Spiral waves** tutorial.
+
+### Fixes
+
+- Adjusted diffusion coefficients (`D_model`) in Fenton–Karma and Mitchell–Schaeffer models
+  to ensure physiological conduction velocities.
+
+- Removed the unnecessary variable `irel` in the Courtemanche model (now treated as a parameter).
+
+- Standardized variable and parameter names in the ten-Tusscher–Panfilov 2006 model.
+
+- Fixed an API issue and a potential deadlock in AnimationBuilder2D/3D.
+
+
 ## [0.9.0] March 2026
 
 ### Added

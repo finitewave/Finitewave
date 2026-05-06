@@ -63,10 +63,10 @@ class Velocity2DCalculation:
         """
 
         if t_min is None:
-            t_min = np.min(act_t[act_t >= 0])
+            t_min = np.nanmin(act_t[act_t >= 0])
 
         if t_max is None:
-            t_max = np.max(act_t)
+            t_max = np.nanmax(act_t)
 
         mask = (act_t >= t_min) & (act_t <= t_max)
 
