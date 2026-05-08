@@ -84,12 +84,13 @@ class AnimationTracker(FrameTracker):
             
         else:
             window_size = kwargs.get("window_size", (1920, 1080))
+            show_scalar_bar = kwargs.get("show_scalar_bar", True)
             grid = self.build_3d_grid(tissue)
             grid[self.var_name] = np.zeros(tissue.mesh.shape, dtype=float)
             image_builder = Image3DBuilder()
             image_builder.scalar_name = self.var_name
             image_builder.grid = grid
-            image_builder.build_scene(clim=clim, cmap=cmap, window_size=window_size)
+            image_builder.build_scene(clim=clim, cmap=cmap, window_size=window_size, show_scalar_bar=show_scalar_bar)
 
         image_builder.collect_images(path=Path(self.path, self.dir_name), images=images)
         

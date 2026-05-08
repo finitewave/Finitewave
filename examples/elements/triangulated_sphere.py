@@ -41,7 +41,8 @@ simulation.tracker_sequence = tracker_sequence
 # run the model:
 simulation.run()
 
-# animation_tracker.write(format="gif")
+# pv.global_theme.transparent_background = True
+# animation_tracker.write(format="gif", window_size=(1000, 1000), show_scalar_bar=False)
 
 grid = fw.PyVistaSurfaceGrid(coords, elems)
 grid['Vm'] = simulation.cardiac_model.u

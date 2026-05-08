@@ -43,7 +43,7 @@ class AnimationBuilder:
         import imageio
         path = Path(path, animation_name).with_suffix(".gif")
         total_frames = self.image_builder.total_frames
-        with imageio.get_writer(str(path), mode='I', fps=fps, plugin="pyav") as writer:
+        with imageio.get_writer(str(path), mode='I', fps=fps, plugin="pyav", loop=0) as writer:
             for i in tqdm(range(total_frames), desc="Building animation", disable=not prog_bar):
                 img = self.image_builder.generate_image(i, **kwargs)
                 writer.append_data(img)
