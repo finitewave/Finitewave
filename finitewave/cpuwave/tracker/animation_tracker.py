@@ -9,7 +9,7 @@ from finitewave.tools.animation_builder import (
     Image2DBuilder,
     Image3DBuilder
 )
-from finitewave.tools.pyvista_grid_builder import (
+from finitewave.tools.pyvista_grids import (
     PyVistaMeshGrid,
     PyVistaSurfaceGrid,
     PyVistaTetraGrid
@@ -29,17 +29,14 @@ class AnimationTracker(FrameTracker):
 
     Attributes
     ----------
-    dir_name : str
-        Directory for saving frames.
-    variable_name : str
-        Name of the target array to capture.
-    frame_type : str
-        Default frame format settings.
-    overwrite : bool
-        Overwrite existing frames.
+    animation_name : str
+        The name of the directory where the animation frames will be saved.
+    **kwargs : dict
+        Additional keyword arguments for the FrameTracker base class.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, animation_name="animation", **kwargs):
         super().__init__(**kwargs)
+        self.dir_name = animation_name
 
     @property
     def animation_name(self):
@@ -49,7 +46,8 @@ class AnimationTracker(FrameTracker):
     def animation_name(self, animation_name):
         self.dir_name = animation_name
 
-    def write(self, prog_bar=True, fps=12, clim=[0, 1], cmap="RdBu_r", clear=False, **kwargs):
+    def write(self, prog_bar=True, fps=12, clim=[0, 1], cmap="RdBu_r", format="mp4",
+              clear=True, **kwargs):
         """
         Creates an animation from the saved frames using the Animation2DBuilder
         class. Fibrosis and boundaries will be shown in black.
@@ -64,6 +62,8 @@ class AnimationTracker(FrameTracker):
             Color limits for the animation frames.
         cmap : str, optional
             Colormap to use for the animation.
+        format : str, optional
+            Format of the output animation ("mp4", "gif").
         clear : bool, optional
             Whether to clear the saved frames after creating the animation.
         **kwargs : dict
@@ -96,15 +96,13 @@ class AnimationTracker(FrameTracker):
         animation_builder = AnimationBuilder()
         animation_builder.image_builder = image_builder
 
-        animation_builder.write(
-            path=self.path,
-            animation_name=self.animation_name,
-            prog_bar=prog_bar,
-            fps=fps,
-            clim=clim,
-            cmap=cmap,
-            **kwargs
-        )
+        if format == "gif":
+            writer = animation_builder.write_gif
+        else:
+            writer = animation_builder.write
+
+        writer(path=self.path, animation_name=self.animation_name,
+               prog_bar=prog_bar, fps=fps, clim=clim, cmap=cmap, **kwargs)
 
         self.remove_dir(clear)
 

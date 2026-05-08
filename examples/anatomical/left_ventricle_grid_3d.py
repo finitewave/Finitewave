@@ -11,6 +11,9 @@ import pyvista as pv
 import matplotlib.pyplot as plt
 
 import finitewave as fw
+# import jax
+
+# jax.config.update("jax_enable_x64", True)  # Enable float64 for JAX backend
 
 
 path = Path(__file__).parent.parent
@@ -34,7 +37,7 @@ stim_sequence.add_stim(fw.StimCurrentCoord(0, 100, 1,
                                            0, mesh.shape[0],
                                            0, 5))
 # add the tissue and the stim parameters to the model object:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="mlx")
+simulation = fw.CardiacSimulation(dt=0.01, t_max=5, backend="jax")
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 # initialize model: compute weights, add stimuls, trackers etc.

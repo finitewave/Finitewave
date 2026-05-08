@@ -1,9 +1,10 @@
 import numpy as np
+import pyvista as pv
 
 
-def build_triangulated_mesh(n, m, x_range, y_range):
+def build_triangulated_plane(n, m, x_range, y_range):
     """
-    Build a 2D triangular mesh.
+    Build a 
 
     Parameters:
     ----------
@@ -43,7 +44,7 @@ def build_triangulated_mesh(n, m, x_range, y_range):
     return coords, elems
 
 
-def build_quadrilateral_mesh(n, m, x_range, y_range):
+def build_quadrilateral_plane(n, m, x_range, y_range):
     """ Build a 2D quadrilateral mesh.
 
     Parameters:
@@ -82,9 +83,10 @@ def build_quadrilateral_mesh(n, m, x_range, y_range):
     return coords, elems
 
 
-def build_tetrahedral_mesh(nx, ny, nz, x_range, y_range, z_range):
+def build_tetrahedral_slab(nx, ny, nz, x_range, y_range, z_range):
     """
-    Build a 3D tetrahedral mesh.
+    Build a slab of tetrahedral elements by subdividing a box into cubes and 
+    then splitting each cube into 5 tetrahedra.
 
     Parameters
     ----------
@@ -137,3 +139,40 @@ def build_tetrahedral_mesh(nx, ny, nz, x_range, y_range, z_range):
     ])
 
     return coords, tets
+
+
+def build_triangulated_sphere(radius, nsub=7):
+    mesh = pv.Icosphere(nsub=nsub, radius=radius)
+
+    coords = mesh.points
+    elems = mesh.faces.reshape((-1, 4))[:, 1:4]
+
+    # find coordinates in spherecial coordinates
+    theta = np.arctan2(coords[:, 1], coords[:, 0])
+    phi = np.arctan2(coords[:, 2], np.sqrt(coords[:, 0]**2 + coords[:, 1]**2))
+
+    # make holes at (1) z = -radius, (2) theta = 0, phi = pi/4 (3) theta = pi/3, phi = pi/4
+    center1 = np.array([0, 0, -radius])
+    center2 = coords[(theta < 0.1) & (theta > -0.1) & 
+                     (phi < np.pi/4 + 0.1) & 
+                     (phi > np.pi/4 - 0.1)][0]
+    center3 = coords[(theta < np.pi + 0.1) & 
+                     (theta > np.pi - 0.1) & 
+                     (phi < np.pi/4 + 0.1) & 
+                     (phi > np.pi/4 - 0.1)][0]
+
+    holes_center = [center1, center2, center3]
+    holes_radius = [radius / 1.5, radius / 2, radius / 2]
+
+    mask = np.ones(coords.shape[0], dtype=bool)
+    for center, r in zip(holes_center, holes_radius):
+        dist = np.linalg.norm(coords - center, axis=1)
+        mask &= dist > r
+        
+    old_inds = - np.ones(coords.shape[0], dtype=int)
+    coords = coords[mask, :]
+    elems = elems[np.all(mask[elems], axis=1), :]
+
+    old_inds[mask] = np.arange(coords.shape[0])
+    elems = old_inds[elems]
+    return coords, elems

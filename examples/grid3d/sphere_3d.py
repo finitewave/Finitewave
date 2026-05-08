@@ -73,12 +73,13 @@ def build_sphere(shape, radius, center):
     mesh = np.zeros(shape)
     mesh[build_sphere_mask(mesh.shape, radius, center)] = 1
     mesh[build_sphere_mask(mesh.shape, radius-5, center)] = 0
-    mesh[- n//8:, :, :] = 0
+    # mesh[- n//8:, :, :] = 0
+    mesh = mesh[:, :, :- n//8]
     return mesh
 
 
 # set up the cardiac tissue:
-n = 200
+n = 150
 shape = (n, n, n)
 mesh = build_sphere(shape, n//2-5, (n//2, n//2, n//2))
 n, m, k = mesh.shape
@@ -92,11 +93,11 @@ z_min = z_max - 3
 
 stim1 = fw.StimVoltageCoord(time=0, volt_value=1,
                             x_min=0, x_max=n,
+                            y_min=0, y_max=n//2,
+                            z_min=0, z_max=k)
+stim2 = fw.StimVoltageCoord(time=20, volt_value=1,
+                            x_min=0, x_max=n//2,
                             y_min=0, y_max=m,
-                            z_min=z_min, z_max=z_max)
-stim2 = fw.StimVoltageCoord(time=50, volt_value=1,
-                            x_min=0, x_max=n,
-                            y_min=0, y_max=m//2,
                             z_min=0, z_max=k)
 
 stim_sequence = fw.StimSequence()
@@ -104,14 +105,14 @@ stim_sequence.add_stim(stim1)
 stim_sequence.add_stim(stim2)
 
 stim_prepacing = fw.StimSingleCell(dt=0.01)
-stim_prepacing.add_stim(n_beats=5, cycle_length40, stim_duration=0.1, stim_amplitude=1)
-stim_prepacing.add_stim(n_beats=5, cycle_length30, stim_duration=0.1, stim_amplitude=1)
-stim_prepacing.add_stim(n_beats=5, cycle_length25, stim_duration=0.1, stim_amplitude=1)
+stim_prepacing.add_stim(n_beats=5, cycle_length=40, curr_value=1., duration=1)
+stim_prepacing.add_stim(n_beats=5, cycle_length=30, curr_value=1., duration=1)
+stim_prepacing.add_stim(n_beats=5, cycle_length=25, curr_value=1., duration=1)
 
-model = fw.AlievPanfilov(memory_save=True)
+model = fw.AlievPanfilov()
 model.prepacing(stim_prepacing)
 
-simulation = fw.CardiacSimulation()
+simulation = fw.CardiacSimulation(backend="jax")
 # set up numerical parameters:
 simulation.dt = 0.01
 simulation.t_max = 200

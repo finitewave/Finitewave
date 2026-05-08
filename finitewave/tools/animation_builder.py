@@ -39,6 +39,15 @@ class AnimationBuilder:
         container.close()
         self.image_builder.finalize()
 
+    def write_gif(self, path=".", animation_name="frames", prog_bar=False, fps=24, **kwargs):
+        import imageio
+        path = Path(path, animation_name).with_suffix(".gif")
+        total_frames = self.image_builder.total_frames
+        with imageio.get_writer(str(path), mode='I', fps=fps, plugin="pyav") as writer:
+            for i in tqdm(range(total_frames), desc="Building animation", disable=not prog_bar):
+                img = self.image_builder.generate_image(i, **kwargs)
+                writer.append_data(img)
+
 
 class Image2DBuilder:
     def __init__(self):
@@ -83,6 +92,9 @@ class Image2DBuilder:
         img = self.filter_frame(img, self.output_mask, self.upscale_factor)
         img = self.torgb_frame(img, clim, cmap)
         return img
+    
+    def generate_all_images(self, clim=[0, 1], cmap="viridis", **kwargs):
+        return [self.generate_image(i, clim=clim, cmap=cmap, **kwargs) for i in range(self.total_frames)]
 
     def filter_frame(self, frame, output_mask=None, upscale_factor=1):
         output = frame

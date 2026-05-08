@@ -58,8 +58,11 @@ class PyVistaTetraGrid(pv.UnstructuredGrid):
         grid = pv.UnstructuredGrid(cells, celltypes, coords)
         grid.point_data['point_idx'] = np.arange(coords.shape[0])
         grid.cell_data['cell_idx'] = np.arange(elems.shape[0])
+        self.n_full_points = grid.n_points
+        self.n_full_cells = grid.n_cells
         
         self.as_surface = as_surface
+
         if as_surface:
             grid = grid.extract_surface(algorithm="geometry")
 
@@ -68,11 +71,11 @@ class PyVistaTetraGrid(pv.UnstructuredGrid):
         super().__init__(grid)
 
     def __setitem__(self, name, value):
-        if self.as_surface and value.shape[0] == self.n_points:
+        if self.as_surface and value.shape[0] == self.n_full_points:
             self.point_data[name] = value[self.point_idx, ...]
             return
         
-        if self.as_surface and value.shape[0] == self.n_cells:
+        if self.as_surface and value.shape[0] == self.n_full_cells:
             self.cell_data[name] = value[self.cell_idx, ...]
             return
         
@@ -89,7 +92,7 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
     indices : tuple of np.array
         Indices of the non-empty cells in the original mesh.
     """
-    def __init__(self, mesh, dr=1, as_surface=False):
+    def __init__(self, mesh, dr=1, as_surface=False, threshold=0.5):
         """Build a Unstructured Grid from 3D mesh where mesh > 0.
 
         Parameters:
@@ -100,65 +103,50 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
 
         as_surface : bool, optional
             If True, build a surface mesh. Default is False.
+        threshold : float, optional
+            Threshold value for the mesh. Default is 0.5.
         """
         self._mesh = mesh
-        shape = mesh.shape[::-1]
-
-        if mesh.ndim == 2:
-            shape = (shape[0], shape[1], 1)
-
-        grid = pv.ImageData()
-        grid.dimensions = np.array(shape) + 1
-        grid.spacing = tuple([dr] * 3)
-        grid.cell_data['mesh'] = mesh.astype(float).flatten(order='C')
-        grid.cell_data['full_idx'] = np.arange(mesh.size)
-        self.n_full_cells = grid.n_cells
-
-        # Threshold the mesh to remove empty cells
-        grid = grid.threshold(0.5)
-        self.n_grid_cells = grid.n_cells
-        grid.cell_data["grid_idx"] = np.arange(self.n_grid_cells)
-        
         self.as_surface = as_surface
-    
+        self.threshold = threshold
+
+        mesh = np.atleast_3d(mesh)
+        grid = self._build_grid(mesh, dr=dr)
+        self._mesh_size = grid.n_cells
+        grid = self._apply_threshold(grid, mesh, threshold)
+        
+        self._mesh_nonzero_size = grid.n_cells
+
         if as_surface:
             grid = grid.extract_surface(algorithm="geometry")
 
-        self.n_surface_cells = grid.n_cells
-
-        # self.indices = np.unravel_index(grid.cell_data['idx'], mesh.shape, order='F')
         super().__init__(grid)
+
+    def _build_grid(self, mesh, dr=1):
+        grid = pv.ImageData()
+        grid.dimensions = np.array(mesh.shape) + 1
+        grid.spacing = tuple([dr] * 3)
+        grid.cell_data['mesh'] = mesh.astype(float).flatten(order='F')
+        c_inds = np.arange(mesh.size).reshape(mesh.shape)
+        grid.cell_data['mesh_inds'] = c_inds.flatten(order='F')
+        return grid
+    
+    def _apply_threshold(self, grid, mesh, threshold=0.5):
+        grid = grid.threshold(threshold, scalars='mesh', invert=False)
+        c_mesh_inds = - np.ones(mesh.shape, dtype=int)
+        c_mesh_inds[mesh > threshold] = np.arange(grid.n_cells)
+        non_zero_inds = np.unravel_index(grid.cell_data['mesh_inds'], mesh.shape, order='C')
+        grid.cell_data['nonzero_inds'] = c_mesh_inds[*non_zero_inds]
+        return grid
     
     def __setitem__(self, key, value):
         value = np.asarray(value)
         if value.shape[:3] == self._mesh.shape:
-            inds = np.unravel_index(self.cell_data['full_idx'], self._mesh.shape, order='C')
+            inds = np.unravel_index(self.cell_data['mesh_inds'], self._mesh.shape, order='C')
             self.cell_data[key] = value[*inds, ...]
-        elif value.shape[0] == self.n_full_cells:
-            self.cell_data[key] = value[self.cell_data['full_idx'], ...]
-        elif value.shape[0] == self.n_grid_cells:
-            self.cell_data[key] = value[self.cell_data['grid_idx'], ...]
+        elif value.shape[0] == self._mesh.size:
+            self.cell_data[key] = value[self.cell_data['mesh_inds'], ...]
+        elif value.shape[0] == self._mesh_nonzero_size:
+            self.cell_data[key] = value[self.cell_data['nonzero_inds'], ...]
         else:
             super().__setitem__(key, value)
-                    
-    def add_masked_scalar(self, scalars, mask, name='Scalars'):
-        """Add a scalar field to the mesh. The scalars assumed to be
-        values where mask is True.
-
-        Parameters
-        ----------
-        scalars : np.array
-            Flat scalar field.
-        mask : np.array
-            Boolean mask where scalars are defined.
-        name : str, optional
-            Name of the scalar. Default is 'Scalars'.
-
-        Returns
-        -------
-        grid : pv.UnstructuredGrid
-            Grid with the scalar field added as active cell scalars.
-        """
-        scalars_mesh = np.zeros_like(mask, dtype=scalars.dtype)
-        scalars_mesh[mask] = scalars
-        self.cell_data[name] = scalars_mesh[self.indices]
