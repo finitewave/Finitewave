@@ -26,17 +26,23 @@ related fields.
    :align: center
 
    * - .. image:: images/spiral_wave_fib.gif
-          :width: 400px
+          :width: 200px
           :alt: Image 1
-     - .. image:: images/spiral_wave_lv.gif
-          :width: 400px
+     - .. image:: images/slab_with_fibers.gif
+          :width: 200px
           :alt: Image 2
-   * - .. image:: images/sphere.gif
-          :width: 400px
+     - .. image:: images/spiral_wave_lv.gif
+          :width: 200px
           :alt: Image 3
-     - .. image:: images/atrium.gif
-          :width: 400px
+   * - .. image:: images/sphere.gif
+          :width: 200px
           :alt: Image 4
+     - .. image:: images/tetrahedral_slab.gif
+          :width: 200px
+          :alt: Image 5
+     - .. image:: images/atrium.gif
+          :width: 200px
+          :alt: Image 6
 
 Installation
 ============
