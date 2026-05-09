@@ -28,19 +28,15 @@ related fields.
    * - .. image:: images/spiral_wave_fib.gif
           :width: 200px
           :alt: Image 1
-     - .. image:: images/spiral_wave_slab.gif
-          :width: 267px
-          :alt: Image 2
      - .. image:: images/spiral_wave_lv.gif
-          :width: 220px
-          :alt: Image 3
+          :width: 200px
+          :alt: Image 2
    * - .. image:: images/sphere.gif
           :width: 200px
-          :alt: Image 4
+          :alt: Image 3
      - .. image:: images/atrium.gif
           :width: 200px
           :alt: Image 4
-     - (no image)
 
 Installation
 ============
