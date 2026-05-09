@@ -28,7 +28,7 @@ related fields.
    * - .. image:: images/spiral_wave_fib.gif
           :width: 200px
           :alt: Image 1
-     - .. image:: images/slab_with_fibers.gif
+     - .. image:: images/slab_with_fibers.png
           :width: 200px
           :alt: Image 2
      - .. image:: images/spiral_wave_lv.gif
@@ -37,7 +37,7 @@ related fields.
    * - .. image:: images/sphere.gif
           :width: 200px
           :alt: Image 4
-     - .. image:: images/tetrahedral_slab.gif
+     - .. image:: images/tetrahedral_slab.png
           :width: 200px
           :alt: Image 5
      - .. image:: images/atrium.gif
