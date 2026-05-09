@@ -1,10 +1,9 @@
-import numpy as np
 import warnings
 
-from .solver import Solver
+from finitewave.core.solver.solver_base import SolverBase
 
 
-class CrankNicolsonSolver(Solver):
+class CrankNicolsonSolver(SolverBase):
     """Implements the Crank-Nicolson semi-implicit time integration method
     with Conjugate Gradient solver for implicit diffusion step.
 
@@ -47,6 +46,10 @@ class CrankNicolsonSolver(Solver):
             The simulation object containing the cardiac and diffusion models.
         """
         self.simulation = simulation
+
+        if self.linalg_method is None:
+            self.select_method(simulation.backend)
+
         self.num_iterations = []
         self.u = simulation.cardiac_model.u
         self.b = simulation.backend.wrap(0. * self.u)
@@ -55,8 +58,7 @@ class CrankNicolsonSolver(Solver):
         self.rhs = simulation.cardiac_model.rhs
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
-        if self.linalg_method is None:
-            self.select_method(simulation.backend)
+        
 
     def select_method(self, backend):
         if backend.name == "numba":
@@ -80,17 +82,15 @@ class CrankNicolsonSolver(Solver):
         A_lhs = M + 0.5 * dt * K
         A_rhs = M - 0.5 * dt * K
         """
-        stiff, mass = self.simulation.diffusion_model.weights
         dt = self.simulation.dt
-        self.a_lhs_matrix = mass + 0.5 * dt * stiff
-        self.a_rhs_matrix = mass - 0.5 * dt * stiff
+        dtype = self.simulation.backend.float_dtype
 
-        if self.simulation.backend.sparse_support:
-            self.a_lhs_matrix = self.crs_to_numpy(self.a_lhs_matrix)
-            self.a_rhs_matrix = self.crs_to_numpy(self.a_rhs_matrix)
-        else:
-            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix)
-            self.a_rhs_matrix = self.csr_to_ellpack(self.a_rhs_matrix)
+        stiff, mass = self.simulation.diffusion_model.weights
+        a_lhs_matrix = mass + 0.5 * dt * stiff
+        a_rhs_matrix = mass - 0.5 * dt * stiff
+
+        self.a_lhs_matrix = self.linalg_method.wrap_matrix(a_lhs_matrix, dtype)
+        self.a_rhs_matrix = self.linalg_method.wrap_matrix(a_rhs_matrix, dtype)
 
     def run(self):
         """Performs a single time step using the Crank-Nicolson method

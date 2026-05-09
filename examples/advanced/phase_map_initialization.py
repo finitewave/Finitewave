@@ -41,7 +41,7 @@ def build_spiral_core(mesh, levels=100, phase_offset=0, clockwise=True):
 
 # create a tissue of size 50x10 to collect the state variables.
 n, m = 50, 5
-tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
+tissue = fw.CardiacTissue([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -86,7 +86,7 @@ for i in range(2):
         spiral_map[x_min:x_max, y_min:y_max] = sub_map
 
 
-tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+tissue = fw.CardiacTissue([n, n], dr=0.25)
 
 model = fw.AlievPanfilov()
 model.prepacing(stim_prepacing)

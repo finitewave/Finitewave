@@ -21,7 +21,7 @@ path = Path(__file__).parent.parent
 # Load mesh as cubic array
 mesh = np.load(path.joinpath("data", "mesh.npy"))
 
-tissue = fw.CardiacTissueGrid(mesh.shape, dr=0.25)
+tissue = fw.CardiacTissue(mesh.shape, dr=0.25)
 # create a mesh of cardiomyocytes (elems = 1):
 tissue.mesh = mesh
 # # generate 20% of fibrosis in the ventrcile wall:

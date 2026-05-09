@@ -19,7 +19,7 @@ class StimS1S2Cross(StimSequence):
 
         Parameters
         ----------
-        cardiac_tissue : CardiacTissueGrid
+        cardiac_tissue : CardiacTissue
             The cardiac tissue grid on which to apply the stimuli.
         s1_time : float
             The time at which the S1 stimulus is applied.

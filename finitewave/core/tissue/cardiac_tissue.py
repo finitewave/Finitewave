@@ -1,9 +1,7 @@
 import numpy as np
-
 from .cardiac_tissue_base import CardiacTissueBase
 
-
-class CardiacTissueGrid(CardiacTissueBase):
+class CardiacTissue(CardiacTissueBase):
     """
     Class representing a cardiac tissue on a regular grid.
 
@@ -17,7 +15,7 @@ class CardiacTissueGrid(CardiacTissueBase):
         ``0`` for non-tissue, ``1`` for healthy tissue, and ``2`` for fibrotic
         tissue.
     conductivity : float or np.ndarray (mesh.shape)
-        The conductivity of the tissue used for reducing the diffusion
+        The conductivity of the nodes in the tissue used for reducing the diffusion
         coefficients. The conductivity should be in the range [0, 1].
     connectivity : float or np.ndarray (mesh.shape + (ndim,))
         The conductivity of the junctions between nodes in the tissue.
@@ -30,7 +28,7 @@ class CardiacTissueGrid(CardiacTissueBase):
 
     def __init__(self, shape, dr):
         """
-        Initializes the CardiacTissueGrid instance.
+        Initializes the CardiacTissue on a regular grid.
 
         Parameters
         ----------
@@ -46,8 +44,10 @@ class CardiacTissueGrid(CardiacTissueBase):
         self.meta["type"] = "Grid"
         self.meta["dr"] = dr
         self.mesh = np.ones(shape, dtype=np.int8)
-        self.conductivity = 1.0
-        self.connectivity = 1.0
+        self.D_ac = 1. / 9.
+        self.D_al = 1
+        self.conductivity = 1.
+        self.connectivity = 1.
         self.dr = dr
         self.fibers = None
 

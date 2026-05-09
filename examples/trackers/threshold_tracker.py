@@ -8,7 +8,7 @@ import finitewave as fw
 # create a mesh of cardiomyocytes (elems = 1):
 n = 100
 m = 10
-tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
+tissue = fw.CardiacTissue([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()

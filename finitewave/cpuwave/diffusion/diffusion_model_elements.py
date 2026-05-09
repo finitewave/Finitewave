@@ -1,11 +1,15 @@
 import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 from finitewave.core.numerics.fem.element_assembler import ElementAssembler
+from finitewave.core.numerics.fem.elements.triangle_element import LinearTriangleElement
+from finitewave.core.numerics.fem.elements.quadrilateral_element import LinearQuadrilateralElement
+from finitewave.core.numerics.fem.elements.tetrahedral_element import LinearTetrahedralElement
+from finitewave.core.numerics.fem.elements.element_type import ElementType
 
 
-class ElementDiffusionModel(DiffusionModelBase):
+class DiffusionModelElements(DiffusionModelBase):
     """
-    Class for assembling element-based diffusion models.
+    Class for assembling element-based diffusion operator.
 
     Attributes
     ----------
@@ -43,11 +47,30 @@ class ElementDiffusionModel(DiffusionModelBase):
             The simulation instance associated with this assembler.
         """
         self.simulation = simulation
-        self.compute_weights()
+        if self.reference_element is None:
+            self.reference_element = self.default_element()
+        self.update_weights()
 
-    def compute_weights(self):
+    def update_weights(self):
+        """
+        Updates the weights (stiffness and mass matrices) for the
+        element-based model. This can be used to recompute the weights if
+        the tissue properties or diffusion tensor change during the simulation.
+        """
+        tissue = self.simulation.cardiac_tissue
+        model = self.simulation.cardiac_model
+        self.compute_weights(tissue, model.D_model)
+
+    def compute_weights(self, tissue, D_model=1.0):
         """
         Computes the stiffness and mass matrices for the element-based model.
+
+        Parameters
+        ----------
+        tissue : CardiacTissue
+            The cardiac tissue for which to compute the diffusion weights.
+        D_model : float, optional
+            Model-specific diffusion coefficient. Default is 1.0.
 
         Returns
         -------
@@ -56,31 +79,28 @@ class ElementDiffusionModel(DiffusionModelBase):
         scipy.sparse.csr_matrix
             The mass matrix for the element-based model.
         """
-        tissue = self.simulation.cardiac_tissue
-
         indexes = tissue.tissue_indexes[tissue.myo_indexes]
         coords = tissue.coords
         elems = tissue.myo_elements
 
-        diffusion = self.compute_diffusion(self.simulation, tissue)
+        diffusion = self.compute_diffusion_tensor(tissue, D_model)
         diffusion = diffusion[tissue.myo_elems_indexes]
 
-        self.weights = self.assembler.compute_system_matrices(coords, elems,
-                                                              diffusion,
-                                                              indexes,
-                                                              reindex=True)
+        self.weights = self.assembler.compute_system_matrices(
+            coords, elems, diffusion, indexes, reindex=True
+        )
         return self.weights
 
-    def compute_diffusion(self, simulation, tissue):
+    def compute_diffusion_tensor(self, tissue, D_model=1.0):
         """
         Computes the diffusion tensor for each element.
 
         Parameters
         ----------
-        simulation : Simulation
-            The simulation instance.
         tissue : CardiacTissue
             The cardiac tissue instance.
+        D_model : float, optional
+            Model-specific diffusion coefficient. Default is 1.0.
 
         Returns
         -------
@@ -89,7 +109,6 @@ class ElementDiffusionModel(DiffusionModelBase):
         """
         d_ac = tissue.D_ac
         d_al = tissue.D_al
-        d_model = simulation.cardiac_model.D_model
 
         dim_tissue = tissue.coords.shape[1]
 
@@ -101,7 +120,23 @@ class ElementDiffusionModel(DiffusionModelBase):
                           tissue.fibers[:, :, np.newaxis] @
                           tissue.fibers[:, np.newaxis, :]))
 
-        conductivity = (d_model * tissue.conductivity * 
+        conductivity = (D_model * tissue.conductivity * 
                         np.ones(len(tissue.elems), dtype=np.float64))
         diffusion = diffusion * conductivity[:, np.newaxis, np.newaxis]
         return diffusion
+    
+    def default_element(self):
+        tissue = self.simulation.cardiac_tissue
+
+        if tissue.meta['shape'] == ElementType.TRIANGLE:
+            return LinearTriangleElement()
+
+        if tissue.meta['shape'] == ElementType.QUAD:
+            return LinearQuadrilateralElement()
+
+        if tissue.meta['shape'] == ElementType.TETRA:
+            return LinearTetrahedralElement()
+
+        raise ValueError(f"Unknown element type: {tissue.meta['shape']}")
+
+

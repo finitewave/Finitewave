@@ -1,9 +1,8 @@
-import numpy as np
 from scipy import sparse
-from .solver import Solver
+from finitewave.core.solver.solver_base import SolverBase
 
 
-class ForwardEulerSolver(Solver):
+class ForwardEulerSolver(SolverBase):
     """Implements the Forward Euler time integration method for cardiac
     simulations.
 
@@ -40,14 +39,17 @@ class ForwardEulerSolver(Solver):
             The simulation object containing the cardiac and diffusion models.
         """
         self.simulation = simulation
+
+        if self.linalg_method is None:
+            self.select_method(simulation.backend)
+        
         self.num_iterations = []
         self.u = simulation.cardiac_model.u
         self.u_old = simulation.backend.copy(self.u)
         self.rhs = simulation.cardiac_model.rhs
         self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
-        if self.linalg_method is None:
-            self.select_method(simulation.backend)
+        
 
     def select_method(self, backend):
         if backend.name == "numba":
@@ -79,17 +81,16 @@ class ForwardEulerSolver(Solver):
         dt : float
             Time step for the simulation.
         """
-        stiff, mass = self.simulation.diffusion_model.weights
         dt = self.simulation.dt
+        dtype = self.simulation.backend.float_dtype
+
+        stiff, mass = self.simulation.diffusion_model.weights
         mass_lumped = mass.sum(axis=1).A.ravel()
         mass_inv = sparse.diags(1 / mass_lumped)
-        self.a_lhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
+        a_lhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
-        
-        if self.simulation.backend.sparse_support:
-            self.a_lhs_matrix = self.crs_to_numpy(self.a_lhs_matrix)
-        else:
-            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix, self.myo_indexes)
+        self.a_lhs_matrix = self.linalg_method.wrap_matrix(a_lhs_matrix, dtype,
+                                                           self.myo_indexes)
 
     def run(self):
         """Performs a single time step using the Forward Euler method.

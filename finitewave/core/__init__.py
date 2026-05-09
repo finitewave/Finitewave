@@ -23,7 +23,7 @@ from finitewave.core.stimul import (
     StimVoltageElectrodes,
 )
 from finitewave.core.tissue import (
-    CardiacTissueGrid,
+    CardiacTissue,
     CardiacTissueElements,
 )
 
@@ -53,7 +53,7 @@ __all__ = [
     "StimVoltageMatrix",
     "StimVoltageElectrodes",
     "TrackerSequence",
-    "CardiacTissueGrid",
+    "CardiacTissue",
     "CardiacTissueElements",
     "ElementType",
     "IsotropicStencil",

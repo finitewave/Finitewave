@@ -41,15 +41,25 @@ class CardiacSimulationBase:
         Current step or iteration in the simulation.
     prog_bar : bool
         Whether to display a progress bar during simulation.
-    npfloat : type
-        The floating-point type used for numerical computations.
     """
     def __init__(
             self,
             dt : float | None = None,
             t_max : float | None = None,
-            backend : Literal["numba", "mlx", "jax"] = "numba",
-            array_dtype : str = "float64"):
+            backend : Literal["numba", "mlx", "jax"] = "numba"):
+        """
+        Initializes the CardiacSimulation instance.
+        
+        Parameters
+        ----------
+        dt : float, optional
+            Time step for the simulation. If None, it must be set before running.
+        t_max : float, optional
+            Maximum time for the simulation (model units). If None, it must be set before running.
+        backend : Literal["numba", "mlx", "jax"], optional
+            The computational backend to use for the simulation. Default is "numba".
+        """
+
         self.meta = {}
         self.cardiac_tissue = None
         self.stim_sequence = None
@@ -66,12 +76,9 @@ class CardiacSimulationBase:
         self.t_max = t_max
         self.t = 0
         self.step = 0
-        self.backend = self.select_backend(backend, array_dtype)
+        self.backend = self.select_backend(backend)
 
-    def select_backend(
-            self,
-            backend_name : Literal["numba", "mlx", "jax"],
-            array_dtype : str = "float64"):
+    def select_backend(self, backend_name):
         """
         Selects the computational backend for the simulation.
 
@@ -87,9 +94,7 @@ class CardiacSimulationBase:
         """
         if backend_name == "numba":
             from .simulation_backend import NumbaBackend
-            backend = NumbaBackend()
-            backend.float_dtype = np.dtype(array_dtype)
-            return backend
+            return NumbaBackend()
         
         if backend_name == "mlx":
             from .simulation_backend import MlxBackend

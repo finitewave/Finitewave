@@ -34,7 +34,7 @@ import finitewave as fw
 # create a tissue:
 n = 100
 m = 5
-tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
+tissue = fw.CardiacTissue([n, m], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()

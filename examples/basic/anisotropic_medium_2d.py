@@ -48,12 +48,10 @@ import numpy as np
 import finitewave as fw
 
 # number of nodes on the side
-n, m = 200, 200
+n, m = 400, 400
 # fiber orientation angle
-tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
+tissue = fw.CardiacTissue([n, m], dr=0.25)
 alpha = np.pi / 4
-# tissue.mesh += (np.random.random(tissue.mesh.shape) < 0.3).astype(int)
-# tissue.mesh[n//4: n//4 + 30, m//4: 3*m//4] = 2
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, m, 2])
 tissue.fibers[:, :, 0] = np.cos(alpha)
@@ -65,9 +63,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            x_min=n//2 - 5, x_max=n//2 + 5,
                                            y_min=m//2 - 5, y_max=m//2 + 5))
 
-simulation = fw.CardiacSimulation()
-simulation.dt = 0.01
-simulation.t_max = 20
+simulation = fw.CardiacSimulation(dt=0.01, t_max=35, backend="jax")
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
@@ -81,7 +77,7 @@ simulation.run()
 # plt.show()
 
 # visualize the results:
-plt.imshow(simulation.cardiac_model.u, cmap='jet', origin='lower')
+plt.imshow(simulation.cardiac_model['u'], cmap='jet', origin='lower')
 plt.colorbar(label='Transmembrane Potential (u)')
 plt.title('Fenton-Karma Model - Transmembrane Potential')
 plt.xlabel('X-axis')

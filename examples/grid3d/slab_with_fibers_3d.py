@@ -59,7 +59,7 @@ n_j = 128
 n_k = 50
 
 # set up the cardiac tissue:
-tissue = fw.CardiacTissueGrid((n_i, n_j, n_k), dr=0.25)
+tissue = fw.CardiacTissue((n_i, n_j, n_k), dr=0.25)
 # orientation of fibers changes along the z-axis from -pi/3 to pi/3
 phi_k = np.linspace(- np.pi / 3, np.pi / 3, n_k)
 # add fibers orientation vectors
@@ -98,7 +98,11 @@ full_grid["u"] = u
 grid = fw.PyVistaMeshGrid(u > 0.1, as_surface=True)
 grid["u"] = simulation.cardiac_model.u
 
+# set transparent background for better visualization of the internal structure
+pv.global_theme.transparent_background = True
 pl = pv.Plotter()
 pl.add_mesh(grid, scalars='u', cmap='RdBu_r', clim=[0, 1])
 pl.add_mesh(full_grid, scalars='u', cmap='RdBu_r', clim=[0, 1], opacity=0.3)
 pl.show()
+
+pl.screenshot("slab_with_fibers.png")

@@ -6,7 +6,7 @@ import numpy as np
 
 # create a tissue of size 400x400 with cardiomycytes:
 n, m = 100, 160
-tissue = fw.CardiacTissueGrid([n, m], dr=0.5)
+tissue = fw.CardiacTissue([n, m], dr=0.5)
 
 y = np.arange(m//8, 3 * m//8)
 x = np.full(len(y), n//2)

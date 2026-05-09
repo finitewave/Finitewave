@@ -40,3 +40,5 @@ grid["u"] = simulation.cardiac_model.u
 plotter = pv.Plotter()
 plotter.add_mesh(grid, scalars="u", cmap="RdBu_r")
 plotter.show()
+
+plotter.screenshot("tetrahedral_slab.png")

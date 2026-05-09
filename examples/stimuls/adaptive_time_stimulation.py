@@ -8,7 +8,7 @@ cardiac_model = fw.AlievPanfilov()
 
 # create a tissue of size 300x300 with cardiomycytes:
 n = 300
-tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+tissue = fw.CardiacTissue([n, n], dr=0.25)
 
 threshold_tracker = fw.LowThresholdTracker(node_inds=[n//2, n//2], threshold=0.03)
 tracker_sequence = fw.TrackerSequence()

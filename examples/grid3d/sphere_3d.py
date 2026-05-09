@@ -84,7 +84,7 @@ shape = (n, n, n)
 mesh = build_sphere(shape, n//2-5, (n//2, n//2, n//2))
 n, m, k = mesh.shape
 
-tissue = fw.CardiacTissueGrid((n, m, k), dr=0.25)
+tissue = fw.CardiacTissue((n, m, k), dr=0.25)
 tissue.mesh = mesh
 
 # set up stimulation parameters:

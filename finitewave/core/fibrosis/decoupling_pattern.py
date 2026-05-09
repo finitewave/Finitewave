@@ -60,12 +60,12 @@ class DecouplingPattern:
 
         Parameters
         ----------
-        cardiac_tissue : CardiacTissueGrid
+        cardiac_tissue : CardiacTissue
             The cardiac tissue to which the decoupling pattern will be applied.
 
         Returns
         -------
-        CardiacTissueGrid
+        CardiacTissue
             The modified cardiac tissue with the applied decoupling pattern.
         """
         if self.coords is None or self.axis is None:
@@ -80,12 +80,12 @@ class DecouplingPattern:
 
         Parameters
         ----------
-        cardiac_tissue : CardiacTissueGrid
+        cardiac_tissue : CardiacTissue
             The cardiac tissue to which the random decoupling will be applied.
 
         Returns
         -------
-        CardiacTissueGrid
+        CardiacTissue
             The modified cardiac tissue with the applied random decoupling pattern.
         """
         if self.density is None:

@@ -52,7 +52,7 @@ import finitewave as fw
 
 # set up cardiac tissue:
 n = 400
-tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+tissue = fw.CardiacTissue([n, n], dr=0.25)
 
 stim_coords = [[100, 100], [100, 300], [300, 100], [300, 300]]
 

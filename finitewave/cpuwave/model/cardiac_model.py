@@ -11,9 +11,6 @@ class CardiacModel(CardiacModelBase):
 
     Attributes
     ----------
-    memory_save : bool
-        Whether to save memory by only storing the state variables at the
-        tissue indexes (``mesh > 0``).
     myo_indexes : np.ndarray
         Array of indices corresponding to the myocytes in the mesh.
         If `memory_saving` is True, the indexes correspond to `mesh.flat[tissue_indexes[myo_indexes]]`.
@@ -135,6 +132,9 @@ class CardiacModel(CardiacModelBase):
         var_mesh = np.full_like(mesh, np.nan, dtype=dtype)
         var_mesh.flat[tissue_indexes] = var_data.astype(dtype)
         return var_mesh
+    
+    def __getitem__(self, key):
+        return self.output(var_name=key)
        
     def prepacing(self, stim_prepacing, history=False):
         """

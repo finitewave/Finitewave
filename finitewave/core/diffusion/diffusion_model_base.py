@@ -30,7 +30,7 @@ class DiffusionModelBase(ABC):
         pass
 
     @abstractmethod
-    def compute_weights(self):
+    def update_weights(self):
         """
         Evaluates the diffusion part of the model.
         """
@@ -42,7 +42,7 @@ class DiffusionModelBase(ABC):
 
         Returns
         -------
-        CardiacModel
-            A deep copy of the current CardiacModel instance.
+        DiffusionModelBase
+            A deep copy of the current DiffusionModelBase instance.
         """
         return copy.deepcopy(self)

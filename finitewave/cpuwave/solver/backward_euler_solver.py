@@ -19,15 +19,12 @@ class BackwardEulerSolver(CrankNicolsonSolver):
         A_lhs = M + dt * K
         A_rhs = M
         """
-        stiff, mass = self.simulation.diffusion_model.weights
         dt = self.simulation.dt
-        self.a_lhs_matrix = mass + dt * stiff
-        self.a_rhs_matrix = mass
+        dtype = self.simulation.backend.dtype
 
-        if self.simulation.backend.sparse_support:
-            self.a_lhs_matrix = self.crs_to_numpy(self.a_lhs_matrix)
-            self.a_rhs_matrix = self.crs_to_numpy(self.a_rhs_matrix)
+        stiff, mass = self.simulation.diffusion_model.weights
+        a_lhs_matrix = mass + dt * stiff
+        a_rhs_matrix = mass
 
-        else:
-            self.a_lhs_matrix = self.csr_to_ellpack(self.a_lhs_matrix)
-            self.a_rhs_matrix = self.csr_to_ellpack(self.a_rhs_matrix)
+        self.a_lhs_matrix = self.linalg_method.wrap_matrix(a_lhs_matrix, dtype)
+        self.a_rhs_matrix = self.linalg_method.wrap_matrix(a_rhs_matrix, dtype)

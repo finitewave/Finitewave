@@ -66,7 +66,7 @@ import finitewave as fw
 # number of nodes on the side
 # create a tissue of size 400x400 with cardiomycytes:
 n = 400
-tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+tissue = fw.CardiacTissue([n, n], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()

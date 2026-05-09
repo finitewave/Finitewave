@@ -6,10 +6,10 @@ from ._func_builder import wrap_mlx_func, build_func
 
 class IonicMlxKernel(KernelGenerator):
     """
-    Class for generating numba CPU kernel function to update state variables
-    and compute the ionic current (rhs) of the cardiac model.
+    Class for generating a JIT-compiled kernel function for simulating
+    ionic models using the MLX library.
 
-    The kernel function is generated based on a user-defined step function that
+    The kernel function is generated based on a ionic step function that
     computes the new state variables and rhs based on the current state and parameters.
     The generator handles the creation of the loop over the spatial indexes,
     the assignment of old values, the update of state variables,

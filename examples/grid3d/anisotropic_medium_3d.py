@@ -54,7 +54,7 @@ phi = - np.pi / 4
 theta = np.pi / 3
 
 # set up the cardiac tissue:
-tissue = fw.CardiacTissueGrid((n_i, n_j, n_k), dr=0.25)
+tissue = fw.CardiacTissue((n_i, n_j, n_k), dr=0.25)
 
 # add fibers orientation vectors with rotation angle phi and theta
 tissue.fibers = np.zeros((n_i, n_j, n_k, 3))

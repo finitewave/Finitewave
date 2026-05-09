@@ -37,7 +37,7 @@ dt = 0.01
 t_max = 500
 
 # create mesh
-tissue = fw.CardiacTissueGrid((n, m), dr=0.1)
+tissue = fw.CardiacTissue((n, m), dr=0.1)
 
 # create model object and set up parameters
 stim_prepacing = fw.StimSingleCell(dt)

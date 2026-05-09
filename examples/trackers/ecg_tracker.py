@@ -77,7 +77,7 @@ tracker_sequence.add_tracker(ecg_tracker)
 
 simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="jax")
 # add the tissue and the stim parameters to the model object:
-simulation.cardiac_tissue = fw.CardiacTissueGrid([n, m], dr=0.1)
+simulation.cardiac_tissue = fw.CardiacTissue([n, m], dr=0.1)
 simulation.cardiac_model = fw.LuoRudy91()
 simulation.stim_sequence = stim_sequence
 simulation.tracker_sequence = tracker_sequence

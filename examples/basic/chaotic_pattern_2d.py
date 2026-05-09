@@ -48,7 +48,7 @@ import matplotlib.pyplot as plt
 import finitewave as fw
 
 n = 200
-tissue = fw.CardiacTissueGrid((n, n), dr=0.25)
+tissue = fw.CardiacTissue((n, n), dr=0.25)
 
 stim_sequence = fw.StimSequence()
 

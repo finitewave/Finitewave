@@ -29,7 +29,7 @@ z_min = np.min(mesh.nonzero()[0])
 
 n, m, k = mesh.shape
 
-tissue = fw.CardiacTissueGrid([n, m, k])
+tissue = fw.CardiacTissue([n, m, k])
 tissue.mesh = mesh
 # tissue.fibers = fibers_mesh
 # tissue.mesh[np.random.rand(n, m) < 0.3] = 2  # introduce some inexcitable regions

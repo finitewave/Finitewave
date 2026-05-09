@@ -3,9 +3,9 @@ from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 from finitewave.core.numerics.fdm.asymmetric_stencil import AsymmetricStencil
 
 
-class GridDiffusionModel(DiffusionModelBase):
+class DiffusionModel(DiffusionModelBase):
     """
-    Diffusion model for grid-based simulations.
+    Class for assembling grid-based diffusion operator.
 
     This model uses a finite difference stencil to compute the diffusion
     weights, which are then used in the time integration step of the
@@ -31,9 +31,9 @@ class GridDiffusionModel(DiffusionModelBase):
         Computes the weights for the diffusion operator on a grid.
         """
         self.simulation = simulation
-        self.compute_weights()
+        self.update_weights()
 
-    def compute_weights(self):
+    def update_weights(self):
         """
         Computes the weights for the diffusion operator on a grid.
 
@@ -46,18 +46,37 @@ class GridDiffusionModel(DiffusionModelBase):
         """
         tissue = self.simulation.cardiac_tissue
         model = self.simulation.cardiac_model
+        return self.compute_weights(tissue, model.D_model)
+    
+    def compute_weights(self, tissue, D_model=1.0):
+        """
+        Computes the weights for the diffusion operator on a grid.
 
+        Parameters
+        ----------
+        tissue : CardiacTissue
+            The cardiac tissue for which to compute the diffusion weights.
+        D_model : float, optional
+            Model-specific diffusion coefficient. Default is 1.0.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            The stiffness matrix for the asymmetric stencil.
+        scipy.sparse.csr_matrix
+            The mass matrix for the asymmetric stencil.
+        """
         mesh = tissue.mesh.copy()
         mesh[mesh != 1] = 0 
 
         self.diffusion = self.compute_diffusion_tensor(
-            mesh, tissue.conductivity, tissue.fibers, tissue.D_al, tissue.D_ac, model.D_model
+            mesh, tissue.conductivity, tissue.fibers, tissue.D_al, tissue.D_ac, D_model
         )
         myo_indexes = tissue.tissue_indexes[tissue.myo_indexes]
-        self.connectivity_diffusion = self.convert_to_connectivity(self.diffusion, tissue.connectivity)
-        self.weights = self.stencil.compute_system_matrices(mesh, self.connectivity_diffusion,
-                                                            tissue.dr, myo_indexes,
-                                                            reindex=True)
+        self.connectivity_tensor = self.convert_to_connectivity(self.diffusion, tissue.connectivity)
+        self.weights = self.stencil.compute_system_matrices(
+            mesh, self.connectivity_tensor, tissue.dr, myo_indexes, reindex=True
+        )
         return self.weights
 
     def compute_diffusion_tensor(self, mesh, conductivity, fibers, D_al, D_ac, D_model):

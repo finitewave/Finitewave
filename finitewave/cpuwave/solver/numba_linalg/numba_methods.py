@@ -11,7 +11,36 @@ from .numba_linalg import (
     copyto_numba,)
 
 
-class NumbaEuler:
+class NumbaMethod:
+    def __init__(self):
+        pass
+
+    def wrap_matrix(self, crs_matrix, dtype, indexes=None):
+        """Converts a sparse matrix in CRS format to NumPy arrays.
+
+        Parameters
+        ----------
+        crs_matrix : scipy.sparse.csr_matrix
+            The input sparse matrix in CRS format.
+        dtype : np.dtype
+            The data type for the output arrays.
+        indexes : np.ndarray, optional
+            Array of indexes where the solution is defined.
+
+        Returns
+        -------
+        indptr : np.ndarray
+            The index pointer array of the CRS format.
+        indices : np.ndarray
+            The column indices of the non-zero elements in CRS format.
+        data : np.ndarray
+            The non-zero values of the matrix in CRS format.
+        """
+        data = crs_matrix.data.astype(dtype)
+        return crs_matrix.indptr, crs_matrix.indices, data
+
+
+class NumbaEuler(NumbaMethod):
     def __init__(self):
         pass
 
@@ -51,7 +80,7 @@ class NumbaEuler:
         return matvec_p_ay_numba(indptr, indices, data, u_old, rhs, dt, indexes, u)
 
 
-class NumbaCG():
+class NumbaCG(NumbaMethod):
     def __init__(self):
         pass
 

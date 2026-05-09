@@ -1,7 +1,53 @@
 import mlx.core as mx
+import numpy as np
 
 
-class MlxEuler:
+class MlxMethod:
+    def __init__(self):
+        pass
+
+    def wrap_matrix(self, csr_matrix, dtype, indexes=None):
+        """Converts a sparse matrix in CSR format to ELLPACK format.
+
+        Parameters
+        ----------
+        csr_matrix : scipy.sparse.csr_matrix
+            The input sparse matrix in CSR format.
+        dtype : np.dtype
+            The data type for the ELLPACK format arrays.
+        indexes : 1D array of int, optional
+            Array of indexes where the solution is defined.
+
+        Returns
+        -------
+        indices : mx.ndarray
+            The column indices of the non-zero elements in ELLPACK format.
+        data : mx.ndarray
+            The non-zero values of the matrix in ELLPACK format.
+        """
+        row_lengths = np.diff(csr_matrix.indptr)
+        n_cols = np.max(row_lengths)
+        n_rows = csr_matrix.shape[0]
+
+        ellpack_indices = np.repeat(np.arange(n_rows), n_cols).reshape(n_rows, n_cols)
+        ellpack_data = np.zeros((n_rows, n_cols), dtype=np.float32)
+
+        inds = np.repeat([np.arange(n_cols)], n_rows, axis=0)
+        mask = inds < row_lengths[:, None]
+        ellpack_indices[mask] = csr_matrix.indices
+        ellpack_data[mask] = csr_matrix.data.astype(np.float32)
+
+        ellpack_indices = mx.array(ellpack_indices, dtype=mx.int32)
+        ellpack_data = mx.array(ellpack_data, dtype=dtype)
+
+        if indexes is not None:
+            indexes = mx.array(indexes, dtype=mx.int32)
+            ellpack_indices = indexes[ellpack_indices]
+
+        return ellpack_indices, ellpack_data
+    
+
+class MlxEuler(MlxMethod):
     def __init__(self):
         pass
 
@@ -46,7 +92,7 @@ class MlxEuler:
         return u
 
 
-class MlxCG:
+class MlxCG(MlxMethod):
     def __init__(self):
         pass
 
@@ -155,6 +201,7 @@ class MlxCG:
             # Convergence check: Only sync with CPU every 10-20 iterations
             if i % 10 == 0:
                 mx.eval(r_norm)
+                mx.synchronize()
                 if mx.sqrt(r_norm) < atol:
                     break
             

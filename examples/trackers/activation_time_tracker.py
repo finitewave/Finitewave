@@ -7,7 +7,7 @@ import finitewave as fw
 
 # number of nodes on the side
 n = 200
-tissue = fw.CardiacTissueGrid([n, n], dr=0.3)
+tissue = fw.CardiacTissue([n, n], dr=0.3)
 
 model = fw.MitchellSchaeffer()
 

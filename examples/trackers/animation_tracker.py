@@ -6,7 +6,7 @@ import numpy as np
 
 # create a tissue of size 400x400 with cardiomycytes:
 n = 200
-tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+tissue = fw.CardiacTissue([n, n], dr=0.25)
 tissue.mesh[90:110, 90:110] = 0
 
 # induce spiral wave:

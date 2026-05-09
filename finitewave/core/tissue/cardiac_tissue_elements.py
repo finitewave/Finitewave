@@ -33,7 +33,7 @@ class CardiacTissueElements(CardiacTissueBase):
     """
     def __init__(self, coords, elems, elem_type):
         """
-        Initializes the CardiacTissueElements instance.
+        Initializes the CardiacTissue on a finite element mesh.
 
         Parameters
         ----------
@@ -117,4 +117,4 @@ class CardiacTissueElements(CardiacTissueBase):
     
     def clean(self):
         self.mesh_elems[self.mesh_elems == 2] = 1
-        super().clean()
+        self.mesh[self.mesh == 2] = 1
