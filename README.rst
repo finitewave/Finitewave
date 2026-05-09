@@ -29,7 +29,7 @@ related fields.
           :width: 200px
           :alt: Image 1
      - .. image:: images/slab_with_fibers.png
-          :width: 200px
+          :width: 260px
           :alt: Image 2
      - .. image:: images/spiral_wave_lv.gif
           :width: 200px
@@ -38,7 +38,7 @@ related fields.
           :width: 200px
           :alt: Image 4
      - .. image:: images/tetrahedral_slab.png
-          :width: 200px
+          :width: 260px
           :alt: Image 5
      - .. image:: images/atrium.gif
           :width: 200px
