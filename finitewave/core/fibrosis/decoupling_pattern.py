@@ -39,6 +39,19 @@ class DecouplingPattern:
             specified as a list of tuples (min, max) for each dimension.
             If None and density is provided, the random decoupling will be
             applied across the entire tissue.
+
+        Example
+        -------
+        Remove connections along a line:
+        >>> import finitewave as fw
+        >>> tissue = fw.CardiacTissue([100, 100], dr=0.25)
+        >>> line_coords = np.array([[50, y] for y in range(25, 75)])
+        >>> pattern = fw.DecouplingPattern(coords=line_coords, axis=0)
+        >>> tissue.add_pattern(pattern)
+        
+        Randomly remove connections with a density of 0.1 in a specific region:
+        >>> pattern = fw.DecouplingPattern(density=0.1, region=[[25, 75], [25, 75]])
+        >>> tissue.add_pattern(pattern)
         """
         self.coords = coords
         self.axis = axis

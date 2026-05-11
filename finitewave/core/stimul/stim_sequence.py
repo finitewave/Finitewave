@@ -55,6 +55,7 @@ class StimSequence:
             The ``Stim`` object to be added to the sequence.
         """
         self.sequence.append(stim)
+        return self
 
     def remove_stim(self):
         """
