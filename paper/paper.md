@@ -70,7 +70,7 @@ Despite being a relatively new open-source project, Finitewave has already been 
 
 # Usage example
 
-To demonstrate the usage of Finitewave, we consider the initiation of a spiral wave - a well-known model representation of cardiac arrhythmia in cardiac tissue (Figure~\ref{fig:spiral_wave}). For the electrophysiological model, we use the built-in Aliev-Panfilov model [@AP_1996], which captures the basic properties of cardiac tissue as an excitable medium.
+To demonstrate the usage of Finitewave, we consider the initiation of a spiral wave---a well-known model representation of cardiac arrhythmia in cardiac tissue (Figure \ref{fig:spiral_wave}). For the electrophysiological model, we use the built-in Aliev-Panfilov model [@AP_1996], which captures the basic properties of cardiac tissue as an excitable medium.
 
 Importing the finitewave package gives access to the framework’s API:
 
@@ -118,7 +118,7 @@ aliev_panfilov.stim_sequence = stim_sequence
 aliev_panfilov.run()
 ```
 
-Once the simulation is complete, we visualize the final voltage distribution using matplotlib (\autoref{fig:spiral_wave}):
+Once the simulation is complete, we visualize the final voltage distribution using Matplotlib (\autoref{fig:spiral_wave}):
 
 ```
 plt.imshow(aliev_panfilov.u, cmap='Spectral_r')
@@ -126,7 +126,7 @@ plt.axis('off')
 plt.show()
 ```
 
-This example illustrates the minimalist and accessible design of Finitewave, which enables users to run complete simulations with just a few lines of Python code - making it especially suitable for education, prototyping, and research workflows.
+This example illustrates the minimalist and accessible design of Finitewave, which enables users to run complete simulations with just a few lines of Python code---making it especially suitable for education, prototyping, and research workflows.
 
 Full code:
 
