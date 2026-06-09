@@ -9,10 +9,18 @@ class SimulationBackend:
         self.float_dtype = np.float64
         self.int_dtype = np.int64
         self.sparse_support = True
+        self.gpu_support = False
 
     def config(self, *args, **kwargs):
         """
-        Configures the backend with the specified number of threads.
+        Configures the backend with specific settings. 
+        This method should be overridden by subclasses to implement backend-specific configuration options.
+        """
+        pass
+
+    def device_info(self):
+        """
+        Returns information about the computational device being used.
         """
         pass
 
@@ -53,6 +61,7 @@ class NumbaBackend(SimulationBackend):
         self.float_dtype = np.float64
         self.int_dtype = np.int64
         self.sparse_support = True
+        self.gpu_support = False
 
     def config(self, num_of_threads, *args, **kwargs):
         """
@@ -90,6 +99,24 @@ class MlxBackend(SimulationBackend):
         self.float_dtype = mx.float32  # MLX performs better with float32
         self.int_dtype = mx.int32
         self.sparse_support = False    # MLX does not support sparse matrices
+        self.gpu_support = True
+
+    def config(self, device="gpu", *args, **kwargs):
+        """
+        Configures the MLX backend to use the specified device.
+        """
+        import mlx.core as mx
+
+        if device == "gpu":
+            mx.set_default_device(mx.gpu)
+        elif device == "cpu":
+            mx.set_default_device(mx.cpu)
+        else:
+            raise ValueError("MLX device must be 'cpu' or 'gpu'.")
+
+    def device_info(self):
+        import mlx.core as mx
+        return mx.default_device()
 
     @property
     def float_dtype(self):
@@ -132,6 +159,26 @@ class JaxBackend(SimulationBackend):
         self.float_dtype = jnp.float32 # JAX performs better with float32
         self.int_dtype = jnp.int32
         self.sparse_support = False    # JAX does not support sparse matrices
+        self.gpu_support = True
+
+    def config(self, device="gpu", *args, **kwargs):
+        """
+        Configures the JAX backend to use the specified device.
+        Important: JAX device configuration must be done at the very beginning of the program, 
+        before any JAX array is created.
+        """
+        import jax
+
+        if device == "cpu":
+            jax.config.update("jax_platform_name", "cpu")
+        elif device == "gpu":
+            jax.config.update("jax_platform_name", "gpu")
+        else:
+            raise ValueError("JAX device must be 'cpu' or 'gpu'.")
+
+    def device_info(self):
+        import jax
+        return jax.devices()
 
     @property
     def float_dtype(self):
