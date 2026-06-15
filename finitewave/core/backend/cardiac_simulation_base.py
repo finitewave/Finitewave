@@ -3,7 +3,7 @@ from typing import Literal
 import numpy as np
 
 
-class CardiacSimulationBase:
+class Simulation:
     """
     Base class for electrophysiological models.
 
@@ -46,7 +46,7 @@ class CardiacSimulationBase:
             self,
             dt : float | None = None,
             t_max : float | None = None,
-            backend : Literal["numba", "mlx", "jax"] = "numba"):
+            backend : str | None = None):
         """
         Initializes the CardiacSimulation instance.
         
@@ -56,8 +56,8 @@ class CardiacSimulationBase:
             Time step for the simulation. If None, it must be set before running.
         t_max : float, optional
             Maximum time for the simulation (model units). If None, it must be set before running.
-        backend : Literal["numba", "mlx", "jax"], optional
-            The computational backend to use for the simulation. Default is "numba".
+        backend : str, optional
+            The computational backend to use for the simulation.
         """
 
         self.meta = {}
@@ -84,27 +84,15 @@ class CardiacSimulationBase:
 
         Parameters
         ----------
-        backend_name : Literal["numba", "mlx", "jax"]
-            The name of the backend to use. Supported values are "numba", "mlx", and "jax".
+        backend_name : str
+            The name of the backend to use.
 
         Raises
         ------
         ValueError
             If an unsupported backend name is provided.
         """
-        if backend_name == "numba":
-            from .simulation_backend import NumbaBackend
-            return NumbaBackend()
-        
-        if backend_name == "mlx":
-            from .simulation_backend import MlxBackend
-            return MlxBackend()
-        
-        if backend_name == "jax":
-            from .simulation_backend import JaxBackend
-            return JaxBackend()
-        
-        raise ValueError(f"Unsupported backend: {backend_name}")
+        return None
 
     def initialize(self):
         """

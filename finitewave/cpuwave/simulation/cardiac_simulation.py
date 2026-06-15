@@ -1,8 +1,10 @@
+from typing import Literal
+
 from tqdm import tqdm
 import numpy as np
 
-from finitewave.core.simulation.cardiac_simulation_base import (
-    CardiacSimulationBase
+from finitewave.core.backend.cardiac_simulation_base import (
+    Simulation
 )
 
 from finitewave.cpuwave.solver.forward_euler_solver import ForwardEulerSolver
@@ -11,7 +13,15 @@ from finitewave.cpuwave.diffusion.diffusion_model import DiffusionModel
 from finitewave.cpuwave.diffusion.diffusion_model_elements import DiffusionModelElements
 
 
-class CardiacSimulation(CardiacSimulationBase):
+class CardiacSimulation(Simulation):
+    
+    def __init__(
+        self,
+        dt : float | None = None,
+        t_max : float | None = None,
+        backend : Literal["numba", "mlx", "jax"] = "numba"):
+        super().__init__(dt=dt, t_max=t_max, backend=backend)
+
     def initialize(self):
 
         if self.solver is None:
@@ -21,6 +31,34 @@ class CardiacSimulation(CardiacSimulationBase):
             self.diffusion_model = self.default_diffusion_model()
 
         super().initialize()
+
+    def select_backend(self, backend_name):
+        """
+        Selects the computational backend for the simulation.
+
+        Parameters
+        ----------
+        backend_name : Literal["numba", "mlx", "jax"]
+            The name of the backend to use. Supported values are "numba", "mlx", and "jax".
+
+        Raises
+        ------
+        ValueError
+            If an unsupported backend name is provided.
+        """
+        if backend_name == "numba":
+            from finitewave.backends.numba_backend import NumbaBackend
+            return NumbaBackend()
+        
+        if backend_name == "mlx":
+            from finitewave.backends.mlx_backend import MlxBackend
+            return MlxBackend()
+        
+        if backend_name == "jax":
+            from finitewave.backends.jax_backend import JaxBackend
+            return JaxBackend()
+        
+        raise ValueError(f"Unsupported backend: {backend_name}")
 
     def run(self, initialize=True, num_of_threads=None, prog_bar=True):
         """
