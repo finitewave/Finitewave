@@ -3,7 +3,7 @@ from typing import Literal
 from tqdm import tqdm
 import numpy as np
 
-from finitewave.core.backend.cardiac_simulation_base import (
+from finitewave.core.simulation import (
     Simulation
 )
 
