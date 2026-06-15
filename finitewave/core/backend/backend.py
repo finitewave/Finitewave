@@ -1,7 +1,7 @@
 import warnings
 
 
-class SimulationBackend:
+class Backend:
     def __init__(self):
         import numpy as np
         self.name = "numpy"

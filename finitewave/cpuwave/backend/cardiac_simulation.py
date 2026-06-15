@@ -36,7 +36,7 @@ class CardiacSimulation(CardiacSimulationBase):
         if initialize:
             self.initialize()
 
-        self.backend.config(num_of_threads)
+        self.backend.config(num_of_threads=num_of_threads)
 
         if self.t_max < self.t:
             raise ValueError("t_max must be greater than current t.")
