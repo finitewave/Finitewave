@@ -2,8 +2,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from finitewave.core.backend.linalg.backend_linalg import BackendLinalg
 
-class JaxMethod:
+
+class JaxLinalg(BackendLinalg):
     def __init__(self):
         pass
 
@@ -47,18 +49,13 @@ class JaxMethod:
 
         return ellpack_indices, ellpack_data
 
-
-class JaxEuler(JaxMethod):
-    def __init__(self):
-        pass
-
     @staticmethod
     def evaluate(u, step):
         return u
     
     @staticmethod
     @jax.jit
-    def solve(indices, data, u_old, rhs, dt, indexes, u):
+    def explicit_step(indices, data, u_old, rhs, dt, indexes, u):
         """
         Performs the Forward Euler step:
         u_new = A @ u_old + dt * rhs
@@ -90,12 +87,7 @@ class JaxEuler(JaxMethod):
         u = u_old.at[indexes].set(jnp.sum(data * u_old[indices], axis=1) + 
                                   dt * rhs[indexes])
         return u
-    
 
-class JaxCG(JaxMethod):
-    def __init__(self):
-        pass
-    
     @staticmethod
     @jax.jit
     def axmy(a, x, y, indexes, out):
@@ -158,7 +150,7 @@ class JaxCG(JaxMethod):
 
     @staticmethod
     @jax.jit
-    def solve(indices, data, b, x0, indexes, atol=1e-8, maxiter=100):
+    def cg_solve(indices, data, b, x0, indexes, atol=1e-8, maxiter=100):
         """
         Conjugate Gradient solver for Ax = b where A is represented in ELLPACK format.
         

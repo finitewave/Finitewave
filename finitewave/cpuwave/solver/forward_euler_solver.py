@@ -53,17 +53,17 @@ class ForwardEulerSolver(SolverBase):
 
     def select_method(self, backend):
         if backend.name == "numba":
-            from .numba_linalg.numba_methods import NumbaEuler
+            from ...backends.linalg.numba_methods import NumbaEuler
             self.linalg_method = NumbaEuler()
             return
 
         if backend.name == "mlx":
-            from .mlx_linalg.mlx_methods import MlxEuler
+            from ...backends.linalg.mlx_linalg import MlxEuler
             self.linalg_method = MlxEuler()
             return
         
         if backend.name == "jax":
-            from .jax_linalg.jax_methods import JaxEuler
+            from ...backends.linalg.jax_linalg import JaxEuler
             self.linalg_method = JaxEuler()
             return
 
@@ -106,8 +106,8 @@ class ForwardEulerSolver(SolverBase):
 
         self.u_old, self.u = self.u, self.u_old
         
-        self.u = self.linalg_method.solve(*self.a_lhs_matrix, self.u_old, self.rhs,
+        self.u = self.linalg_method.explicit_step(*self.a_lhs_matrix, self.u_old, self.rhs,
                                           self.simulation.dt, self.myo_indexes, self.u)
-        self.u = self.linalg_method.evaluate(self.u, self.simulation.step)
+        self.u = self.linalg_method.evaluate(self.u, self.simulation.step) # mlx-specific evaluation step, hide it there?
         self.simulation.cardiac_model.u = self.u
         self.num_iterations.append(1)

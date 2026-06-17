@@ -62,17 +62,17 @@ class CrankNicolsonSolver(SolverBase):
 
     def select_method(self, backend):
         if backend.name == "numba":
-            from .numba_linalg.numba_methods import NumbaCG
+            from ...backends.linalg.numba_methods import NumbaCG
             self.linalg_method = NumbaCG()
             return
 
         if backend.name == "mlx":
-            from .mlx_linalg.mlx_methods import MlxCG
+            from ...backends.linalg.mlx_linalg import MlxCG
             self.linalg_method = MlxCG()
             return
         
         if backend.name == "jax":
-            from .jax_linalg.jax_methods import JaxCG
+            from ...backends.linalg.jax_linalg import JaxCG
             self.linalg_method = JaxCG()
             return
 
