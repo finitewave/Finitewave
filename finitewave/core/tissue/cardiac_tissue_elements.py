@@ -1,6 +1,6 @@
 import numpy as np
 from .cardiac_tissue_base import CardiacTissueBase
-from finitewave.core.numerics.fem.elements.element_type import ElementType
+from finitewave.core.numerics.fem.elements.element_type import ElementShape, ElementOrder
 
 
 class CardiacTissueElements(CardiacTissueBase):
@@ -31,7 +31,7 @@ class CardiacTissueElements(CardiacTissueBase):
         Fibers orientation in the elements. If None, the isotropic stencil is
         used.
     """
-    def __init__(self, coords, elems, elem_type):
+    def __init__(self, coords, elems, elem_shape, elem_order=ElementOrder.LINEAR):
         """
         Initializes the CardiacTissue on a finite element mesh.
 
@@ -42,14 +42,30 @@ class CardiacTissueElements(CardiacTissueBase):
         elems : np.ndarray
             An (M, E) array of element connectivity, where M is the number of
             elements and E is the number of nodes per element.
-        elem_type : str
-            A string indicating the type of elements.
+        elem_shape : ElementShape
+            The shape of the elements.
+        elem_order : ElementOrder, optional
+            The order of the elements. Default is ElementOrder.LINEAR.
         """
         super().__init__()
-        if not ElementType.is_valid(elem_type):
-            raise ValueError(f"Invalid element type: {elem_type}.")
+        try:
+            shape = ElementShape(elem_shape)
+        except ValueError as e:
+            raise ValueError(
+                f"Unknown element shape '{elem_shape}'. "
+                f"Supported shapes: {[s.value for s in ElementShape]}"
+            ) from e
 
-        self.meta["shape"] = elem_type
+        try:
+            order = ElementOrder(elem_order)
+        except ValueError as e:
+            raise ValueError(
+                f"Unknown element order '{elem_order}'. "
+                f"Supported orders: {[o.value for o in ElementOrder]}"
+            ) from e
+
+        self.meta["shape"] = shape
+        self.meta["order"] = order
         self.meta["type"] = "Elements"
         self.meta["dim"] = coords.shape[1]
         self.coords = coords
@@ -114,6 +130,14 @@ class CardiacTissueElements(CardiacTissueBase):
             The flat indices of the ``mesh`` where value is greater than ``0``.
         """
         return np.arange(self.mesh.size)
+    
+    @property
+    def element_shape(self):
+        return self.meta["shape"]
+
+    @property
+    def element_order(self):
+        return self.meta["order"]
     
     def clean(self):
         self.mesh_elems[self.mesh_elems == 2] = 1

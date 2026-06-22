@@ -1,5 +1,5 @@
 import numpy as np
-from .stencil import Stencil
+from finitewave.core.numerics.fdm.stencil import Stencil
 
 
 class AsymmetricStencil(Stencil):

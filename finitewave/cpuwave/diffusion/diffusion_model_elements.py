@@ -1,11 +1,16 @@
 import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
 from finitewave.core.numerics.fem.element_assembler import ElementAssembler
-from finitewave.core.numerics.fem.elements.triangle_element import LinearTriangleElement
-from finitewave.core.numerics.fem.elements.quadrilateral_element import LinearQuadrilateralElement
-from finitewave.core.numerics.fem.elements.tetrahedral_element import LinearTetrahedralElement
-from finitewave.core.numerics.fem.elements.element_type import ElementType
+from finitewave.core.numerics.fem.elements.linear.linear_triangle_element import LinearTriangleElement
+from finitewave.core.numerics.fem.elements.linear.linear_quadrilateral_element import LinearQuadrilateralElement
+from finitewave.core.numerics.fem.elements.linear.linear_tetrahedral_element import LinearTetrahedralElement
+from finitewave.core.numerics.fem.elements.element_type import ElementShape, ElementOrder
 
+REFERENCE_ELEMENTS = {
+    (ElementShape.TRIANGLE, ElementOrder.LINEAR): LinearTriangleElement,
+    (ElementShape.QUAD, ElementOrder.LINEAR): LinearQuadrilateralElement,
+    (ElementShape.TETRA, ElementOrder.LINEAR): LinearTetrahedralElement,
+}
 
 class DiffusionModelElements(DiffusionModelBase):
     """
@@ -128,15 +133,15 @@ class DiffusionModelElements(DiffusionModelBase):
     def default_element(self):
         tissue = self.simulation.cardiac_tissue
 
-        if tissue.meta['shape'] == ElementType.TRIANGLE:
-            return LinearTriangleElement()
+        key = (tissue.element_shape, tissue.element_order)
 
-        if tissue.meta['shape'] == ElementType.QUAD:
-            return LinearQuadrilateralElement()
-
-        if tissue.meta['shape'] == ElementType.TETRA:
-            return LinearTetrahedralElement()
-
-        raise ValueError(f"Unknown element type: {tissue.meta['shape']}")
-
+        try:
+            return REFERENCE_ELEMENTS[key]()
+        except KeyError as e:
+            supported = [(s.value, o.value) for s, o in REFERENCE_ELEMENTS]
+            raise ValueError(
+                f"Unsupported reference element: "
+                f"shape={key[0].value}, order={key[1].value}. "
+                f"Supported elements: {supported}."
+            ) from e
 

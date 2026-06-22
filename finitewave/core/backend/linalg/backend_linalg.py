@@ -1,7 +1,11 @@
-class BackendLinalg:
+from abc import ABC, abstractmethod
+
+
+class BackendLinalg(ABC):
     def __init__(self):
         pass
 
+    @abstractmethod
     def wrap_matrix(self, csr_matrix, dtype, indexes=None):
         """Converts a sparse matrix in CSR format to the appropriate format for the backend.
 
@@ -62,6 +66,7 @@ class BackendLinalg:
         """        
         raise NotImplementedError("explicit_step must be implemented by subclasses.")
     
+    @abstractmethod
     def axmy(self, a, x, y, indexes, out):
         """Performs the operation out = a * x + y for the specified indexes.
 
@@ -84,6 +89,7 @@ class BackendLinalg:
         """
         raise NotImplementedError("axmy must be implemented by subclasses.")
     
+    @abstractmethod
     def axpy(self, a, x, y, indexes, out):
         """Performs the operation out = a * x + y for the specified indexes.
 
@@ -106,6 +112,7 @@ class BackendLinalg:
         """
         raise NotImplementedError("axpy must be implemented by subclasses.")
     
+    @abstractmethod
     def matvec(self, indices, data, x, indexes, out):
         """Performs the matrix-vector multiplication out = A @ x where A is represented in a backend-specific format.
 

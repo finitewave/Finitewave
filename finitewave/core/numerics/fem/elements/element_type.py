@@ -1,17 +1,20 @@
+from enum import Enum
 
 
-class ElementType:
-    """
-    Enumeration of element types for finite element meshes.
-    """
+class ElementShape(str, Enum):
     TRIANGLE = "Triangle"
     QUAD = "Quadrilateral"
-    TETRA = "Tetrahedra"
+    TETRA = "Tetrahedron"
 
-    values = [TRIANGLE, QUAD, TETRA]
-    surface = [TRIANGLE, QUAD]
-    volume = [TETRA]
+class ElementOrder(str, Enum):
+    LINEAR = "Linear"
+    # QUADRATIC = "Quadratic"
 
-    @staticmethod
-    def is_valid(name):
-        return name in ElementType.values
+
+SURFACE_ELEMENTS = {
+    ElementShape.TRIANGLE, 
+    ElementShape.QUAD
+}
+VOLUME_ELEMENTS = {
+    ElementShape.TETRA
+}

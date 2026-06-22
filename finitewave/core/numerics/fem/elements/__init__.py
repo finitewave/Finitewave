@@ -1,4 +1,4 @@
-from .quadrilateral_element import LinearQuadrilateralElement
-from .tetrahedral_element import LinearTetrahedralElement
-from .triangle_element import LinearTriangleElement
+from .linear.linear_quadrilateral_element import LinearQuadrilateralElement
+from .linear.linear_tetrahedral_element import LinearTetrahedralElement
+from .linear.linear_triangle_element import LinearTriangleElement
 from .element_type import ElementType

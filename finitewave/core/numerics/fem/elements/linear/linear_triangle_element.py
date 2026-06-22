@@ -1,7 +1,9 @@
 import numpy as np
+from finitewave.core.numerics.fem.elements.reference_element import ReferenceElement
+from finitewave.core.numerics.fem.elements.element_type import ElementShape, ElementOrder
 
 
-class LinearTriangleElement:
+class LinearTriangleElement(ReferenceElement):
     """Class representing a linear triangular finite element.
 
     ``N1 = 1 - xi - eta``
@@ -23,12 +25,20 @@ class LinearTriangleElement:
     """
 
     def __init__(self):
+        super().__init__()
+        self.shape = ElementShape.TRIANGLE
+        self.order = ElementOrder.LINEAR
         self.mass_coef = 12.
-        self.elem_mass = (1 / self.mass_coef) * np.array([[2, 1, 1],
-                                                          [1, 2, 1],
-                                                          [1, 1, 2]])
-
+        
+        self.elem_mass =  (1 / self.mass_coef) * np.array([[2, 1, 1],
+                                                           [1, 2, 1],
+                                                           [1, 1, 2]])
+        
         self.dN = np.array([[-1.0, 1.0, 0.0],
                             [-1.0, 0.0, 1.0]])
+        
         self.quad_weights = np.array([1/2])
+        
         self.n_points = 3
+
+
