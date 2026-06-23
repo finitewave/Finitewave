@@ -1,9 +1,9 @@
 import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
-from finitewave.core.numerics.fem.element_assembler import ElementAssembler
-from finitewave.core.numerics.fem.elements.linear.linear_triangle_element import LinearTriangleElement
-from finitewave.core.numerics.fem.elements.linear.linear_quadrilateral_element import LinearQuadrilateralElement
-from finitewave.core.numerics.fem.elements.linear.linear_tetrahedral_element import LinearTetrahedralElement
+from finitewave.numerics.fem.element_assembler import ElementAssembler
+from finitewave.numerics.fem.linear.linear_triangle_element import LinearTriangleElement
+from finitewave.numerics.fem.linear.linear_quadrilateral_element import LinearQuadrilateralElement
+from finitewave.numerics.fem.linear.linear_tetrahedral_element import LinearTetrahedralElement
 from finitewave.core.numerics.fem.elements.element_type import ElementShape, ElementOrder
 
 REFERENCE_ELEMENTS = {
