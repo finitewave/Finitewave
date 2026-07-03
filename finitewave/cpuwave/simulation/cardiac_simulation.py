@@ -7,10 +7,10 @@ from finitewave.core.simulation.simulation import (
     Simulation
 )
 
-from finitewave.cpuwave.solver.forward_euler_solver import ForwardEulerSolver
-from finitewave.cpuwave.solver.crank_nicolson_solver import CrankNicolsonSolver
-from finitewave.cpuwave.diffusion.diffusion_model import DiffusionModel
-from finitewave.cpuwave.diffusion.diffusion_model_elements import DiffusionModelElements
+from finitewave.numerics.solver.forward_euler_solver import ForwardEulerSolver
+from finitewave.numerics.solver.crank_nicolson_solver import CrankNicolsonSolver
+from finitewave.numerics.fdm.diffusion_model import DiffusionModel
+from finitewave.numerics.fem.diffusion_model_elements import DiffusionModelElements
 
 
 class CardiacSimulation(Simulation):
@@ -47,15 +47,15 @@ class CardiacSimulation(Simulation):
             If an unsupported backend name is provided.
         """
         if backend_name == "numba":
-            from finitewave.backends.numba_backend import NumbaBackend
+            from finitewave.numerics.backends.numba_backend import NumbaBackend
             return NumbaBackend()
         
         if backend_name == "mlx":
-            from finitewave.backends.mlx_backend import MlxBackend
+            from finitewave.numerics.backends.mlx_backend import MlxBackend
             return MlxBackend()
         
         if backend_name == "jax":
-            from finitewave.backends.jax_backend import JaxBackend
+            from finitewave.numerics.backends.jax_backend import JaxBackend
             return JaxBackend()
         
         raise ValueError(f"Unsupported backend: {backend_name}")

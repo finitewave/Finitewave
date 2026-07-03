@@ -1,5 +1,5 @@
 import numpy as np
-from .cardiac_tissue_base import CardiacTissueBase
+from ...core.tissue.cardiac_tissue_base import CardiacTissueBase
 
 class CardiacTissue(CardiacTissueBase): # TODO: rename as CardiacTissueGrid and make CardiacTissue an alias for it
     """

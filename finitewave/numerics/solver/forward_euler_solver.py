@@ -53,17 +53,17 @@ class ForwardEulerSolver(SolverBase):
 
     def select_method(self, backend):
         if backend.name == "numba":
-            from ...backends.linalg.numba_methods import NumbaEuler
+            from ..backends.linalg import NumbaEuler
             self.linalg_method = NumbaEuler()
             return
 
         if backend.name == "mlx":
-            from ...backends.linalg.mlx_linalg import MlxEuler
+            from ..backends.linalg.mlx_linalg import MlxEuler
             self.linalg_method = MlxEuler()
             return
         
         if backend.name == "jax":
-            from ...backends.linalg.jax_linalg import JaxEuler
+            from ..backends.linalg.jax_linalg import JaxEuler
             self.linalg_method = JaxEuler()
             return
 
