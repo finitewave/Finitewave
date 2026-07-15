@@ -1,5 +1,5 @@
 from finitewave.core.stimul.stim_type.stim_current import StimCurrent
-from finitewave.core.stimul.stim_area.stim_matrix import StimMatrix
+from finitewave.core.stimul.stim_area.matrix_area import MatrixArea
 
 
 class StimCurrentMatrix(StimCurrent):
@@ -37,4 +37,4 @@ class StimCurrentMatrix(StimCurrent):
             A 2D or 3D mask where the current stimulus is applied.
         """
         super().__init__(time, curr_value, duration)
-        self.stim_area = StimMatrix(matrix)
+        self.stim_area = MatrixArea(matrix)

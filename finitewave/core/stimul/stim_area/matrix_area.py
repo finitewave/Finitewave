@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class StimMatrix:
+class MatrixArea:
     """
     A class that applies a stimulus to a cardiac model based on a specified
     matrix.

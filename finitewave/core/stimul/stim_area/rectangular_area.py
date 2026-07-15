@@ -1,9 +1,9 @@
 import numpy as np
 
 
-class StimCoord:
+class RectangularArea:
     """
-    Spatial stimulation based on coordinates.
+    Spatial stimulation based on rectangular area.
 
     Attributes:
     ------------

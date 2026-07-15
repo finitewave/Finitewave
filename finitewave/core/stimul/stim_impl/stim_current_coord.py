@@ -1,8 +1,8 @@
-from finitewave.core.stimul.stim_area.stim_coord import StimCoord
+from finitewave.core.stimul.stim_area.rectangular_area import RectangularArea
 from finitewave.core.stimul.stim_type.stim_current import StimCurrent
 
 
-class StimCurrentCoord(StimCurrent):
+class StimCurrentRect(StimCurrent):
     """
     A class that applies a current stimulus to a 2D or 3D cardiac tissue model
     within a specified region of interest.
@@ -58,4 +58,4 @@ class StimCurrentCoord(StimCurrent):
             The ending z-coordinate of the region of interest.
         """
         super().__init__(time, curr_value, duration)
-        self.stim_area = StimCoord(x_min, x_max, y_min, y_max, z_min, z_max)
+        self.stim_area = RectangularArea(x_min, x_max, y_min, y_max, z_min, z_max)

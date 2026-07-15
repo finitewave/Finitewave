@@ -2,14 +2,14 @@ import numpy as np
 from scipy import spatial
 
 
-class StimElectrodes:
+class CoordsArea:
     """
-    A class that applies a stimulus to specific electrodes in a cardiac model.
+    A class that applies a stimulus to specific coordinates in a cardiac model.
 
     Attributes
     ----------
     coords : numpy.ndarray
-        The coordinates of the electrodes where the stimulus is applied.
+        The coordinates of the locations where the stimulus is applied.
     size : float
         The radius around each coordinate to include in the stimulation.
     stim_indexes : numpy.ndarray

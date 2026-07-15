@@ -1,6 +1,6 @@
 
 from finitewave.core.stimul.stim_type.stim_voltage import StimVoltage
-from finitewave.core.stimul.stim_area.stim_coord import StimCoord
+from finitewave.core.stimul.stim_area.rectangular_area import RectangularArea
 
 
 class StimVoltageCoord(StimVoltage):
@@ -55,4 +55,4 @@ class StimVoltageCoord(StimVoltage):
             The ending z-coordinate of the region of interest.
         """
         super().__init__(time, volt_value)
-        self.stim_area = StimCoord(x_min, x_max, y_min, y_max, z_min, z_max)
+        self.stim_area = RectangularArea(x_min, x_max, y_min, y_max, z_min, z_max)

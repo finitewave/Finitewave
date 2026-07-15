@@ -1,5 +1,5 @@
 import numpy as np
-from finitewave.core.stimul.stim_area.stim_electrodes import StimElectrodes
+from finitewave.core.stimul.stim_area.coords_area import CoordsArea
 from finitewave.core.stimul.stim_type.stim_current import StimCurrent
 
 
@@ -42,4 +42,4 @@ class StimCurrentElectrodes(StimCurrent):
             The radius around each coordinate to include in the stimulation.
         """
         super().__init__(time, curr_value, duration)
-        self.stim_area = StimElectrodes(coords, size)
+        self.stim_area = CoordsArea(coords, size)

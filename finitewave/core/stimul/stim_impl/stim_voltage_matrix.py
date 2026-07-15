@@ -1,6 +1,6 @@
 
 from finitewave.core.stimul.stim_type.stim_voltage import StimVoltage
-from finitewave.core.stimul.stim_area.stim_matrix import StimMatrix
+from finitewave.core.stimul.stim_area.matrix_area import MatrixArea
 
 
 class StimVoltageMatrix(StimVoltage):
@@ -23,4 +23,4 @@ class StimVoltageMatrix(StimVoltage):
             values greater than 0.
         """
         super().__init__(time, volt_value)
-        self.stim_area = StimMatrix(matrix)
+        self.stim_area = MatrixArea(matrix)

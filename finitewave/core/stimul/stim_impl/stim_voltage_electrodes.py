@@ -1,6 +1,6 @@
 
 from finitewave.core.stimul.stim_type.stim_voltage import StimVoltage
-from finitewave.core.stimul.stim_area.stim_electrodes import StimElectrodes
+from finitewave.core.stimul.stim_area.coords_area import CoordsArea
 
 
 class StimVoltageElectrodes(StimVoltage):
@@ -24,4 +24,4 @@ class StimVoltageElectrodes(StimVoltage):
     """
     def __init__(self, time, volt_value, coords, size):
         super().__init__(time, volt_value)
-        self.stim_area = StimElectrodes(coords, size)
+        self.stim_area = CoordsArea(coords, size)
