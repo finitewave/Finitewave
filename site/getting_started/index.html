@@ -1,0 +1,1429 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../installation/">
+      
+      
+        <link rel="next" href="../tutorials/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Getting Started - Finitewave</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#getting-started" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Finitewave" class="md-header__button md-logo" aria-label="Finitewave" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Finitewave
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Getting Started
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Finitewave" class="md-nav__button md-logo" aria-label="Finitewave" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Finitewave
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cardiac-tissue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cardiac Tissue
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cardiac Tissue">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mesh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cardiac-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cardiac Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cardiac Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available models
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stimulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stimulations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stimulations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stimulation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stimulation Sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trackers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trackers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracker-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracker Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple Trackers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-the-simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-commonly-used-tissue-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other commonly used tissue properties
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Other commonly used tissue properties">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#conductivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conductivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fibers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fibers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cardiac_tissue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cardiac Tissue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cardiac_models.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cardiac Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/simulation.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/state_keepers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Keepers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/trackers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/solvers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Solvers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/stimulus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stimulus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/observers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cardiac-tissue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cardiac Tissue
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cardiac Tissue">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mesh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cardiac-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cardiac Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cardiac Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available models
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stimulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stimulations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stimulations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stimulation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stimulation Sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trackers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trackers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracker-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracker Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple Trackers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-the-simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-commonly-used-tissue-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other commonly used tissue properties
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Other commonly used tissue properties">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#conductivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conductivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fibers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fibers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="getting-started">Getting Started</h1>
+<h2 id="quick-start">Quick Start</h2>
+<p>This quick start guide will walk you through the basic steps of setting up a simple cardiac simulation using Finitewave. What we will do:</p>
+<ol>
+<li>Create a 2D cardiac tissue.</li>
+<li>Set up an electrophysiological model. </li>
+<li>Apply stimulation.</li>
+<li>Run the simulation.</li>
+<li>Visualize activation time.</li>
+</ol>
+<p>Here is the code for this pipeline:</p>
+<pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+import finitewave as fw
+
+# set up the tissue:
+n = 100
+tissue = fw.CardiacTissue([n, n])
+
+# set up the stimulation:
+stim_sequence = fw.StimSequence()
+stim_sequence.add_stim(
+    fw.StimVoltageCoord(
+        time=0,
+        volt_value=1,
+        x1=1, x2=n-1, y1=1, y2=3
+    )
+)
+
+# set up the tracker:
+act_time_tracker = fw.ActivationTimeTracker()
+act_time_tracker.threshold = 0.5
+act_time_tracker.step = 100
+
+tracker_sequence = fw.TrackerSequence()
+tracker_sequence.add_tracker(act_time_tracker)
+
+# set up the model
+aliev_panfilov = fw.AlievPanfilov()
+aliev_panfilov.dt = 0.01
+aliev_panfilov.dr = 0.25
+aliev_panfilov.t_max = 10
+
+# set up pipeline
+aliev_panfilov.cardiac_tissue = tissue
+aliev_panfilov.stim_sequence = stim_sequence
+aliev_panfilov.tracker_sequence = tracker_sequence
+
+# run model
+aliev_panfilov.run()
+
+# show output
+fig, axs = plt.subplots(ncols=2)
+axs[0].imshow(aliev_panfilov.u, cmap='coolwarm')
+axs[0].set_title(&quot;u&quot;)
+
+axs[1].imshow(act_time_tracker.output, cmap='viridis')
+axs[1].set_title(&quot;Activation time&quot;)
+
+fig.suptitle(&quot;Aliev-Panfilov 2D isotropic&quot;)
+plt.tight_layout()
+plt.show()
+</code></pre>
+<p><img alt="Alt text" src="images/quick_start_output.png" /></p>
+<p>Now, let's move on to the details. </p>
+<h2 id="cardiac-tissue">Cardiac Tissue</h2>
+<p>The <code>CardiacTissue</code> class is used to represent myocardial tissue and its structural properties in simulations. It includes several key attributes that define the characteristics and behavior of the cardiac mesh used in finite-difference calculations.</p>
+<p>First, import the necessary libraries:</p>
+<pre><code class="language-python">import finitewave as fw
+import numpy as np
+import matplotlib.pyplot as plt
+</code></pre>
+<p>Initialize a 100x100 mesh with all nodes set to 1 (healthy cardiac tissue). Add empty nodes (0) at the mesh edges to simulate boundaries.</p>
+<pre><code class="language-python">n = 100
+tissue = fw.CardiacTissue([n, n])
+</code></pre>
+<h3 id="mesh">Mesh</h3>
+<p>The <code>mesh</code> attribute is a mesh consisting of nodes, which represent the myocardial medium. The distance between neighboring nodes is defined by the spatial step (<code>dr</code>) parameter of the model. The nodes in the mesh are used to represent different types of tissue and their properties:</p>
+<ul>
+<li><code>0</code>: Empty node, representing the absence of cardiac tissue.</li>
+<li><code>1</code>: Healthy cardiac tissue, which supports wave propagation.</li>
+<li><code>2</code>: Fibrotic or infarcted tissue, representing damaged or non-conductive areas.</li>
+</ul>
+<p>Nodes marked as <code>0</code> and <code>2</code> are treated similarly as isolated nodes with no flux through their boundaries. These different notations help distinguish between areas of healthy tissue, empty spaces, and regions of fibrosis or infarction.</p>
+<blockquote>
+<p><strong>Note</strong><br />
+To satisfy boundary conditions, every simulation mesh must include boundary nodes (marked as <code>0</code>). Finitewave does this automatically and you don't need to do anything unless you're going to set borders yourself.</p>
+</blockquote>
+<p>You can also utilize <code>0</code> nodes to define complex geometries and pathways, or to model organ-level structures. For example, to simulate the electrophysiological activity of the heart, you can create a 3D array where <code>1</code> represents cardiac tissue, and <code>0</code> represents everything outside of that geometry.</p>
+<hr />
+<h2 id="cardiac-models">Cardiac Models</h2>
+<p>Each model represents the cardiac electrophysiological activity of a single cell, which can be combined using parabolic equations to form complex 2D or 3D cardiac tissue models.</p>
+<pre><code class="language-python"># Set up Aliev-Panfilov model to perform simulations
+aliev_panfilov = fw.AlievPanfilov()
+aliev_panfilov.dt = 0.01                # time step
+aliev_panfilov.dr = 0.25                # space step
+aliev_panfilov.t_max = 10               # simulation time
+</code></pre>
+<p>We use an explicit finite-difference scheme, which requires maintaining an appropriate <code>dt/dr</code> ratio. For phenomenological models, the recommended calculation parameters for time and space steps are <code>dt = 0.01</code> and <code>dr = 0.25</code>. You can increase <code>dt</code> to <code>0.02</code> to speed up calculations, but always verify the stability of your numerical scheme, as instability will lead to incorrect simulation results.</p>
+<h3 id="available-models">Available models</h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aliev-Panfilov</td>
+<td>A phenomenological two-variable model.  <br> https://github.com/finitewave/Aliev-Panfilov-finitewave-model</td>
+</tr>
+<tr>
+<td>Barkley</td>
+<td>A simple reaction-diffusion model.  <br> https://github.com/finitewave/Barkley-finitewave-model</td>
+</tr>
+<tr>
+<td>Mitchell-Schaeffer</td>
+<td>A phenomenological two-variable model. <br> https://github.com/finitewave/Mitchell-Schaeffer-finitewave-model</td>
+</tr>
+<tr>
+<td>Fenton-Karma</td>
+<td>A phenomenological three-variables model. <br> https://github.com/finitewave/Fenton-Karma-finitewave-model</td>
+</tr>
+<tr>
+<td>Bueno-Orovio</td>
+<td>A minimalistic ventricular model. <br> https://github.com/finitewave/Bueno-Orovio-finitewave-model</td>
+</tr>
+<tr>
+<td>Luo-Rudy 1991</td>
+<td>An ionic ventricular guinea pig model. <br> https://github.com/finitewave/Luo-Rudy-91-finitewave-model</td>
+</tr>
+<tr>
+<td>ten Tusscher-Panfilov 2006</td>
+<td>An ionic ventricular human model. <br> https://github.com/finitewave/ten-Tusscher-Panfilov-2006-finitewave-model</td>
+</tr>
+<tr>
+<td>Courtemanche</td>
+<td>An ionic atrial human model. <br> https://github.com/finitewave/Courtemanche-finitewave-model</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="stimulations">Stimulations</h2>
+<p>To simulate the electrical activity of the heart, you need to apply a stimulus to the tissue. This can be done by setting the voltage or current at specific nodes in the mesh. <code>StimVoltage</code> class directly sets voltage values at nodes within the stimulation area.</p>
+<pre><code class="language-python">stim_voltage = fw.StimVoltageCoord(
+    time=0,
+    volt_value=1,
+    x1=1, x2=n-1, y1=1, y2=3
+)
+</code></pre>
+<blockquote>
+<p><strong>Note</strong><br />
+A very small stimulation area may lead to unsuccessful stimulation due to a source-sink mismatch.</p>
+</blockquote>
+<h3 id="stimulation-sequence">Stimulation Sequence</h3>
+<p>The <code>CardiacModel</code> class uses the <code>StimSequence</code> class to manage the stimulation sequence.</p>
+<pre><code class="language-python">stim_sequence = fw.StimSequence()
+
+for i in range(0, 100, 10):
+    stim_sequence.add_stim(
+        fw.StimVoltageCoord(
+            time=i,
+            volt_value=1,
+            x1=1, x2=n-1, y1=1, y2=3
+        )
+    )
+</code></pre>
+<p>This class also allows you to add multiple stimulations to the model, which can be useful for simulating complex stimulation protocols (e.g., a high-pacing protocol).</p>
+<pre><code class="language-python"># Example: make stimulus every 10-th time unit.
+for i in range(0, 100, 10):
+    stim_sequence.add_stim(
+        fw.StimVoltageCoord(
+            time=i,
+            volt_value=1,
+            x1=1, x2=n-1, y1=1, y2=3
+        )
+    )
+</code></pre>
+<hr />
+<h2 id="trackers">Trackers</h2>
+<p>Trackers are used to record the state of the model during the simulation. They can be used to monitor the wavefront propagation, visualize the activation times, or analyze the wavefront dynamics. Full details on how to use trackers can be found in the examples.</p>
+<pre><code class="language-python"># set up activation time tracker:
+act_time_tracker = fw.ActivationTimeTracker()
+act_time_tracker.threshold = 0.5
+act_time_tracker.step = 100  # calculate activation time every 100 steps
+</code></pre>
+<h3 id="tracker-parameters">Tracker Parameters</h3>
+<p>Trackers have several parameters that can be adjusted to customize their behavior:</p>
+<ul>
+<li><code>start_time</code>: The time at which the tracker starts recording data.</li>
+<li><code>end_time</code>: The time at which the tracker stops recording data.</li>
+<li><code>step</code>: The number of steps between each data recording.</li>
+</ul>
+<blockquote>
+<p><strong>Note</strong><br />
+The <code>step</code> parameter is used to control the <em>frequency</em> of data recording (should be <code>int</code>). But the <code>start_time</code> and <code>end_time</code> parameters are used to specify the <em>time</em> interval during which the tracker will record data.</p>
+</blockquote>
+<p>The <code>output</code> property of the tracker class returns the formatted data recorded during the simulation. This data can be used for further analysis or visualization.</p>
+<p>Each tracker has its own set of parameters that can be adjusted to customize its behavior. For example, the <code>ActivationTimeTracker</code> class has a <code>threshold</code> parameter that defines the activation threshold for the nodes. Check out the examples to see each tracker in action.</p>
+<h3 id="multiple-trackers">Multiple Trackers</h3>
+<p>The <code>CardiacModel</code> class uses the <code>TrackerSequence</code> class to manage the trackers. This class allows you to add multiple trackers to the model to monitor different aspects of the simulation. For example, you can track the activation time for all nodes, and the action potential for a specific node.</p>
+<pre><code class="language-python"># set up first activation time tracker:
+act_time_tracker = fw.ActivationTimeTracker()
+act_time_tracker.threshold = 0.5
+act_time_tracker.step = 100  # calculate activation time every 100 steps
+
+# set up action potential tracker for a specific node:
+action_pot_tracker = fw.ActionPotentialTracker()
+action_pot_tracker.cell_ind = [30, 30]
+
+tracker_sequence = fw.TrackerSequence()
+tracker_sequence.add_tracker(act_time_tracker)
+tracker_sequence.add_tracker(action_pot_tracker)
+</code></pre>
+<hr />
+<h2 id="building-pipeline">Building pipeline</h2>
+<p>Now that we have all the necessary components, we can build the simulation pipeline by setting the tissue, model, stimulations, and trackers.</p>
+<pre><code class="language-python">aliev_panfilov.cardiac_tissue = tissue
+aliev_panfilov.stim_sequence = stim_sequence
+aliev_panfilov.tracker_sequence = tracker_sequence
+</code></pre>
+<p>Finitewave contains other functionalities that can be used to customize the simulation pipeline, such as loading and saving model states or adding custom commands to the simulation loop. For more information, refer to the examples.</p>
+<h3 id="run-the-simulation">Run the simulation</h3>
+<p>Finally, we can run the simulation by calling the <code>run()</code> method of the <code>AlievPanfilov</code> model.</p>
+<pre><code class="language-python">aliev_panfilov.run()
+
+plt.imshow(aliev_panfilov.u, cmap='coolwarm')
+plt.show()
+</code></pre>
+<hr />
+<h2 id="other-commonly-used-tissue-properties">Other commonly used tissue properties</h2>
+<h3 id="conductivity">Conductivity</h3>
+<p>The conductivity attribute defines the local conductivity of the tissue and is represented as an array of coefficients ranging from <code>0.0</code> to <code>1.0</code> for each node in the mesh. It proportionally decreases the diffusion coefficient locally, thereby slowing down the wave propagation in specific areas defined by the user. This is useful for modeling heterogeneous tissue properties, such as regions of impaired conduction due to ischemia or fibrosis.</p>
+<pre><code class="language-python"># Example: set conductivity to 0.5 in the middle of the mesh
+tissue.conductivity = np.ones([n, n])
+tissue.conductivity[n//4: 3 * n//4, n//4: 3 * n//4] = 0.5
+</code></pre>
+<h3 id="fibers">Fibers</h3>
+<p>Another important attribute, <code>fibers</code>, is used to define the anisotropic properties of cardiac tissue. This attribute is represented as a 3D array (for 2D tissue) or a 4D array (for 3D tissue), with each node containing a 2D or 3D vector that specifies the fiber orientation at that specific position. The anisotropic properties of cardiac tissue mean that the wave propagation speed varies depending on the fiber orientation.</p>
+<pre><code class="language-python"># Fibers orientated along the x-axis
+tissue.fibers = np.zeros([n, n, 2])
+tissue.fibers[:, :, 0] = 1
+tissue.fibers[:, :, 1] = 0
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

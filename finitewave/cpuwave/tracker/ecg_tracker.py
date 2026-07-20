@@ -58,7 +58,7 @@ class ECGTracker(Tracker):
         super().initialize(simulation)
         self.simulation = simulation
         self.ecg_func = ecg_func(self.simulation.backend)
-        self._measure_coords = self.build_measure_coords(self.measure_coords)
+        self._measure_coords = self.build_measure_coords(self.lead_coords)
         self.ecg = []
 
         mesh_shape = self.simulation.cardiac_tissue.mesh.shape
@@ -142,16 +142,16 @@ def ecg_func(backend):
         def calc_ecg_numba(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
 
             n = coords.shape[0]
-            ecg = np.empty(n, dtype=tr_current.dtype)
+            ecg_ = np.empty(n, dtype=tr_current.dtype)
 
             for c in prange(n):
                 x, y, z = coords[c]
                 ds = (i - x) ** 2 + (j - y) ** 2 + (k - z) ** 2
                 ds = np.where(ds == 0, 1, ds)
                 d = np.sqrt(ds) ** distance_power
-                ecg[c] = np.sum(tr_current / (d * dr * dt)) / (4 * math.pi * cond)
+                ecg_[c] = np.sum(tr_current / (d * dr * dt)) / (4 * math.pi * cond)
 
-            return ecg
+            return ecg_
         
         return calc_ecg_numba
     
@@ -165,7 +165,7 @@ def ecg_func(backend):
                 x, y, z = coord
                 ds = jnp.maximum((i - x)**2 + (j - y)**2 + (k - z)**2, dr)
                 d = jnp.sqrt(ds) ** distance_power
-                result = jnp.sum(tr_current / (d * dt)) / (4 * jnp.pi * cond)
+                result = jnp.sum(tr_current / d) / (4 * jnp.pi * cond * dt)
                 return None, result
 
             # Scan loops on-device, keeping memory usage low
@@ -183,7 +183,7 @@ def ecg_func(backend):
             x, y, z = coord
             ds = mx.maximum((i - x)**2 + (j - y)**2 + (k - z)**2, dr)
             d = mx.sqrt(ds) ** distance_power
-            result = mx.sum(tr_current / (d * dt)) / (4 * math.pi * cond)
+            result = mx.sum(tr_current / d) / (4 * math.pi * cond * dt)
             return result
         
         vmap_ecg = mx.vmap(single_ecg, in_axes=(0, None, None, None, None, None, None, None))

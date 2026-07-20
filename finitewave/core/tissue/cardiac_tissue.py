@@ -91,6 +91,17 @@ class CardiacTissue(CardiacTissueBase):
         """
         mesh = self.mesh[self.mesh > 0]
         return np.flatnonzero(mesh == 1)
+    
+    @property
+    def fibro_indexes(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            The indices of the ``tissue_indexes`` where mesh value is ``2``.
+        """
+        mesh = self.mesh[self.mesh > 0]
+        return np.flatnonzero(mesh == 2)
 
     @property
     def tissue_indexes(self):

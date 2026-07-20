@@ -12,7 +12,7 @@ class PyVistaSurfaceGrid(pv.PolyData):
     indices : tuple of np.array
         Indices of the non-empty cells in the original mesh.
     """
-    def __init__(self, coords, elems):
+    def __init__(self, coords, elems, *args, **kwargs):
         """Build a PolyData from coords and elems.
 
         Parameters:
@@ -26,7 +26,7 @@ class PyVistaSurfaceGrid(pv.PolyData):
             coords = np.hstack([coords, np.zeros((coords.shape[0], 1))])
 
         faces = np.hstack([np.full((elems.shape[0], 1), elems.shape[1]), elems]).ravel()
-        super().__init__(coords, faces)
+        super().__init__(coords, faces, *args, **kwargs)
 
 
 class PyVistaTetraGrid(pv.UnstructuredGrid):
@@ -92,7 +92,16 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
     indices : tuple of np.array
         Indices of the non-empty cells in the original mesh.
     """
-    def __init__(self, mesh, dr=1, as_surface=False, threshold=0.5):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mesh = None
+        self.as_surface = False
+        self.threshold = 0.5
+        self.n_nonzero_cells = None
+    
+    @classmethod
+    def from_mesh(cls, mesh, dr=1, as_surface=False, threshold=0.5,
+                  dx=None, dy=None, dz=None):
         """Build a Unstructured Grid from 3D mesh where mesh > 0.
 
         Parameters:
@@ -100,38 +109,51 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
         mesh : np.array
             3D mesh with cardiomyocytes (elems = 1), empty space (elems = 0),
             and fibrosis (elems = 2).
-
+        dr : float, optional
+            Spacing in the mesh. Default is 1.
         as_surface : bool, optional
             If True, build a surface mesh. Default is False.
         threshold : float, optional
             Threshold value for the mesh. Default is 0.5.
+        dx : float, optional
+            Spacing in the x-direction. Default is None.
+        dy : float, optional
+            Spacing in the y-direction. Default is None.
+        dz : float, optional
+            Spacing in the z-direction. Default is None.
         """
-        self._mesh = mesh
-        self.as_surface = as_surface
-        self.threshold = threshold
 
         mesh = np.atleast_3d(mesh)
-        grid = self._build_grid(mesh, dr=dr)
-        self._mesh_size = grid.n_cells
-        grid = self._apply_threshold(grid, mesh, threshold)
+        grid = cls._build_grid(mesh, dr=dr, dx=dx, dy=dy, dz=dz)
+        grid = cls._apply_threshold(grid, mesh, threshold)
+        n_nonzero_cells = grid.n_cells
         
-        self._mesh_nonzero_size = grid.n_cells
-
         if as_surface:
             grid = grid.extract_surface(algorithm="geometry")
+ 
+        instance = cls(grid)
+        instance.mesh = mesh
+        instance.as_surface = as_surface
+        instance.threshold = threshold
+        instance.n_nonzero_cells = n_nonzero_cells
 
-        super().__init__(grid)
+        return instance
+    
+    @staticmethod
+    def _build_grid(mesh, dr=1, dx=None, dy=None, dz=None):
+        if dx is None or dy is None or dz is None:
+            dx = dy = dz = dr
 
-    def _build_grid(self, mesh, dr=1):
         grid = pv.ImageData()
         grid.dimensions = np.array(mesh.shape) + 1
-        grid.spacing = tuple([dr] * 3)
+        grid.spacing = (dx, dy, dz)
         grid.cell_data['mesh'] = mesh.astype(float).flatten(order='F')
         c_inds = np.arange(mesh.size).reshape(mesh.shape)
         grid.cell_data['mesh_inds'] = c_inds.flatten(order='F')
         return grid
     
-    def _apply_threshold(self, grid, mesh, threshold=0.5):
+    @staticmethod
+    def _apply_threshold(grid, mesh, threshold=0.5):
         grid = grid.threshold(threshold, scalars='mesh', invert=False)
         c_mesh_inds = - np.ones(mesh.shape, dtype=int)
         c_mesh_inds[mesh > threshold] = np.arange(grid.n_cells)
@@ -140,13 +162,18 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
         return grid
     
     def __setitem__(self, key, value):
+        if self.mesh is None or "nonzero_inds" not in self.cell_data:
+            super().__setitem__(key, value)
+            return
+
         value = np.asarray(value)
-        if value.shape[:3] == self._mesh.shape:
-            inds = np.unravel_index(self.cell_data['mesh_inds'], self._mesh.shape, order='C')
+
+        if value.shape[:3] == self.mesh.shape:
+            inds = np.unravel_index(self.cell_data['mesh_inds'], self.mesh.shape, order='C')
             self.cell_data[key] = value[*inds, ...]
-        elif value.shape[0] == self._mesh.size:
+        elif value.shape[0] == self.mesh.size:
             self.cell_data[key] = value[self.cell_data['mesh_inds'], ...]
-        elif value.shape[0] == self._mesh_nonzero_size:
+        elif value.shape[0] == self.n_nonzero_cells:
             self.cell_data[key] = value[self.cell_data['nonzero_inds'], ...]
         else:
             super().__setitem__(key, value)

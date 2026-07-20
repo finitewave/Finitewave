@@ -1,0 +1,44 @@
+site_name: Finitewave
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting Started: getting_started.md
+  - Tutorials: tutorials.md
+  - Examples: examples.md
+  - API Reference:
+      - Cardiac Tissue: api/cardiac_tissue.md
+      - Cardiac Models: api/cardiac_models.md
+      - Simulation: api/simulation.md
+      - State Keepers: api/state_keepers.md
+      - Trackers: api/trackers.md
+      - Solvers: api/solvers.md
+      - Stimulus: api/stimulus.md
+      - Observers: api/observers.md
+      - Commands: api/commands.md
+
+theme: 
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+  features:
+      - navigation.sections  # Groups the nav into defined sections
+      - navigation.expand    # Starts the sections in an "expanded" state (optional)
+plugins:
+  - mkdocs-jupyter:
+      include_source: true  # Shows a button to download the original .ipynb
+      execute: false        # Set to true if you want to re-run the notebook on build
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true

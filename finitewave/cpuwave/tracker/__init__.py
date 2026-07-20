@@ -26,6 +26,7 @@ from .activation_time_tracker import ActivationTimeTracker
 from .variable_tracker import VariableTracker
 from .multi_variable_tracker import MultiVariableTracker
 from .ecg_tracker import ECGTracker
+from .egm_tracker import EGMTracker
 from .frame_tracker import FrameTracker
 from .local_activation_time_tracker import LocalActivationTimeTracker
 from .threshold_tracker import ThresholdTracker
