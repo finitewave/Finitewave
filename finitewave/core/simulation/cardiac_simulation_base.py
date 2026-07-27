@@ -46,7 +46,9 @@ class CardiacSimulationBase:
             self,
             dt : float | None = None,
             t_max : float | None = None,
-            backend : Literal["numba", "mlx", "jax"] = "numba"):
+            backend : Literal["numba", "mlx", "jax"] = "numba",
+            sync_step : int = 1,
+            ):
         """
         Initializes the CardiacSimulation instance.
         
@@ -58,6 +60,8 @@ class CardiacSimulationBase:
             Maximum time for the simulation (model units). If None, it must be set before running.
         backend : Literal["numba", "mlx", "jax"], optional
             The computational backend to use for the simulation. Default is "numba".
+        sync_step : int, optional
+            The step at which to synchronize the simulation. Default is 1.
         """
 
         self.meta = {}
@@ -76,6 +80,7 @@ class CardiacSimulationBase:
         self.t_max = t_max
         self.t = 0
         self.step = 0
+        self.sync_step = sync_step
         self.backend = self.select_backend(backend)
 
     def select_backend(self, backend_name):

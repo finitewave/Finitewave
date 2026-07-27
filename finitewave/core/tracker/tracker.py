@@ -20,8 +20,6 @@ class Tracker(ABC):
         The time at which tracking will end. Default is infinity.
     step : int
         The frequency at which tracking will occur. Default is 1.
-    iter_counter : int
-        A counter to keep track of the number of iterations of simulation.
     tracking_counter : int
         A counter to keep track of the number of tracking events that have occurred.
     tracking_times : list
@@ -34,9 +32,8 @@ class Tracker(ABC):
         self.start_time = start_time
         self.end_time = end_time
         self.step = step
-        self.iter_counter = 0
         self.tracking_counter = 0
-        self.tracking_times = []
+        self._tracking_times = []
         self.model = None
 
     def initialize(self, simulation):
@@ -69,18 +66,6 @@ class Tracker(ABC):
         """
         return np.array(self._tracking_times)
     
-    @tracking_times.setter
-    def tracking_times(self, value):
-        """
-        Sets the tracking times.
-
-        Parameters
-        ----------
-        value : list
-            A list of times at which tracking events occurred.
-        """
-        self._tracking_times = value
-
     @abstractmethod
     def _track(self):
         """
@@ -99,31 +84,30 @@ class Tracker(ABC):
         if (self.simulation.t < self.start_time) or (self.simulation.t > self.end_time):
             return
 
-        if self.iter_counter % self.step != 0:
-            self.iter_counter += 1
+        if self.simulation.step % self.step != 0:
             return
         
         self._tracking_times.append(self.simulation.t)
         self._track()
         self.tracking_counter += 1
-        self.iter_counter += 1
 
     def _flatten_inds(self, mesh, tissue_indexes, node_inds):
         """
-        Computes the cell indices for tracking based on the mesh and memory
-        saving settings.
+        Computes the cell indices in the flattened array.
 
         Parameters
         ----------
-        cardiac_tissue : object
-            The cardiac tissue object containing the mesh information.
-        cardiac_model : object
-            The cardiac model object containing the memory saving settings.
+        mesh : object
+            The mesh object containing the grid information.
+        tissue_indexes : array-like
+            The indices of the tissue nodes.
+        node_inds : array-like
+            The indices of the nodes for which to compute cell indices.
 
         Returns
         -------
-        list or list of lists with two indices
-            The computed cell indices for tracking.
+        array
+            The flattened cell indices corresponding to the specified node indices.
         """
 
         flat_ind = np.ravel_multi_index(np.atleast_2d(node_inds).T, mesh.shape)

@@ -27,7 +27,7 @@ simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 # set up the solver:
-simulation.solver = fw.ForwardEulerSolver()
+# simulation.solver = fw.BackwardEulerSolver(atol=1e-8, maxiter=100)
 
 # run the model:
 simulation.run()

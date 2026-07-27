@@ -2,7 +2,7 @@ import mlx.core as mx
 import numpy as np
 
 
-class MlxMethod:
+class MlxLinalg:
     def __init__(self):
         pass
 
@@ -45,21 +45,11 @@ class MlxMethod:
             ellpack_indices = indexes[ellpack_indices]
 
         return ellpack_indices, ellpack_data
-    
 
-class MlxEuler(MlxMethod):
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def evaluate(u, step):
-        if step % 10 == 0:
-            mx.eval(u)
-        return u
 
     @staticmethod
     @mx.compile
-    def solve(indices, data, u_old, rhs, dt, indexes, u):
+    def explicit_step(indices, data, u_old, rhs, dt, indexes, u):
         """
         Performs the Forward Euler step:
         u_new = A @ u_old + dt * rhs
@@ -90,11 +80,6 @@ class MlxEuler(MlxMethod):
         """
         u[indexes] = mx.sum(data * u_old[indices], axis=1) + dt * rhs[indexes]
         return u
-
-
-class MlxCG(MlxMethod):
-    def __init__(self):
-        pass
 
     @staticmethod
     @mx.compile
@@ -157,7 +142,7 @@ class MlxCG(MlxMethod):
         return out
     
     @staticmethod
-    def solve(indices, data, b, x0, indexes, atol=1e-8, maxiter=1):
+    def (indices, data, b, x0, indexes, atol=1e-8, maxiter=1):
         """
         Conjugate Gradient solver for Ax = b where A is represented in ELLPACK format.
         

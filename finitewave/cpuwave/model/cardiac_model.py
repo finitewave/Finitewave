@@ -71,6 +71,10 @@ class CardiacModel(CardiacModelBase):
             self.u,
             *self.ionic_kernel_args,
         )
+
+        if self.iter_counter % self.simulation.sync_step == 0:
+            self.simulation.backend.sync(res)
+
         self._reset_state_variables(res)
     
     def collect_ionic_kernel_args(self):

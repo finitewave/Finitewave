@@ -57,8 +57,8 @@ class StimCoord:
         simulation : Simulation
             The simulation instance.
         """
-        myo_indexes = simulation.cardiac_model.myo_indexes
-        tissue_indexes = simulation.cardiac_model.tissue_indexes
+        myo_indexes = simulation.cardiac_tissue.myo_indexes
+        tissue_indexes = simulation.cardiac_tissue.tissue_indexes
         coords = simulation.cardiac_tissue.coords[tissue_indexes]
 
         mask = np.zeros(coords.shape[0], dtype=bool)

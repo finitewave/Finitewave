@@ -16,6 +16,18 @@ class SimulationBackend:
         """
         pass
 
+    def sync(self, arr):
+        """
+        Synchronizes the array across different backends if necessary.
+        For backends that do not require synchronization, this method does nothing.
+
+        Parameters
+        ----------
+        arr : array-like
+            The array to synchronize.
+        """
+        pass
+
     def wrap(self, arr):
         if hasattr(arr, "__array_namespace__") and arr.size > 1:
             return self.lib.array(arr, dtype=self.float_dtype)
@@ -104,6 +116,9 @@ class MlxBackend(SimulationBackend):
             value = self.lib.float32
 
         self._float_dtype = value
+
+    def sync(self, arr):
+        self.lib.eval(arr)
 
     def select_values(self, arr, inds):
         return arr[inds]

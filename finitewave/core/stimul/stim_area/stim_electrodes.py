@@ -38,9 +38,8 @@ class StimElectrodes:
         simulation : Simulation
             The simulation instance containing the cardiac model data.
         """
-        myo_indexes = np.asarray(simulation.cardiac_model.myo_indexes)
-        tissue_indexes = np.asanyarray(simulation.cardiac_model.tissue_indexes)
-        myo_coords = np.asanyarray(simulation.cardiac_tissue.coords[tissue_indexes[myo_indexes]])
+        myo_indexes = np.asarray(simulation.cardiac_tissue.myo_indexes)
+        myo_coords = np.asarray(simulation.cardiac_tissue.myo_coords)
         stim_indexes = self.select_nodes(myo_coords, myo_indexes)
         stim_indexes = simulation.backend.wrap_indexes(stim_indexes)
         return stim_indexes

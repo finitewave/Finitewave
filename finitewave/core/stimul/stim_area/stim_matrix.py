@@ -32,8 +32,8 @@ class StimMatrix:
             raise ValueError("The shape of the stimulation matrix does not "
                              "match the shape of the cardiac tissue mesh.")
 
-        tissue_indexes = np.asarray(simulation.cardiac_model.tissue_indexes)
-        myo_indexes = np.asarray(simulation.cardiac_model.myo_indexes)
+        tissue_indexes = simulation.cardiac_tissue.tissue_indexes
+        myo_indexes = simulation.cardiac_tissue.myo_indexes
 
         mesh_mask = self.matrix.flat[tissue_indexes] > 0
         stim_indexes = myo_indexes[mesh_mask[myo_indexes] > 0]

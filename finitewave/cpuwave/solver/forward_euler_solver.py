@@ -8,6 +8,8 @@ class ForwardEulerSolver(SolverBase):
 
     Attributes
     ----------
+    full_lumping : bool
+        If True, uses full lumping of the mass matrix in the diffusion model.
     a_matrix : scipy.sparse.csr_matrix
         The system matrix for the Forward Euler method.
     u_new : np.ndarray
@@ -21,7 +23,8 @@ class ForwardEulerSolver(SolverBase):
     num_iterations : list
         List to track the number of iterations per time step.
     """
-    def __init__(self):
+    def __init__(self, full_lumping=True):
+        self.full_lumping = full_lumping
         self.a_matrix = None
         self.u_new = None
         self.u = None
@@ -53,7 +56,7 @@ class ForwardEulerSolver(SolverBase):
 
     def select_method(self, backend):
         if backend.name == "numba":
-            from .numba_linalg.numba_methods import NumbaEuler
+            from .numba_linalg.numba_linalg import NumbaEuler
             self.linalg_method = NumbaEuler()
             return
 
@@ -85,11 +88,15 @@ class ForwardEulerSolver(SolverBase):
         dtype = self.simulation.backend.float_dtype
 
         stiff, mass = self.simulation.diffusion_model.weights
-        mass_lumped = mass.sum(axis=1).A.ravel()
-        mass_inv = sparse.diags(1 / mass_lumped)
-        a_lhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
+        mass_inv = sparse.diags(1 / mass.sum(axis=1).A1)
+
+        a_rhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
+        a_ion_matrix = dt * mass_inv @ mass
+
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
-        self.a_lhs_matrix = self.linalg_method.wrap_matrix(a_lhs_matrix, dtype,
+        self.a_rhs_matrix = self.linalg_method.wrap_matrix(a_rhs_matrix, dtype,
+                                                           self.myo_indexes)
+        self.a_ion_matrix = self.linalg_method.wrap_matrix(a_ion_matrix, dtype,
                                                            self.myo_indexes)
 
     def run(self):
@@ -97,7 +104,7 @@ class ForwardEulerSolver(SolverBase):
 
         For each time step:
             1. Update the solution vector and right-hand side from the cardiac model.
-            2. u_new = u - dt * M^{-1} * K @ u + dt * rhs (explicit diffusion step).
+            2. u_new = (I - dt * M^{-1} * K) @ u + dt * rhs (explicit diffusion step).
             3. Update the cardiac model solution with the new values.
         """        
         self.u = self.simulation.cardiac_model.u
@@ -105,9 +112,17 @@ class ForwardEulerSolver(SolverBase):
         self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
         self.u_old, self.u = self.u, self.u_old
-        
-        self.u = self.linalg_method.solve(*self.a_lhs_matrix, self.u_old, self.rhs,
-                                          self.simulation.dt, self.myo_indexes, self.u)
-        self.u = self.linalg_method.evaluate(self.u, self.simulation.step)
-        self.simulation.cardiac_model.u = self.u
+
+        if self.full_lumping:
+            # u_new = A_rhs @ u_old + dt * rhs is faster due to signle loop
+            self.u = self.linalg_method.explicit_step(*self.a_rhs_matrix, self.u_old, self.rhs,
+                                                      self.simulation.dt, self.myo_indexes, self.u)
+        else:
+            # u_new = A_ion @ rhs
+            self.u = self.linalg_method.matvec(*self.a_ion_matrix, self.rhs, self.myo_indexes, self.u)
+            # u_new = A_rhs @ u_old + 1. * u_new
+            self.u = self.linalg_method.explicit_step(*self.a_rhs_matrix, self.u_old, self.u,
+                                                      1., self.myo_indexes, self.u)
+
+        self.simulation.cardiac_model.u = self.u        
         self.num_iterations.append(1)

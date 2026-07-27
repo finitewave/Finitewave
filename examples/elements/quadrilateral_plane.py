@@ -20,7 +20,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(0, 1, 0, size, 0, 1))
 stim_sequence.add_stim(fw.StimVoltageCoord(45, 1, 0, size//2, 0, size))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(backend="jax")
+simulation = fw.CardiacSimulation(backend="numba")
 simulation.dt = 0.01
 simulation.t_max = 100
 # add the tissue and the stim parameters to the model object:
@@ -29,13 +29,13 @@ simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 # set up the solver, if not specified Crank-Nicolson is used by default:
 # ! Forward Euler is conditionally stable for quadrilateral meshes
-# simulation.solver = fw.ForwardEulerSolver()
+simulation.solver = fw.ImplicitSolver(atol=1e-8, maxiter=100, order=2)
 
 # run the model:
 simulation.run()
 
 # get the resulting potential at the element centers:
-u = simulation.cardiac_model.u
+u = simulation.cardiac_model.output("u")
 u_elems = np.zeros(tissue.elems.shape[0]) * np.nan
 u_elems[tissue.myo_elems_indexes] = u[tissue.myo_elements].mean(axis=1)
 

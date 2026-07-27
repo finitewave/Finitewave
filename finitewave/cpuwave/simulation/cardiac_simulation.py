@@ -5,8 +5,8 @@ from finitewave.core.simulation.cardiac_simulation_base import (
     CardiacSimulationBase
 )
 
+from finitewave.cpuwave.solver.implicit_solver import ImplicitSolver
 from finitewave.cpuwave.solver.forward_euler_solver import ForwardEulerSolver
-from finitewave.cpuwave.solver.crank_nicolson_solver import CrankNicolsonSolver
 from finitewave.cpuwave.diffusion.diffusion_model import DiffusionModel
 from finitewave.cpuwave.diffusion.diffusion_model_elements import DiffusionModelElements
 
@@ -94,7 +94,7 @@ class CardiacSimulation(CardiacSimulationBase):
     def default_solver(self):
         """Selects the default solver based on the type of cardiac tissue.
         For grid-based tissues, it uses the Forward Euler method. For element-based
-        tissues, it uses the Crank-Nicolson method with Conjugate Gradient solver.
+        tissues, it uses the Backward Euler method with Conjugate Gradient solver.
 
          Returns
          -------
@@ -105,7 +105,7 @@ class CardiacSimulation(CardiacSimulationBase):
             return ForwardEulerSolver()
 
         if self.cardiac_tissue.meta["type"] == "Elements":
-            return CrankNicolsonSolver()
+            return ImplicitSolver()
 
         raise ValueError("Unsupported tissue type")
     
