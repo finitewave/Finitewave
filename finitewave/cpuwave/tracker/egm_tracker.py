@@ -89,7 +89,7 @@ class EGMTracker(Tracker):
             lead_coords = np.hstack([lead_coords, np.zeros((lead_coords.shape[0], 1))])
 
         distances = calc_distances(tissue_coords, lead_coords)
-        distances[distances < 1e-6] = 1.
+        distances[distances < 0.5] = 1.
         lead_fields = dr ** 3 / (4 * math.pi * conductivity * dr * distances)
 
         return lead_fields

@@ -147,8 +147,11 @@ class LocalActivationTimeTracker(Tracker):
             A binary array where 1 indicates cells that crossed the threshold.
         """
         self.front = (u >= self.threshold)
+        self.simulation.backend.sync(self.front)
         cross_mask = self.front & self.back
         self.back = ~self.front
+
+        self.simulation.backend.sync((cross_mask, self.back))
         return cross_mask
 
     @property

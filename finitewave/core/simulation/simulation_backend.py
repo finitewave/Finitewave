@@ -16,6 +16,9 @@ class SimulationBackend:
         """
         pass
 
+    def sync(self, *args):
+        pass
+
     def wrap(self, arr):
         if hasattr(arr, "__array_namespace__") and arr.size > 1:
             return self.lib.array(arr, dtype=self.float_dtype)
@@ -104,6 +107,18 @@ class MlxBackend(SimulationBackend):
             value = self.lib.float32
 
         self._float_dtype = value
+
+    def config(self, *args, **kwargs):
+        """
+        Configures the MLX backend. Currently, no specific configuration is needed.
+        """
+        pass
+
+    def sync(self, x):
+        """
+        Synchronizes the MLX backend. Currently, no specific synchronization is needed.
+        """
+        self.lib.eval(x)
 
     def select_values(self, arr, inds):
         return arr[inds]

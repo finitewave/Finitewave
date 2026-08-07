@@ -95,6 +95,7 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mesh = None
+        self.raw_grid = None
         self.as_surface = False
         self.threshold = 0.5
         self.n_nonzero_cells = None
@@ -133,6 +134,7 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
  
         instance = cls(grid)
         instance.mesh = mesh
+        instance.raw_grid = grid
         instance.as_surface = as_surface
         instance.threshold = threshold
         instance.n_nonzero_cells = n_nonzero_cells
@@ -147,6 +149,7 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
         grid = pv.ImageData()
         grid.dimensions = np.array(mesh.shape) + 1
         grid.spacing = (dx, dy, dz)
+        grid.origin = - np.array([dx, dy, dz]) * 0.5
         grid.cell_data['mesh'] = mesh.astype(float).flatten(order='F')
         c_inds = np.arange(mesh.size).reshape(mesh.shape)
         grid.cell_data['mesh_inds'] = c_inds.flatten(order='F')
@@ -177,3 +180,22 @@ class PyVistaMeshGrid(pv.UnstructuredGrid):
             self.cell_data[key] = value[self.cell_data['nonzero_inds'], ...]
         else:
             super().__setitem__(key, value)
+
+    @property
+    def mesh_indices(self):
+        """Return the indices of the non-empty cells in the original mesh."""
+        if self.mesh is None or "mesh_inds" not in self.cell_data:
+            raise ValueError("Mesh is not set or 'mesh_inds' not in cell_data.")
+
+        indices = np.unique(self.cell_data['mesh_inds'])
+        return indices
+
+    @property
+    def mesh_coords(self):
+        """Return the coordinates of the non-empty cells in the original mesh."""
+        if self.mesh is None or "mesh_inds" not in self.cell_data:
+            raise ValueError("Mesh is not set or 'mesh_inds' not in cell_data.")
+
+        indices = self.mesh_indices
+        coords = np.array(np.unravel_index(indices, self.mesh.shape)).T
+        return coords

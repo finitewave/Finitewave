@@ -64,6 +64,8 @@ class ActivationTimeTracker(Tracker):
             (self.act_t < 0) & (self.simulation.cardiac_model.u > self.threshold),
             self.simulation.t, self.act_t)
 
+        self.simulation.backend.sync(self.act_t)
+
     @property
     def output(self):
         """
