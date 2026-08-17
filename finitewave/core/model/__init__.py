@@ -1,3 +1,3 @@
 from .cardiac_model_base import CardiacModelBase
 from .observer import Observer
-from .kernel_generator import KernelGenerator
+from ..backend.model_generator import KernelGenerator

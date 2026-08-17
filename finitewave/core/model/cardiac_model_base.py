@@ -74,7 +74,6 @@ class CardiacModelBase(ABC):
     def initialize_variables_and_parameters(self):
         pass
 
-
     def load_ops(self, model_name: str):
         """
         Loads the finitewave model.
