@@ -1,6 +1,6 @@
 import numpy as np
-from ...core.tissue.cardiac_tissue_base import CardiacTissueBase
-from finitewave.core.numerics.fem.elements.element_type import ElementType
+from finitewave.core.tissue.cardiac_tissue_base import CardiacTissueBase
+from finitewave.numerics.fem.elements.element_type import ElementType
 
 
 class CardiacTissueElements(CardiacTissueBase):

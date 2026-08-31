@@ -38,18 +38,18 @@ import matplotlib.pyplot as plt
 import finitewave as fw
 import numpy as np
 
-stim_prepacing = fw.StimSingleCell(dt=0.005)
-stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration=2.)
-stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
+# stim_prepacing = fw.StimSingleCell(dt=0.005)
+# stim_prepacing.add_stim(n_beats=30, cycle_length=1000., curr_value=20., duration=2.)
+# stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
 
 # create model object and set up parameters
-courtemanche = fw.Courtemanche()
-courtemanche.prepacing(stim_prepacing)
+cardiac_model = fw.Courtemanche()
+# cardiac_model.prepacing(stim_prepacing)
 
 
 # create a tissue of size 400x400 with cardiomycytes:
 n = 400
-tissue = fw.CardiacTissue([n, n], dr=0.25)
+tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -59,7 +59,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="mlx")
-simulation.cardiac_model = courtemanche
+simulation.cardiac_model = cardiac_model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 

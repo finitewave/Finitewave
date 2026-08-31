@@ -13,6 +13,7 @@ from finitewave.numerics.fem.diffusion_model_elements import DiffusionModelEleme
 
 class CardiacSimulation(CardiacSimulationBase):
     def initialize(self):
+        self.backend = self.select_backend(self.backend_name)
 
         if self.solver is None:
             self.solver = self.default_solver()
@@ -90,6 +91,34 @@ class CardiacSimulation(CardiacSimulationBase):
         return (f"Running {self.cardiac_model.__class__.__name__}" +
                 f" on {self.cardiac_tissue.meta['shape']}" +
                 f" {self.cardiac_tissue.meta['type']}")
+
+    def select_backend(self, backend_name):
+        """
+        Selects the computational backend for the simulation.
+
+        Parameters
+        ----------
+        backend_name : Literal["numba", "mlx", "jax"]
+            The name of the backend to use. Supported values are "numba", "mlx", and "jax".
+
+        Raises
+        ------
+        ValueError
+            If an unsupported backend name is provided.
+        """
+        if backend_name == "numba":
+            from finitewave.numerics.backends.numba_backend import NumbaBackend
+            return NumbaBackend()
+        
+        if backend_name == "mlx":
+            from finitewave.numerics.backends.mlx_backend import MlxBackend
+            return MlxBackend()
+        
+        if backend_name == "jax":
+            from finitewave.numerics.backends.jax_backend import JAXBackend
+            return JAXBackend()
+        
+        raise ValueError(f"Unsupported backend: {backend_name}")
 
     def default_solver(self):
         """Selects the default solver based on the type of cardiac tissue.

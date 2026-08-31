@@ -61,6 +61,40 @@ class CardiacModelBase(ABC):
     def run(self):
         pass
 
+    def set_parameters(self, params):
+        """
+        Updates the model's parameters with the provided values.
+
+        Parameters
+        ----------
+        params : dict
+            Dictionary of parameter names and their new values.
+        """
+        for name, value in params.items():
+            if not hasattr(self, name):
+                raise ValueError(f"Parameter '{name}' not found in the model.")
+            setattr(self, name, value)
+
+    def set_state_variables(self, init_vars):
+        """
+        Updates the model's initial values for the state variables.
+
+        Parameters
+        ----------
+        init_vars : dict
+            Dictionary of variable names and their new initial values.
+        initial : bool, optional
+            Whether the provided values are initial conditions (default is False).
+            If True, the values will be set to `init_{var}` attributes.
+            If False, they will be set to the current state variable arrays.
+        """
+
+        for name, value in init_vars.items():
+            if not hasattr(self, f"init_{name}"):
+                raise ValueError(f"Variable '{name}' not found in the model.")
+            
+            setattr(self, f"init_{name}", value)
+
     def _discover(self) -> dict:
         eps = entry_points()
         group = "finitewave.models"

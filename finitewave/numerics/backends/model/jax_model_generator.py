@@ -7,7 +7,7 @@ from finitewave.core.backend.model_generator import (
 )
 
 
-class IonicJAXGenerator(ModelGenerator):
+class JAXModelGenerator(ModelGenerator):
     """
     Class for generating numba CPU kernel function to update state variables
     and compute the ionic current (rhs) of the cardiac model.

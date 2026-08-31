@@ -1,6 +1,6 @@
 import numpy as np
 from finitewave.core.diffusion.diffusion_model_base import DiffusionModelBase
-from finitewave.core.numerics.fdm.asymmetric_stencil import AsymmetricStencil
+from finitewave.numerics.fdm.stencils.asymmetric_stencil import AsymmetricStencil
 
 
 class DiffusionModel(DiffusionModelBase):

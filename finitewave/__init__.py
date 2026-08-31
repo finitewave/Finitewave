@@ -18,3 +18,4 @@ from .cpuwave import *
 from .core import *
 from .tools import *
 from .numerics import *
+from .simulation import *

@@ -31,7 +31,7 @@ class ForwardEulerSolver(SolverBase):
         self.rhs = None
         self.myo_indexes = None
         self.num_iterations = []
-        self.linalg_method = None
+        self.solver = None
 
     def initialize(self, simulation):
         """Initializes the Forward Euler solver with the given simulation.
@@ -44,14 +44,10 @@ class ForwardEulerSolver(SolverBase):
         self.simulation = simulation
         self.linalg = simulation.backend.linalg
 
-        if self._solve is None:
-            self._solve = getattr(self.linalg, self.method)
-
         self.num_iterations = []
         self.u = simulation.cardiac_model.u
         self.u_old = simulation.backend.copy(self.u)
         self.rhs = simulation.cardiac_model.rhs
-        self.myo_indexes = simulation.cardiac_model.myo_indexes
         self.assemble_system()
 
     def assemble_system(self):
@@ -69,23 +65,24 @@ class ForwardEulerSolver(SolverBase):
             Time step for the simulation.
         """
         dt = self.simulation.dt
-        self.myo_indexes = self.simulation.cardiac_model.myo_indexes
+        myo_indexes = self.simulation.cardiac_model.myo_indexes
 
         stiff, mass = self.simulation.diffusion_model.weights
         mass_inv = sparse.diags(1 / mass.sum(axis=1).A1)
 
         a_rhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
-        self.a_rhs_matrix = self.simulation.backend.wrap_sparse(a_rhs_matrix, self.myo_indexes)
+        self.a_rhs_matrix = self.simulation.backend.wrap_sparse(a_rhs_matrix, myo_indexes)
 
-        if not self.full_lumping:
+        if not self.full_lumping and self.solver is None:
             a_ion_matrix = dt * mass_inv @ mass
-            self.a_ion = self.simulation.backend.wrap_sparse(a_ion_matrix, self.myo_indexes)
-            self._solver = self._double_loop_solver
+            self.a_ion = self.simulation.backend.wrap_sparse(a_ion_matrix, myo_indexes)
+            self.solver = self.linalg.explicit_step_half_lumped
 
-        else:
+        elif self.full_lumping and self.solver is None:
             self.a_ion = dt
-            self._solver = self._single_loop_solver
+            self.solver = self.linalg.explicit_step
 
+        self.myo_indexes = self.simulation.backend.wrap_indexes(myo_indexes)
 
     def run(self):
         """Performs a single time step using the Forward Euler method.
@@ -97,64 +94,10 @@ class ForwardEulerSolver(SolverBase):
         """        
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
-        self.myo_indexes = self.simulation.cardiac_model.myo_indexes
 
         self.u_old, self.u = self.u, self.u_old
 
-        self.u = self._solver(self.a_rhs_matrix, self.a_ion, self.u_old, self.rhs, self.u)
+        self.u = self.solver(self.a_rhs_matrix, self.u_old, self.a_ion, self.rhs, self.myo_indexes, self.u)
 
-        self.simulation.cardiac_model.u = self.u        
+        self.simulation.cardiac_model.u = self.u
         self.num_iterations.append(1)
-
-    def _single_loop_solver(self, a_rhs, a_ion, u_old, i_ion, u):
-        """Performs a step of the Forward Euler method in single loop.
-
-        u = A_rhs @ u_old + a_ion * i_ion
-
-        Parameters
-        ----------
-        a_rhs : scipy.sparse.csr_matrix
-            The system matrix for the diffusion step.
-        a_ion : float
-            The scalar multiplier for the ionic current.
-        u_old : np.ndarray
-            The solution vector at the previous time step.
-        i_ion : np.ndarray
-            The ionic current vector.
-        u : np.ndarray
-            The output vector to store the new solution.
-
-        Returns
-        -------
-        np.ndarray
-            The updated solution vector after the Forward Euler step.
-        """
-        return self.linalg.matvec_p_ay(a_rhs, u_old, i_ion, a_ion, u)
-
-    def _double_loop_solver(self, a_rhs, a_ion, u_old, i_ion, u):
-        """Performs a step of the Forward Euler method in double loop.
-
-        u_ion = A_ion @ i_ion
-        u = A_rhs @ u_old + u_ion
-
-        Parameters
-        ----------
-        a_rhs : scipy.sparse.csr_matrix
-            The system matrix for the diffusion step.
-        a_ion : scipy.sparse.csr_matrix
-            The system matrix for the ionic current step.
-        u_old : np.ndarray
-            The solution vector at the previous time step.
-        i_ion : np.ndarray
-            The ionic current vector.
-        u : np.ndarray
-            The output vector to store the new solution.
-
-        Returns
-        -------
-        np.ndarray
-            The updated solution vector after the Forward Euler step.
-        """
-        u_ion = self.linalg.matvec(a_ion, i_ion, u)
-        return self.linalg.matvec_p_ay(a_rhs, u_old, u_ion, 1., u)
-

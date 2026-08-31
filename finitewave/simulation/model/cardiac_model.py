@@ -22,13 +22,16 @@ class CardiacModel(CardiacModelBase):
         Object that generates the multithreaded `ionic_kernel` function for the model.
     prepacing_generator : KernelGenerator
         Object that generates the signle-cell `prepacing_kernel` function for the model.
+    step : int
+        The step size for the simulation. Default is 1.
     """
 
-    def __init__(self):
+    def __init__(self, step=1):
         """
         Initializes the CardiacModel instance with default parameters.
         """
         super().__init__()
+        self.step = step
         self.myo_indexes = None
         self.tissue_indexes = None
         self.ionic_kernel_generator = None
@@ -45,7 +48,6 @@ class CardiacModel(CardiacModelBase):
         self.simulation = simulation
         self.backend = simulation.backend
         self.wrap_indexes()
-        self._select_ionic_kernel_generator(self.backend)
         self._allocate_arrays(simulation)
         self._initialize_ionic_kernel()
         self.collect_ionic_kernel_args()
@@ -73,7 +75,7 @@ class CardiacModel(CardiacModelBase):
         )
 
         if self.iter_counter % self.simulation.sync_step == 0:
-            self.simulation.backend.sync(res)
+            self.simulation.backend.sync_backend(res)
 
         self._reset_state_variables(res)
     
@@ -164,40 +166,6 @@ class CardiacModel(CardiacModelBase):
 
         # update initial conditions with the final state after prepacing
         self.set_state_variables(state_vars)
-         
-    def set_parameters(self, params):
-        """
-        Updates the model's parameters with the provided values.
-
-        Parameters
-        ----------
-        params : dict
-            Dictionary of parameter names and their new values.
-        """
-        for name, value in params.items():
-            if not hasattr(self, name):
-                raise ValueError(f"Parameter '{name}' not found in the model.")
-            setattr(self, name, value)
-
-    def set_state_variables(self, init_vars):
-        """
-        Updates the model's initial values for the state variables.
-
-        Parameters
-        ----------
-        init_vars : dict
-            Dictionary of variable names and their new initial values.
-        initial : bool, optional
-            Whether the provided values are initial conditions (default is False).
-            If True, the values will be set to `init_{var}` attributes.
-            If False, they will be set to the current state variable arrays.
-        """
-
-        for name, value in init_vars.items():
-            if not hasattr(self, f"init_{name}"):
-                raise ValueError(f"Variable '{name}' not found in the model.")
-            
-            setattr(self, f"init_{name}", value)
     
     def update_state_variables(self, vars):
         """
@@ -293,27 +261,8 @@ class CardiacModel(CardiacModelBase):
     def _initialize_ionic_kernel(self):
         """Construct the `ionic_kernel` function for the model using the IonicKernelGenerator."""
         self.ionic_kernel, self.kernel_arg_names = (
-            self.ionic_kernel_generator.generate_model_kernel(self)
+            self.simulation.backend.model_generator.generate_model_kernel(self)
         )
-    
-    def _select_ionic_kernel_generator(self, backend):
-
-        if backend.name == "numba":
-            from .kernel.ionic_numba_kernel import IonicNumbaKernel
-            self.ionic_kernel_generator = IonicNumbaKernel()
-            return
-
-        if backend.name == "mlx":
-            from .kernel.ionic_mlx_kernel import IonicMlxKernel
-            self.ionic_kernel_generator = IonicMlxKernel()
-            return
-        
-        if backend.name == "jax":
-            from .kernel.ionic_jax_kernel import IonicJaxKernel
-            self.ionic_kernel_generator = IonicJaxKernel()
-            return
-
-        raise ValueError(f"Unsupported backend '{backend.name}' for ionic kernel generation.")
     
     def _reset_state_variables(self, new_values):
         """Updates the model's state variables with the new values from the ionic kernel."""

@@ -1,17 +1,34 @@
-import warnings
-import numpy as np
+from .linalg.sparse import csr_to_ellpack
+
 from finitewave.core.backend.backend import Backend
+
+
+def _check_mlx_installed():
+    try:
+        import mlx.core
+    except ImportError as exc:
+        if exc.name == "mlx" or exc.name.startswith("mlx."):
+            raise ImportError(
+                "MlxBackend requires the optional 'mlx' package."
+            ) from exc
+        raise
 
 
 class MlxBackend(Backend):
     def __init__(self):
+        _check_mlx_installed()
         import mlx.core as mx
+        from .linalg import mlx_linalg
+        from .model.mlx_ionic_generator import MLXIonicGenerator
+
         self.name = "mlx"
         self.lib = mx
         self.float_dtype = mx.float32  # MLX GPU supports only float32 (float64 is only for CPU)
         self.int_dtype = mx.int32
         self.sparse_support = False    # MLX does not support sparse matrices
         self.gpu_support = True
+        self.linalg = mlx_linalg
+        self.model_generator = MLXIonicGenerator()
 
     def config(self, device=None, float_dtype=None, num_of_threads=None):
         import mlx.core as mx
@@ -28,6 +45,9 @@ class MlxBackend(Backend):
 
         if float_dtype is not None:
             self.float_dtype = float_dtype
+
+    def sync_backend(self, *args):
+        self.lib.eval(args)
 
     def device_info(self):
         import mlx.core as mx
@@ -93,22 +113,9 @@ class MlxBackend(Backend):
         if local_indexing:
             csr_matrix = csr_matrix[indexes, :][:, indexes]
 
-        rows_len = np.diff(csr_matrix.indptr)
-        n_cols = np.max(rows_len)
-        n_rows = csr_matrix.shape[0]
-
-        ellpack_indices = np.repeat(np.arange(n_rows), n_cols).reshape(n_rows, n_cols)
-        ellpack_data = np.zeros((n_rows, n_cols), dtype=np.float32)
-
-        inds = np.repeat([np.arange(n_cols)], n_rows, axis=0)
-        mask = inds < rows_len[:, None]
-        ellpack_indices[mask] = csr_matrix.indices
-        ellpack_data[mask] = csr_matrix.data.astype(np.float32)
-        # A@x = x, otherwise x=0 for empty rows, which is not correct
-        ellpack_indices[n_rows == 0, 0] = 1. 
+        ellpack_indices, ellpack_data = csr_to_ellpack(csr_matrix)
 
         ellpack_indices = self.wrap_indexes(ellpack_indices)
         ellpack_data = self.wrap_array(ellpack_data)
-        indexes = self.wrap_indexes(indexes)
 
-        return ellpack_indices, ellpack_data, indexes
+        return ellpack_indices, ellpack_data

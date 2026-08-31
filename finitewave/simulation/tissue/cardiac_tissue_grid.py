@@ -1,8 +1,9 @@
 import numpy as np
-from ...core.tissue.cardiac_tissue_base import CardiacTissueBase
+from finitewave.core.tissue.cardiac_tissue_base import CardiacTissueBase
 
 
-class CardiacTissue(CardiacTissueBase):
+
+class CardiacTissueGrid(CardiacTissueBase):
     """
     Class representing a cardiac tissue on a regular grid.
 

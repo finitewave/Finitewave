@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 from functools import wraps
+from .linalg.sparse import csr_to_ellpack
 
 from finitewave.core.backend.backend import Backend
 
@@ -40,7 +41,8 @@ class JAXBackend(Backend):
         _check_jax_installed()
         import jax
         import jax.numpy as jnp
-        from finitewave.backends.linalg import jax_linalg
+        from .linalg import jax_linalg
+        from .model.jax_model_generator import JAXModelGenerator
 
         self.name = "jax"
         self.lib = jnp
@@ -49,6 +51,7 @@ class JAXBackend(Backend):
         self.sparse_support = False    # JAX does not support sparse matrices
         self.gpu_support = True        # possible if a specific package is installed (jaxlib with CUDA support)
         self.linalg = jax_linalg
+        self.model_generator = JAXModelGenerator()
 
     def config(self, device=None, float_dtype=None, *args, **kwargs):
         """
@@ -137,22 +140,9 @@ class JAXBackend(Backend):
         if local_indexing:
             csr_matrix = csr_matrix[indexes, :][:, indexes]
 
-        rows_len = np.diff(csr_matrix.indptr)
-        n_cols = np.max(rows_len)
-        n_rows = csr_matrix.shape[0]
-
-        ellpack_indices = np.repeat(np.arange(n_rows), n_cols).reshape(n_rows, n_cols)
-        ellpack_data = np.zeros((n_rows, n_cols), dtype=np.float32)
-
-        inds = np.repeat([np.arange(n_cols)], n_rows, axis=0)
-        mask = inds < rows_len[:, None]
-        ellpack_indices[mask] = csr_matrix.indices
-        ellpack_data[mask] = csr_matrix.data.astype(np.float32)
-        # A@x = x, otherwise x=0 for empty rows, which is not correct
-        ellpack_indices[n_rows == 0, 0] = 1
+        ellpack_indices, ellpack_data = csr_to_ellpack(csr_matrix)
 
         ellpack_indices = self.wrap_indexes(ellpack_indices)
         ellpack_data = self.wrap_array(ellpack_data)
-        indexes = self.wrap_indexes(indexes)
 
-        return ellpack_indices, ellpack_data, indexes
+        return ellpack_indices, ellpack_data

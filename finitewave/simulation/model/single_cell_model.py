@@ -1,7 +1,7 @@
 
 import numpy as np
-from finitewave.backends.model.numba_single_cell_generator import (
-    NumbaSingleCellGenerator,
+from finitewave.numerics.backends.model.numba_single_cell_generator import (
+    NumbaSingleCellGenerator
 )
 
 

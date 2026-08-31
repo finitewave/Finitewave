@@ -81,35 +81,8 @@ class CardiacSimulationBase:
         self.t = 0
         self.step = 0
         self.sync_step = sync_step
-        self.backend = self.select_backend(backend)
-
-    def select_backend(self, backend_name):
-        """
-        Selects the computational backend for the simulation.
-
-        Parameters
-        ----------
-        backend_name : Literal["numba", "mlx", "jax"]
-            The name of the backend to use. Supported values are "numba", "mlx", and "jax".
-
-        Raises
-        ------
-        ValueError
-            If an unsupported backend name is provided.
-        """
-        if backend_name == "numba":
-            from .simulation_backend import NumbaBackend
-            return NumbaBackend()
-        
-        if backend_name == "mlx":
-            from .simulation_backend import MlxBackend
-            return MlxBackend()
-        
-        if backend_name == "jax":
-            from .simulation_backend import JaxBackend
-            return JaxBackend()
-        
-        raise ValueError(f"Unsupported backend: {backend_name}")
+        self.backend_name = backend
+        self.backend = None
 
     def initialize(self):
         """

@@ -20,6 +20,13 @@ class Backend:
         """
         pass
 
+    def sync_backend(self, *args):
+        """
+        Synchronizes the backend if necessary. 
+        This method should be overridden by subclasses to implement backend-specific synchronization.
+        """
+        pass
+
     def device_info(self):
         """
         Returns information about the computational device being used.
@@ -48,18 +55,6 @@ class Backend:
         """
         pass
 
-    def sync(self, arr):
-        """
-        Synchronizes the array across different backends if necessary.
-        For backends that do not require synchronization, this method does nothing.
-
-        Parameters
-        ----------
-        arr : array-like
-            The array(s) to synchronize.
-        """
-        pass
-    
     def select_values(self, arr, inds):
         """
         Selects values from an array based on the provided indexes.
