@@ -1,8 +1,8 @@
 from scipy import sparse
-from finitewave.core.solver.solver_base import SolverBase
+from finitewave.core.solver.solver import Solver
 
 
-class ForwardEulerSolver(SolverBase):
+class ForwardEulerSolver(Solver):
     """Implements the Forward Euler time integration method for cardiac
     simulations.
 

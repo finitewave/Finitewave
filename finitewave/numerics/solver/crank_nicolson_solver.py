@@ -1,9 +1,9 @@
 import warnings
 
-from finitewave.core.solver.solver_base import SolverBase
+from finitewave.core.solver.solver import Solver
 
 
-class CrankNicolsonSolver(SolverBase):
+class CrankNicolsonSolver(Solver):
     """Implements the Crank-Nicolson semi-implicit time integration method
     with Conjugate Gradient solver for implicit diffusion step.
 

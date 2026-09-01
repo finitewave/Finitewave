@@ -3,11 +3,11 @@ import copy
 from importlib.metadata import entry_points
 
 
-class CardiacModelBase(ABC):
+class ComputationalModel(ABC):
     """
-    Base class for electrophysiological models.
+    Base class for computational models.
 
-    This class serves as the base for implementing various cardiac models.
+    This class serves as the base for implementing various computational models.
     It provides methods for initializing the model, running simulations,
     and managing the state of the simulation.
 

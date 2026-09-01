@@ -1,6 +1,6 @@
 
 import numpy as np
-from finitewave.cpuwave.model.kernel.single_cell_numba_kernel import (
+from finitewave.simulations.model.kernel.single_cell_numba_kernel import (
     SingleCellNumbaKernel,
 )
 

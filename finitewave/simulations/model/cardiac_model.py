@@ -1,11 +1,11 @@
 import numpy as np
 from warnings import warn
 
-from finitewave.core.model.cardiac_model_base import CardiacModelBase
+from finitewave.core.model.computational_model import ComputationalModel
 from .single_cell_model import SingleCellModel
 
 
-class CardiacModel(CardiacModelBase):
+class CardiacModel(ComputationalModel):
     """
     Base class for cardiac grid models.
 

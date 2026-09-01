@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class SolverBase(ABC):
+class Solver(ABC):
     """
     A base class for integration solvers.
     """
