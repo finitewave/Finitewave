@@ -44,15 +44,13 @@ class ImplicitSolver(SolverBase):
 
     """
     def __init__(self, atol=1e-8, maxiter=100, lumping_factor=.0, order=1,
-                 full_lumping=False, method="cg"):
+                 ionic_lumping=False):
         self.atol = atol
         self.maxiter = maxiter
         self.lumping_factor = lumping_factor
         self.order = order
-        self.full_lumping = full_lumping
-        self.method = method
+        self.ionic_lumping = ionic_lumping
         
-        self.b = None
         self.u = None
         self.u_old = None
         self.u_old_2 = None
@@ -62,7 +60,7 @@ class ImplicitSolver(SolverBase):
         self.a_ion_matrix = None
 
         self.linalg = None
-        self._solve = None
+        self.solver = None
 
         self.num_iterations = []
 
@@ -77,19 +75,18 @@ class ImplicitSolver(SolverBase):
         self.simulation = simulation
 
         self.linalg = simulation.backend.linalg
-        self._solve = getattr(self.linalg, self.method)
+
+        if self.solver is None:
+            self.solver = self.linalg.cg
 
         if self.order not in [1, 2]:
             raise ValueError("ImplicitSolver order must be 1 or 2.")
 
         self.num_iterations = []
         self.u = simulation.cardiac_model.u
-        self.b = simulation.backend.wrap_array(0. * self.u)
         self.u_old = simulation.backend.copy(self.u)
         self.u_old_2 = simulation.backend.copy(self.u)
         self.rhs = simulation.cardiac_model.rhs
-        self.myo_indexes = simulation.cardiac_model.myo_indexes
-        self.fibro_mask = simulation.cardiac_model.fibro_mask
         self.assemble_system()
 
     def assemble_system(self):
@@ -104,24 +101,82 @@ class ImplicitSolver(SolverBase):
         """
         dt = self.simulation.dt
         theta = 0.5 if self.order == 2 else 1.0
+        myo_indexes = self.simulation.cardiac_tissue.myo_indexes
 
         stiff, mass = self.simulation.diffusion_model.weights
-        mass_lumped = ((1 - self.lumping_factor) * mass + 
-                       self.lumping_factor * sp.diags(mass.sum(axis=1).A1))
-        a_lhs_matrix = mass_lumped + theta * dt * stiff
-        a_rhs_matrix = mass_lumped - (1 - theta) * dt * stiff
-
-        if self.full_lumping:
-            a_ion_matrix = dt * mass_lumped
-        else:
-            a_ion_matrix = dt * mass
+        mass_lumped = self.assemble_lumped_mass_matrix(mass)
+        a_lhs_matrix = self.assemble_lhs_matrix(stiff, mass_lumped, dt, theta)
+        a_rhs_matrix = self.assemble_rhs_matrix(stiff, mass_lumped, dt, theta)
+        a_ion_matrix = self.assemble_ion_matrix(mass, dt)
 
         self.a_lhs_matrix = self.simulation.backend.wrap_sparse(
-            a_lhs_matrix, indexes=self.myo_indexes, local_indexing=True)
+            a_lhs_matrix, indexes=myo_indexes, local_indexing=True)
         self.a_rhs_matrix = self.simulation.backend.wrap_sparse(
-            a_rhs_matrix, indexes=self.myo_indexes)
+            a_rhs_matrix, indexes=myo_indexes, row_reduced=True)
         self.a_ion_matrix = self.simulation.backend.wrap_sparse(
-            a_ion_matrix, indexes=self.myo_indexes)
+            a_ion_matrix, indexes=myo_indexes, row_reduced=True)
+
+        self.myo_indexes = self.simulation.backend.wrap_indexes(myo_indexes)
+
+    def assemble_lumped_mass_matrix(self, mass):
+        """Assembles the lumped mass matrix for the Implicit method.
+
+        Parameters
+        ----------
+        mass : scipy.sparse.csr_matrix
+            The mass matrix from the diffusion model.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            The lumped mass matrix.
+        """
+        mass_lumped = ((1 - self.lumping_factor) * mass + 
+                       self.lumping_factor * sp.diags(mass.sum(axis=1).A1))
+        return mass_lumped
+
+    def assemble_rhs_matrix(self, stiff, mass, dt, theta):
+        """Assembles the right-hand side matrix for the Implicit method.
+
+        Parameters
+        ----------
+        stiff : scipy.sparse.csr_matrix
+            The stiffness matrix from the diffusion model.
+        mass : scipy.sparse.csr_matrix
+            The mass matrix from the diffusion model.
+        dt : float
+            Time step for the simulation.
+        """
+        return mass - (1 - theta) * dt * stiff
+
+    def assemble_lhs_matrix(self, stiff, mass, dt, theta):
+        """Assembles the left-hand side matrix for the Implicit method.
+
+        Parameters
+        ----------
+        stiff : scipy.sparse.csr_matrix
+            The stiffness matrix from the diffusion model.
+        mass : scipy.sparse.csr_matrix
+            The mass matrix from the diffusion model.
+        dt : float
+            Time step for the simulation.
+        """
+        return mass + theta * dt * stiff
+
+    def assemble_ion_matrix(self, mass, dt):
+        """Assembles the ionic current matrix for the Implicit method.
+
+        Parameters
+        ----------
+        mass : scipy.sparse.csr_matrix
+            The mass matrix from the diffusion model.
+        dt : float
+            Time step for the simulation.
+        """
+        if self.ionic_lumping:
+            return dt * sp.diags(mass.sum(axis=1).A1)
+        
+        return dt * mass
 
     def run(self):
         """Performs a single time step using the Implicit method
@@ -135,19 +190,17 @@ class ImplicitSolver(SolverBase):
         """
         self.u = self.simulation.cardiac_model.u
         self.rhs = self.simulation.cardiac_model.rhs
-        self.myo_indexes = self.simulation.cardiac_model.myo_indexes
-        self.fibro_mask = self.simulation.cardiac_model.fibro_mask
-
         self.u_old, self.u_old_2, self.u = self.u, self.u_old, self.u_old_2
 
-        # b = A_ion @ rhs
-        self.b = self.linalg.matvec(self.a_ion_matrix, self.rhs, self.b)
-        # b = A_rhs @ u_old + 1. * b
-        self.b = self.linalg.matvec_p_ay(self.a_rhs_matrix, self.u_old, self.b, 1., self.b)
-        # Better initial guess for CG solver using the previous two time steps
-        self.u = self.linalg.axmy(2., self.u_old, self.u_old_2, self.u)
-        self.u, n_iter = self._solve(self.a_lhs_matrix, self.b, self.u, atol=self.atol, maxiter=self.maxiter)
+        x0, b = self.linalg.prepare_implicit_step(
+            self.a_rhs_matrix, self.a_ion_matrix, self.u_old, self.u_old_2,
+            self.rhs, self.myo_indexes
+        )
+        u_new, n_iter = self.solver(
+            self.a_lhs_matrix, b, x0, atol=self.atol, maxiter=self.maxiter
+        )
 
+        self.u = self.linalg.update_active_indexes(u_new, self.myo_indexes, self.u)
         if n_iter < 0:
             warnings.warn("Diffusion kernel solution accuracy is not reached")
         

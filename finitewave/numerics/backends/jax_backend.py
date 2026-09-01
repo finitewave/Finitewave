@@ -117,7 +117,7 @@ class JAXBackend(Backend):
     def copy(self, arr):
         return self.lib.array(arr, dtype=self.float_dtype, copy=True)
 
-    def wrap_sparse(self, csr_matrix, indexes=None, local_indexing=False):
+    def wrap_sparse(self, csr_matrix, indexes=None, row_reduced=False, local_indexing=False):
         """Converts a sparse matrix in CSR format to JAX compatible ELLPACK format.
 
         Parameters
@@ -126,9 +126,12 @@ class JAXBackend(Backend):
             The input sparse matrix in CSR format.
         indexes : 1D array of int, optional
             Array of indexes where the solution is defined.
-            this parameter is ignored.
-        local_indexing : bool, optional
-            Whether to use local indexing.
+            If not provided, all elements are used.
+            This parameter is ignored.
+        reduced : bool, optional
+            Whether to use reduced indexing.
+        reindexed : bool, optional
+            Whether to reindex the matrix.
 
         Returns
         -------
@@ -137,14 +140,21 @@ class JAXBackend(Backend):
         data : mx.ndarray
             The non-zero values of the matrix in ELLPACK format.
         """
+        if row_reduced and local_indexing:
+            raise ValueError("Cannot use both `row_reduced` and `local_indexing` options simultaneously.")
+        
+        if row_reduced and indexes is None:
+            raise ValueError("Indexes must be provided for reduction.")
+
+        if local_indexing and indexes is None:
+            raise ValueError("Indexes must be provided for reindexing.")
+        
         if local_indexing:
-            if indexes is None:
-                raise ValueError("Indexes must be provided for local indexing.")
             csr_matrix = csr_matrix[indexes, :][:, indexes]
 
         ellpack_indices, ellpack_data = csr_to_ellpack(csr_matrix)
 
-        if not local_indexing and indexes is not None:
+        if row_reduced:
             ellpack_indices = ellpack_indices[indexes]
             ellpack_data = ellpack_data[indexes]
 

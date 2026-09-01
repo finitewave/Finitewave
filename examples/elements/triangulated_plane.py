@@ -5,13 +5,14 @@ import finitewave as fw
 
 
 # create a tissue of size 50x50 with 200x200 points:
-n = 200
+n = 400
 size = 50
 elem_type = fw.ElementType.TRIANGLE
 coords, elems = fw.build_triangulated_plane(n, n, (0, size), (0, size))
 
 # create cardiac tissue object:
 tissue = fw.CardiacTissueElements(coords, elems, elem_type=elem_type)
+tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(tissue.mesh.dtype)  # add some random holes in the mesh
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()

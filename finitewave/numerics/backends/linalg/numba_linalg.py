@@ -9,7 +9,6 @@ def select_explicit_solver(x, active_indexes):
     raise ValueError("Invalid combination of x and active_indexes sizes.")
 
 
-
 def explicit_step(A_x, x, A_y, y, active_indexes, out):
     """Performs the matrix-vector multiplication and addition with half-lumped mass matrix.
 
@@ -35,41 +34,6 @@ def explicit_step(A_x, x, A_y, y, active_indexes, out):
     """
     out = matvec_numba(A_x[0], A_x[1], A_x[2], x, out)
     return matvec_p_ay_numba(A_y[0], A_y[1], A_y[2], y, 1.0, out, out)
-
-
-def implicit_step(method, A_lhs, A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes, out, atol=1e-8, maxiter=100):
-    """Performs the implicit time-stepping operation.
-
-    Parameters
-    ----------
-    method : str
-        The time-stepping method to be used.
-    A_lhs : tuple
-        The left-hand side matrix in CRS format.
-    A_rhs : tuple
-        The right-hand side matrix in CRS format.
-    A_ion : tuple
-        The ionic current matrix in CRS format.
-    x_old : np.ndarray
-        The solution vector from the previous time step.
-    x_old_2 : np.ndarray
-        The solution vector from two time steps ago (used for certain methods).
-    i_ion : np.ndarray
-        The ionic current vector.
-    active_indexes : np.ndarray
-        Array of indexes where the solution is defined.
-    out : np.ndarray
-        Output solution vector to store the updated solution after the implicit step.
-
-    Returns
-    -------
-    np.ndarray
-        Updated solution vector after the implicit step.
-    """
-    x0, b = prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes)
-    x_new, _ = method(A_lhs, b, x0, atol=atol, maxiter=maxiter)
-    x_new = update_active_indexes(x_new, active_indexes, out)
-    return x_new
 
 
 def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
@@ -143,6 +107,8 @@ def cg(A, b, x0, M=None, atol=1e-6, maxiter=100):
     if np.sqrt(r_norm) < atol:
         return x0, 0
 
+    x = x0
+
     for iteration in range(maxiter):
 
         q = matvec_numba(indptr, indices, data, p, q)
@@ -150,7 +116,7 @@ def cg(A, b, x0, M=None, atol=1e-6, maxiter=100):
 
         alpha = r_norm / p_dot_q
 
-        x = ax_p_by_numba(1.0, x0, alpha, p, x0)
+        x = ax_p_by_numba(1.0, x, alpha, p, x)
         r = ax_p_by_numba(1.0, r, -alpha, q, r)
         r_norm_new = dot_numba(r, r)
 

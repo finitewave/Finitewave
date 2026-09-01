@@ -23,8 +23,7 @@ class ForwardEulerSolver(SolverBase):
     num_iterations : list
         List to track the number of iterations per time step.
     """
-    def __init__(self, full_lumping=True):
-        self.full_lumping = full_lumping
+    def __init__(self, ionic_lumping=False):
         self.a_matrix = None
         self.u_new = None
         self.u = None
@@ -32,6 +31,7 @@ class ForwardEulerSolver(SolverBase):
         self.myo_indexes = None
         self.num_iterations = []
         self.solver = None
+        self.ionic_lumping = ionic_lumping
 
     def initialize(self, simulation):
         """Initializes the Forward Euler solver with the given simulation.
@@ -53,7 +53,9 @@ class ForwardEulerSolver(SolverBase):
     def assemble_system(self):
         """Assembles the system matrix for the Forward Euler method.
         
-        A_lhs = I - dt * M^{-1} * K
+        A_lhs = I - dt * M_lumped^{-1} * K
+        A_ion = dt * M_lumped^{-1} * M_ion
+        If ionic_lumping is True, M_ion = M_lumped, otherwise M_ion = M (full mass matrix).
 
         Parameters
         ----------
@@ -65,21 +67,60 @@ class ForwardEulerSolver(SolverBase):
             Time step for the simulation.
         """
         dt = self.simulation.dt
-        myo_indexes = self.simulation.cardiac_model.myo_indexes
-
+        myo_indexes = self.simulation.cardiac_tissue.myo_indexes
         stiff, mass = self.simulation.diffusion_model.weights
-        mass_inv = sparse.diags(1 / mass.sum(axis=1).A1)
 
-        a_rhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
-        self.a_rhs_matrix = self.simulation.backend.wrap_sparse(a_rhs_matrix, myo_indexes)
+        a_rhs_matrix = self.assemble_rhs_matrix(stiff, mass, dt)
+        self.a_rhs_matrix = self.simulation.backend.wrap_sparse(
+            a_rhs_matrix, myo_indexes, row_reduced=True)
 
-        a_ion_matrix = dt * mass_inv @ mass
-        self.a_ion_matrix = self.simulation.backend.wrap_sparse(a_ion_matrix, myo_indexes)
+        a_ion_matrix = self.assemble_ion_matrix(mass, dt)
+        self.a_ion_matrix = self.simulation.backend.wrap_sparse(
+            a_ion_matrix, myo_indexes, row_reduced=True)
 
         if self.solver is None:
             self.solver = self.linalg.select_explicit_solver(self.u, myo_indexes)
 
         self.myo_indexes = self.simulation.backend.wrap_indexes(myo_indexes)
+
+    def assemble_rhs_matrix(self, stiff, mass, dt):
+        """Assembles the right-hand side matrix for the Forward Euler method.
+
+        Parameters
+        ----------
+        stiff : scipy.sparse.csr_matrix
+            The stiffness matrix from the diffusion model.
+        mass : scipy.sparse.csr_matrix
+            The mass matrix from the diffusion model.
+        dt : float
+            Time step for the simulation.
+        """
+        mass_lumped_inv = sparse.diags(1 / mass.sum(axis=1).A1)
+        a_rhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_lumped_inv * stiff
+        return a_rhs_matrix
+
+    def assemble_ion_matrix(self, mass, dt):
+        """Assembles the ionic current matrix for the Forward Euler method.
+
+        Parameters
+        ----------
+        mass : scipy.sparse.csr_matrix
+            The mass matrix from the diffusion model.
+        dt : float
+            Time step for the simulation.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            The ionic current matrix for the Forward Euler method.
+            If ionic_lumping is True, returns dt * I,
+            otherwise returns dt * M_lumped^{-1} * M.
+        """
+        if self.ionic_lumping:
+            return dt * sparse.eye(mass.shape[0])
+        
+        mass_lumped_inv = sparse.diags(1 / mass.sum(axis=1).A1)
+        return dt * mass_lumped_inv @ mass
 
     def run(self):
         """Performs a single time step using the Forward Euler method.

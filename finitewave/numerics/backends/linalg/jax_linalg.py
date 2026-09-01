@@ -3,6 +3,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from jax.scipy.sparse.linalg import cg
+
 
 def select_explicit_solver(x, active_indexes):
     if x.size == active_indexes.size:
@@ -74,53 +76,11 @@ def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
     return out
 
 
-
-
-@partial(jax.jit, static_argnames=('method',))
-def implicit_step(method, A_lhs, A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes, out, **kwargs):
-    """
-    Implicit solver for the diffusion equation using the Conjugate Gradient method.
-
-    Parameters
-    ----------
-    method : str
-        The method to use for solving the linear system. Currently supports 'cg' (Conjugate Gradient).
-    A_lhs : tuple
-        Left-hand side matrix in ELLPACK format.
-        Indexing should be local to the active indexes.
-    A_rhs : tuple
-        Right-hand side matrix in ELLPACK format.
-        Indexing should be global to the entire domain.
-    A_ion : tuple
-        Ionic contribution matrix in ELLPACK format.
-        Indexing should be global to the entire domain.
-    x_old : 1D array of float
-        Previous solution vector.
-    x_old_2 : 1D array of float
-        Solution vector from two time steps ago.
-    i_ion : 1D array of float
-        Ionic current vector.
-    active_indexes : 1D array of int
-        Indexes corresponding to active cells.
-    fibro_mask : 1D array of bool
-        Mask indicating fibroblast cells.
-    dt : float
-        Time step size.
-    order : int
-        Order of the time integration method (1 or 2).
-
-    Returns
-    -------
-    x_new : 1D array of float
-        Updated solution vector after the implicit step.
-    """
-    x0 = 2. * x_old[active_indexes] - x_old_2[active_indexes]
-    b = matvec_ellpack(A_rhs, x_old) + matvec_ellpack(A_ion, i_ion)
-
-    A_matvec = lambda x: matvec_ellpack(A_lhs, x)
-    x_local, info = method(A_matvec, b, x0, **kwargs)
-    out = out.at[active_indexes].set(x_local)
-    return out, info
+@jax.jit
+def cg(A, b, x0=None, *, tol=0.0, atol=1e-8, maxiter=None, M=None):
+    matvec = lambda x: matvec_ellpack(A, x)
+    res, info = jax.scipy.sparse.linalg.cg(matvec, b, x0=x0, tol=tol, atol=atol, maxiter=maxiter, M=M)
+    return res, 0
 
 
 @jax.jit

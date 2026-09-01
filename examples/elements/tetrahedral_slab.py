@@ -5,7 +5,7 @@ import finitewave as fw
 
 
 # create a tissue of size 400x400 with cardiomycytes:
-nx, ny, nz = 200, 100, 20
+nx, ny, nz = 400, 200, 40
 size_x = (0, 50)
 size_y = (0, 25)
 size_z = (0, 5)
@@ -27,8 +27,8 @@ simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="numba")
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.FentonKarma()
 simulation.stim_sequence = stim_sequence
-# set up the solver, if not specified Crank-Nicolson is used by default:
-simulation.solver = fw.ForwardEulerSolver()
+# set up the solver, if not specified BackwardEulerSolver is used by default:
+simulation.solver = fw.BackwardEulerSolver()
 
 # run the model:
 simulation.run()
@@ -41,4 +41,4 @@ plotter = pv.Plotter()
 plotter.add_mesh(grid, scalars="u", cmap="RdBu_r")
 plotter.show()
 
-plotter.screenshot("tetrahedral_slab.png")
+# plotter.screenshot("tetrahedral_slab.png")

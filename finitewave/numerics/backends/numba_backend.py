@@ -53,19 +53,21 @@ class NumbaBackend(Backend):
     def device_info(self):
         return "cpu"
 
-    def wrap_sparse(self, crs_matrix, indexes=None, local_indexing=False):
+    def wrap_sparse(self, csr_matrix, indexes=None, row_reduced=False, local_indexing=False):
         """Converts a sparse matrix in CRS format to NumPy arrays.
         The output arrays are filtered to only include the rows and columns
         specified by the indexes.
 
         Parameters
         ----------
-        crs_matrix : scipy.sparse.csr_matrix
+        csr_matrix : scipy.sparse.csr_matrix
             The input sparse matrix in CRS format.
-        dtype : np.dtype
-            The data type for the output arrays.
         indexes : np.ndarray
             Array of indexes where the solution is defined.
+        row_reduced : bool
+            If True, the matrix is reduced to only include the rows specified by the indexes.
+        local_indexing : bool
+            If True, the matrix is indexed locally.
 
         Returns
         -------
@@ -76,13 +78,20 @@ class NumbaBackend(Backend):
         data : np.ndarray
             The non-zero values of the matrix in CRS format.
         """
-        if local_indexing:
-            if indexes is None:
-                raise ValueError("Indexes must be provided for local indexing.")
-            crs_matrix = crs_matrix[:, indexes][indexes, :]
+        if row_reduced and local_indexing:
+            raise ValueError("Cannot use both `row_reduced` and `local_indexing` options simultaneously.")
+        
+        if row_reduced and indexes is None:
+            raise ValueError("Indexes must be provided for reduction.")
 
-        data = self.wrap_array(crs_matrix.data)
-        indptr = self.wrap_indexes(crs_matrix.indptr)
-        indices = self.wrap_indexes(crs_matrix.indices)
+        if local_indexing and indexes is None:
+            raise ValueError("Indexes must be provided for reindexing.")
+        
+        if local_indexing:
+            csr_matrix = csr_matrix[indexes, :][:, indexes]
+
+        data = self.wrap_array(csr_matrix.data)
+        indptr = self.wrap_indexes(csr_matrix.indptr)
+        indices = self.wrap_indexes(csr_matrix.indices)
 
         return indptr, indices, data

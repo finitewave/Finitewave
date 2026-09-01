@@ -22,18 +22,12 @@ def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
     return out
 
 
-def implicit_step(method, A_lhs, A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes, out, atol=1e-8, maxiter=100):
-    x0, b = prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes)
-    x_new, _ = method(A_lhs, b, x0, atol=atol, maxiter=maxiter)
-    out = update_active_indexes(x_new, active_indexes, out)
-    
-    return out
-
 @mx.compile
 def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
     x0 = 2. * x_old[active_indexes] - x_old_2[active_indexes]
     b = matvec_ellpack(A_rhs, x_old) + matvec_ellpack(A_ion, i_ion)
     return x0, b
+
 
 @mx.compile
 def update_active_indexes(x, active_indexes, out):
@@ -70,17 +64,12 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
     """
     # Initial residual and direction
     # r = b - A@x
-    indices, data = A
-    x = x0
-    r = b - matvec_ellpack(A, x)
-    p = r
-    r_norm = mx.sum(r * r)
+    x, r, p, r_norm = prepare_cg(A, b, x0)
 
     for i in range(maxiter):
 
         x, r, p, r_norm = cg_step(A, x, r, p, r_norm)
-        
-        # Convergence check: Only sync with CPU every 10-20 iterations
+
         if i % 10 == 0:
             mx.eval(r_norm)
             mx.synchronize()
@@ -88,6 +77,41 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
                 break
         
     return x, i
+
+@mx.compile
+def prepare_cg(A, b, x0):
+    """
+    Prepares the initial residual and direction for the Conjugate Gradient solver.
+
+    Parameters
+    ----------
+    A : tuple
+        A tuple containing (indices, data) representing the matrix in ELLPACK format.
+    b : 1D array of float
+        Right-hand side vector.
+    x0 : 1D array of float
+        Initial guess for the solution.
+
+    Returns
+    -------
+    r : 1D array of float
+        Initial residual vector.
+    p : 1D array of float
+        Initial direction vector.
+    r_norm : float
+        Norm of the initial residual.
+    """
+    r = b - matvec_ellpack(A, x0)
+    p = r
+    r_norm = mx.sum(r * r)
+    return x0, r, p, r_norm
+
+@mx.compile
+def cg_n_steps(A, x, r, p, r_norm, n_steps):
+    for _ in range(n_steps):
+        x, r, p, r_norm = cg_step(A, x, r, p, r_norm)
+
+    return x, r, p, r_norm
 
 
 @mx.compile

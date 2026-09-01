@@ -226,10 +226,10 @@ class ElementAssembler:
         if diffusion is None:
             diffusion = np.eye(coords.shape[1]) * np.ones(len(elems))[:, np.newaxis, np.newaxis]
 
-        if reindex and indexes is not None:
-            elems = self.reindex_elems(coords, elems, indexes)
-            coords = coords[indexes]
-            shape = (len(indexes), len(indexes))
+        # if reindex and indexes is not None:
+        #     elems = self.reindex_elems(coords, elems, indexes)
+        #     coords = coords[indexes]
+        #     shape = (len(indexes), len(indexes))
 
         elements_size, grads = self.compute_metrics(coords, elems)
         # TODO: replace with einsum for better performance and readability

@@ -90,7 +90,7 @@ class MlxBackend(Backend):
     def copy(self, arr):
         return self.lib.array(arr, dtype=self.float_dtype)
 
-    def wrap_sparse(self, csr_matrix, indexes=None, local_indexing=False):
+    def wrap_sparse(self, csr_matrix, indexes=None, row_reduced=False, local_indexing=False):
         """Converts a sparse matrix in CSR format to JAX compatible ELLPACK format.
 
         Parameters
@@ -110,20 +110,26 @@ class MlxBackend(Backend):
         data : mx.ndarray
             The non-zero values of the matrix in ELLPACK format.
         """
-        if local_indexing:
-            if indexes is None:
-                raise ValueError("Indexes must be provided for local indexing.")
+        if row_reduced and local_indexing:
+            raise ValueError("Cannot use both `row_reduced` and `local_indexing` options simultaneously.")
+        
+        if row_reduced and indexes is None:
+            raise ValueError("Indexes must be provided for reduction.")
 
+        if local_indexing and indexes is None:
+            raise ValueError("Indexes must be provided for reindexing.")
+        
+        if local_indexing:
             csr_matrix = csr_matrix[indexes, :][:, indexes]
 
         ellpack_indices, ellpack_data = csr_to_ellpack(csr_matrix)
 
-        if not local_indexing and indexes is not None:
+        if row_reduced:
             ellpack_indices = ellpack_indices[indexes]
             ellpack_data = ellpack_data[indexes]
 
         ellpack_indices = self.wrap_indexes(ellpack_indices)
         ellpack_data = self.wrap_array(ellpack_data)
 
-
         return ellpack_indices, ellpack_data
+        
