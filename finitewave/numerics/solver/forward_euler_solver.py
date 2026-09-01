@@ -73,14 +73,11 @@ class ForwardEulerSolver(SolverBase):
         a_rhs_matrix = sparse.eye(stiff.shape[0]) - dt * mass_inv * stiff
         self.a_rhs_matrix = self.simulation.backend.wrap_sparse(a_rhs_matrix, myo_indexes)
 
-        if not self.full_lumping and self.solver is None:
-            a_ion_matrix = dt * mass_inv @ mass
-            self.a_ion = self.simulation.backend.wrap_sparse(a_ion_matrix, myo_indexes)
-            self.solver = self.linalg.explicit_step_half_lumped
+        a_ion_matrix = dt * mass_inv @ mass
+        self.a_ion_matrix = self.simulation.backend.wrap_sparse(a_ion_matrix, myo_indexes)
 
-        elif self.full_lumping and self.solver is None:
-            self.a_ion = dt
-            self.solver = self.linalg.explicit_step
+        if self.solver is None:
+            self.solver = self.linalg.select_explicit_solver(self.u, myo_indexes)
 
         self.myo_indexes = self.simulation.backend.wrap_indexes(myo_indexes)
 
@@ -97,7 +94,14 @@ class ForwardEulerSolver(SolverBase):
 
         self.u_old, self.u = self.u, self.u_old
 
-        self.u = self.solver(self.a_rhs_matrix, self.u_old, self.a_ion, self.rhs, self.myo_indexes, self.u)
+        self.u = self.solver(
+            self.a_rhs_matrix,
+            self.u_old,
+            self.a_ion_matrix,
+            self.rhs,
+            self.myo_indexes, 
+            self.u
+        )
 
         self.simulation.cardiac_model.u = self.u
         self.num_iterations.append(1)

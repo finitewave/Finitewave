@@ -6,12 +6,16 @@ from finitewave.core.backend.backend import Backend
 class NumbaBackend(Backend):
     def __init__(self):
         import numpy as np
+        from .linalg import numba_linalg
+        from .model.numba_model_generator import NumbaModelGenerator
         self.name = "numba"
         self.lib = np
         self.float_dtype = np.float64
         self.int_dtype = np.int64
         self.sparse_support = True
         self.gpu_support = False
+        self.linalg = numba_linalg
+        self.model_generator = NumbaModelGenerator()
 
     def config(self, device=None, float_dtype=None, num_of_threads=None):
         """
@@ -49,7 +53,7 @@ class NumbaBackend(Backend):
     def device_info(self):
         return "cpu"
 
-    def wrap_matrix(self, crs_matrix, indexes, local_indexing=False):
+    def wrap_sparse(self, crs_matrix, indexes=None, local_indexing=False):
         """Converts a sparse matrix in CRS format to NumPy arrays.
         The output arrays are filtered to only include the rows and columns
         specified by the indexes.
@@ -73,10 +77,12 @@ class NumbaBackend(Backend):
             The non-zero values of the matrix in CRS format.
         """
         if local_indexing:
+            if indexes is None:
+                raise ValueError("Indexes must be provided for local indexing.")
             crs_matrix = crs_matrix[:, indexes][indexes, :]
 
         data = self.wrap_array(crs_matrix.data)
         indptr = self.wrap_indexes(crs_matrix.indptr)
         indices = self.wrap_indexes(crs_matrix.indices)
-        indexes = self.wrap_indexes(indexes)
-        return indptr, indices, data, indexes
+
+        return indptr, indices, data

@@ -117,7 +117,7 @@ class JAXBackend(Backend):
     def copy(self, arr):
         return self.lib.array(arr, dtype=self.float_dtype, copy=True)
 
-    def wrap_sparse(self, csr_matrix, indexes, local_indexing=False):
+    def wrap_sparse(self, csr_matrix, indexes=None, local_indexing=False):
         """Converts a sparse matrix in CSR format to JAX compatible ELLPACK format.
 
         Parameters
@@ -138,9 +138,15 @@ class JAXBackend(Backend):
             The non-zero values of the matrix in ELLPACK format.
         """
         if local_indexing:
+            if indexes is None:
+                raise ValueError("Indexes must be provided for local indexing.")
             csr_matrix = csr_matrix[indexes, :][:, indexes]
 
         ellpack_indices, ellpack_data = csr_to_ellpack(csr_matrix)
+
+        if not local_indexing and indexes is not None:
+            ellpack_indices = ellpack_indices[indexes]
+            ellpack_data = ellpack_data[indexes]
 
         ellpack_indices = self.wrap_indexes(ellpack_indices)
         ellpack_data = self.wrap_array(ellpack_data)

@@ -75,7 +75,11 @@ class DiffusionModel(DiffusionModelBase):
         myo_indexes = tissue.tissue_indexes[tissue.myo_indexes]
         self.connectivity_tensor = self.convert_to_connectivity(self.diffusion, tissue.connectivity)
         self.weights = self.stencil.compute_system_matrices(
-            mesh, self.connectivity_tensor, tissue.dr, myo_indexes, reindex=True
+            mesh,
+            self.connectivity_tensor,
+            tissue.dr,
+            myo_indexes,
+            tissue.tissue_indexes
         )
         return self.weights
 

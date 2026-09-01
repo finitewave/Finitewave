@@ -48,8 +48,9 @@ cardiac_model = fw.Courtemanche()
 
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n = 1000
 tissue = fw.CardiacTissueGrid([n, n], dr=0.25)
+# tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(int)  # add some fibroblasts
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -58,7 +59,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            y_min=n//2 - 3, y_max=n//2 + 3))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="mlx")
+simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="numba")
 simulation.cardiac_model = cardiac_model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence

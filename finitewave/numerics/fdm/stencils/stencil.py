@@ -8,7 +8,7 @@ class Stencil(ABC):
     Base class for diffusion stencils.
     """
 
-    def compute_system_matrices(self, mesh, diffusion, dr, indexes, reindex=False):
+    def compute_system_matrices(self, mesh, diffusion, dr, indexes, tissue_indexes=None):
         """
         Computes the weights as a sparse matrix.
 
@@ -35,14 +35,14 @@ class Stencil(ABC):
 
         size = mesh.size
 
-        if reindex:
-            rows, cols = self.reindex_matrix(mesh, rows, cols, indexes)
-            size = len(indexes)
-        
+        if tissue_indexes is not None:
+            rows, cols = self.reindex_matrix(mesh, rows, cols, tissue_indexes)
+            size = len(tissue_indexes)
+
         shape = (size, size)
         # make stiffness matrix with positive diagonal
         K_stiff = sp.csr_matrix((weights, (rows, cols)), shape=shape)
-        M_mass = sp.diags(np.ones_like(indexes, dtype=weights.dtype),
+        M_mass = sp.diags(np.ones(K_stiff.shape[0], dtype=weights.dtype),
                           offsets=0, format='csr')
         return K_stiff.tocsr(), M_mass.tocsr()
     

@@ -50,7 +50,7 @@ import finitewave as fw
 # number of nodes on the side
 n, m = 400, 400
 # fiber orientation angle
-tissue = fw.CardiacTissue([n, m], dr=0.25)
+tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
 alpha = np.pi / 4
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, m, 2])

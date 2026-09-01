@@ -19,7 +19,7 @@ class MlxBackend(Backend):
         _check_mlx_installed()
         import mlx.core as mx
         from .linalg import mlx_linalg
-        from .model.mlx_ionic_generator import MLXIonicGenerator
+        from .model.mlx_model_generator import MLXModelGenerator
 
         self.name = "mlx"
         self.lib = mx
@@ -28,7 +28,7 @@ class MlxBackend(Backend):
         self.sparse_support = False    # MLX does not support sparse matrices
         self.gpu_support = True
         self.linalg = mlx_linalg
-        self.model_generator = MLXIonicGenerator()
+        self.model_generator = MLXModelGenerator()
 
     def config(self, device=None, float_dtype=None, num_of_threads=None):
         import mlx.core as mx
@@ -90,7 +90,7 @@ class MlxBackend(Backend):
     def copy(self, arr):
         return self.lib.array(arr, dtype=self.float_dtype)
 
-    def wrap_sparse(self, csr_matrix, indexes, local_indexing=False):
+    def wrap_sparse(self, csr_matrix, indexes=None, local_indexing=False):
         """Converts a sparse matrix in CSR format to JAX compatible ELLPACK format.
 
         Parameters
@@ -111,11 +111,19 @@ class MlxBackend(Backend):
             The non-zero values of the matrix in ELLPACK format.
         """
         if local_indexing:
+            if indexes is None:
+                raise ValueError("Indexes must be provided for local indexing.")
+
             csr_matrix = csr_matrix[indexes, :][:, indexes]
 
         ellpack_indices, ellpack_data = csr_to_ellpack(csr_matrix)
 
+        if not local_indexing and indexes is not None:
+            ellpack_indices = ellpack_indices[indexes]
+            ellpack_data = ellpack_data[indexes]
+
         ellpack_indices = self.wrap_indexes(ellpack_indices)
         ellpack_data = self.wrap_array(ellpack_data)
+
 
         return ellpack_indices, ellpack_data

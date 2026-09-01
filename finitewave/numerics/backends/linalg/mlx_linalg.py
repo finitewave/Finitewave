@@ -1,16 +1,43 @@
 import mlx.core as mx
 
 
+def select_explicit_solver(x, active_indexes):
+    if x.size == active_indexes.size:
+        return explicit_step
+    
+    if x.size > active_indexes.size:
+        return explicit_step_indexed
+
+    raise ValueError("Invalid combination of x and active_indexes sizes.")
+
+
 @mx.compile
-def explicit_step(A, x, a, y, active_indexes, out):
-    y_local = y[active_indexes]
-    out[active_indexes] = matvec_ellpack(A, x) + a * y_local
+def explicit_step(A_x, x, A_y, y, active_indexes, out):
+    return matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y)
+
+
+@mx.compile
+def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
+    out[active_indexes] = matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y)
     return out
 
 
+def implicit_step(method, A_lhs, A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes, out, atol=1e-8, maxiter=100):
+    x0, b = prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes)
+    x_new, _ = method(A_lhs, b, x0, atol=atol, maxiter=maxiter)
+    out = update_active_indexes(x_new, active_indexes, out)
+    
+    return out
+
 @mx.compile
-def explicit_step_half_lumped(A_x, x, y, A_y, active_indexes, out):
-    out[active_indexes] = matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y)
+def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
+    x0 = 2. * x_old[active_indexes] - x_old_2[active_indexes]
+    b = matvec_ellpack(A_rhs, x_old) + matvec_ellpack(A_ion, i_ion)
+    return x0, b
+
+@mx.compile
+def update_active_indexes(x, active_indexes, out):
+    out[active_indexes] = x
     return out
 
 
@@ -21,7 +48,7 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
     Parameters
     ----------
     A : tuple
-        A tuple containing (indices, data, indexes) representing the matrix in ELLPACK format.
+        A tuple containing (indices, data) representing the matrix in ELLPACK format.
     b : 1D array of float
         Right-hand side vector.
     x0 : 1D array of float, optional
@@ -43,9 +70,9 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
     """
     # Initial residual and direction
     # r = b - A@x
-    indices, data, indexes = A
-    x = x0[indexes]
-    r = b[indexes] - matvec_ellpack(A, x)
+    indices, data = A
+    x = x0
+    r = b - matvec_ellpack(A, x)
     p = r
     r_norm = mx.sum(r * r)
 
@@ -60,9 +87,7 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
             if mx.sqrt(r_norm) < atol:
                 break
         
-    x0[indexes] = x
-        
-    return x0, i
+    return x, i
 
 
 @mx.compile

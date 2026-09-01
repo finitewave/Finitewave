@@ -1,7 +1,7 @@
-from .numba_ionic_generator import NumbaIonicGenerator
+from .numba_model_generator import NumbaModelGenerator
 
 
-class NumbaSingleCellGenerator(NumbaIonicGenerator):
+class NumbaSingleCellGenerator(NumbaModelGenerator):
     def __init__(self, kernel_func_name="prepacing_kernel"):
         super().__init__(kernel_func_name)
         self.common_args = ["stim_current", "dt", "u"]
