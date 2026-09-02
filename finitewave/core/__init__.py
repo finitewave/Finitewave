@@ -10,7 +10,7 @@
 #     StateSaver,
 #     StateSaverCollection
 # )
-# from finitewave.core.tracker import TrackerSequence
+from finitewave.core.tracker import TrackerSequence
 from finitewave.core.stimul import (
     StimSequence,
     StimSingleCell,

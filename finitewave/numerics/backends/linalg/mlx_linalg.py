@@ -1,6 +1,10 @@
 import mlx.core as mx
 
 
+def matvec(A, x):
+    return matvec_ellpack(A, x)
+
+
 def select_explicit_solver(x, active_indexes):
     if x.size == active_indexes.size:
         return explicit_step
@@ -13,19 +17,19 @@ def select_explicit_solver(x, active_indexes):
 
 @mx.compile
 def explicit_step(A_x, x, A_y, y, active_indexes, out):
-    return matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y)
+    return matvec(A_x, x) + matvec(A_y, y)
 
 
 @mx.compile
 def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
-    out[active_indexes] = matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y)
+    out[active_indexes] = matvec(A_x, x) + matvec(A_y, y)
     return out
 
 
 @mx.compile
 def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
     x0 = 2. * x_old[active_indexes] - x_old_2[active_indexes]
-    b = matvec_ellpack(A_rhs, x_old) + matvec_ellpack(A_ion, i_ion)
+    b = matvec(A_rhs, x_old) + matvec(A_ion, i_ion)
     return x0, b
 
 
@@ -101,7 +105,7 @@ def prepare_cg(A, b, x0):
     r_norm : float
         Norm of the initial residual.
     """
-    r = b - matvec_ellpack(A, x0)
+    r = b - matvec(A, x0)
     p = r
     r_norm = mx.sum(r * r)
     return x0, r, p, r_norm
@@ -117,7 +121,7 @@ def cg_n_steps(A, x, r, p, r_norm, n_steps):
 @mx.compile
 def cg_step(A, x, r, p, r_norm):
     # 1. SpMV: Ap = A @ p
-    Ap = matvec_ellpack(A, p)
+    Ap = matvec(A, p)
 
     # 2. Alpha: step size
     alpha = r_norm / mx.sum(p * Ap)
@@ -131,6 +135,29 @@ def cg_step(A, x, r, p, r_norm):
     p = r + (r_norm_new / r_norm) * p
     
     return x, r, p, r_norm_new
+
+
+@mx.compile
+def matvec_coo(A, x):
+    """
+    Performs A @ x where A is represented in COO format.
+
+    Parameters
+    ----------
+    A : tuple
+        A tuple containing (row, col, data) representing the matrix in COO format.
+    x : 1D array of float
+        Input vector to be multiplied by A.
+
+    Returns
+    -------
+    np.ndarray (len(row),)
+        Result of the matrix-vector product.
+    """
+    row, col, data = A
+    out = mx.zeros(x.shape, dtype=x.dtype)
+    out = out.at[row].add(data * x[col])
+    return out
 
 
 @mx.compile

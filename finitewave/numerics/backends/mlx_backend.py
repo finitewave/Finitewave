@@ -1,3 +1,4 @@
+import numpy as np
 from .linalg.sparse import csr_to_ellpack
 
 from finitewave.core.backend.backend import Backend

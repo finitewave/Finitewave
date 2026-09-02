@@ -60,6 +60,16 @@ class CardiacTissueElements(CardiacTissueBase):
         self.fibers = None
 
     @property
+    def myo_coords(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates of the myocytes in the tissue.
+        """
+        return self.coords[self.myo_indexes]
+
+    @property
     def myo_indexes(self):
         """
         Returns
