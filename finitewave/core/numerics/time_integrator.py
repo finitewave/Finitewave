@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
 
 
-class SolverBase(ABC):
+
+class TimeIntegrator(ABC):
     """
-    A base class for solvers used to solve linear systems.
+    A base class for time integration methods in cardiac simulations.
+    This class defines the interface and common functionality for
+    different time integration schemes.
     """
     def __init__(self):
         pass

@@ -1,3 +1,2 @@
-from .element_assembler import ElementAssembler
-from .diffusion_model_elements import DiffusionModelElements
+from .finite_element_discretization import FiniteElementDiscretization
 from .elements import *

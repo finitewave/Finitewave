@@ -1,9 +1,10 @@
 import warnings
 from scipy import sparse as sp
-from finitewave.core.solver.solver_base import SolverBase
+from finitewave.core.numerics.time_integrator import TimeIntegrator
 
 
-class ImplicitSolver(SolverBase):
+
+class ImplicitTimeIntegrator(TimeIntegrator):
     """Implements the implicit time integration method 
     with Conjugate Gradient solver and half-lumping of the mass matrix
     for cardiac simulations.
@@ -60,7 +61,7 @@ class ImplicitSolver(SolverBase):
         self.a_ion_matrix = None
 
         self.linalg = None
-        self.solver = None
+        self.linear_solver = None
 
         self.num_iterations = []
 
@@ -76,8 +77,8 @@ class ImplicitSolver(SolverBase):
 
         self.linalg = simulation.backend.linalg
 
-        if self.solver is None:
-            self.solver = self.linalg.cg
+        if self.linear_solver is None:
+            self.linear_solver = self.linalg.cg
 
         if self.order not in [1, 2]:
             raise ValueError("ImplicitSolver order must be 1 or 2.")
@@ -103,7 +104,7 @@ class ImplicitSolver(SolverBase):
         theta = 0.5 if self.order == 2 else 1.0
         myo_indexes = self.simulation.cardiac_tissue.myo_indexes
 
-        stiff, mass = self.simulation.diffusion_model.weights
+        stiff, mass = self.simulation.spatial_discretization.weights
         mass_lumped = self.assemble_lumped_mass_matrix(mass)
         a_lhs_matrix = self.assemble_lhs_matrix(stiff, mass_lumped, dt, theta)
         a_rhs_matrix = self.assemble_rhs_matrix(stiff, mass_lumped, dt, theta)
@@ -196,11 +197,11 @@ class ImplicitSolver(SolverBase):
             self.a_rhs_matrix, self.a_ion_matrix, self.u_old, self.u_old_2,
             self.rhs, self.myo_indexes
         )
-        u_new, n_iter = self.solver(
+        u_new, n_iter = self.linear_solver(
             self.a_lhs_matrix, b, x0, atol=self.atol, maxiter=self.maxiter
         )
 
-        self.u = self.linalg.update_active_indexes(u_new, self.myo_indexes, self.u)
+        self.u = self.linalg.update_at_active_indexes(u_new, self.myo_indexes, self.u)
         if n_iter < 0:
             warnings.warn("Diffusion kernel solution accuracy is not reached")
         

@@ -1,53 +1,48 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import numpy as np
 import scipy.sparse as sp
+from numba import njit, prange
+from finitewave.core.numerics.spatial_discretization import SpatialDiscretization
 
 
-class Stencil(ABC):
+class FiniteDifferenceDiscretization(SpatialDiscretization):
     """
-    Base class for diffusion stencils.
+    Base class for finite difference discretization stencils.
     """
 
-    def compute_system_matrices(self, mesh, diffusion, dr, indexes, tissue_indexes=None):
+    def __init__(self):
+        pass
+
+    def compute_weights(self, tissue):
         """
-        Computes the weights as a sparse matrix.
+        Computes the weights for the diffusion operator.
 
         Parameters
         ----------
-        mesh : numpy.ndarray
-            The mesh of the simulation.
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
-        dr : float
-            The grid spacing.
-        indexes : numpy.ndarray
-            The indexes of the non-empty nodes in the mesh.
+        tissue : CardiacTissueBase
+            The tissue object containing the mesh and diffusion tensor.
 
         Returns
         -------
-        scipy.sparse.csr_matrix
-            The stiffness matrix.
-        scipy.sparse.csr_matrix
-            The mass matrix. Diagonal matrix with ones on the diagonal.
+        rows : numpy.ndarray
+            The row indices of the sparse matrix.
+        cols : numpy.ndarray
+            The column indices of the sparse matrix.
+        weights : numpy.ndarray
+            The weights for the sparse matrix.
         """
-        rows, cols, weights = self.compute_diffusion_weights(mesh, diffusion, dr, indexes)
-        weights = weights.astype(diffusion.dtype)
+        mesh = tissue.mesh
+        diffusion = tissue.diffusion_tensor
+        connectivity = tissue.connectivity
+        dr = tissue.dr
+        indexes = tissue.myo_indexes
 
-        size = mesh.size
+        stiffness = self.compute_diffusion_operator(mesh, dr, indexes, diffusion, connectivity)
+        mass = sp.eye(stiffness.shape[0], dtype=stiffness.dtype, format='csr')
+        return stiffness, mass
 
-        if tissue_indexes is not None:
-            rows, cols = self.reindex_matrix(mesh, rows, cols, tissue_indexes)
-            size = len(tissue_indexes)
-
-        shape = (size, size)
-        # make stiffness matrix with positive diagonal
-        K_stiff = sp.csr_matrix((weights, (rows, cols)), shape=shape)
-        M_mass = sp.diags(np.ones(K_stiff.shape[0], dtype=weights.dtype),
-                          offsets=0, format='csr')
-        return K_stiff.tocsr(), M_mass.tocsr()
-    
     @abstractmethod
-    def compute_diffusion_weights(self, mesh, diffusion, dr, indexes):
+    def compute_diffusion_operator(self, mesh, dr, indexes, diffusion, connectivity):
         """
         Computes the weights for calculating the diffusion operator.
 
@@ -73,7 +68,7 @@ class Stencil(ABC):
         """
         raise NotImplementedError()
 
-    def nonzero_weights(self, mesh, ijk, ijk_list, w_list, direction=1):
+    def nonzero_weights(self, mesh, ijk, ijk_list, w_list, index_map=None, direction=1):
         """
         Collects non-zero weights.
 
@@ -99,15 +94,11 @@ class Stencil(ABC):
         weights : list
             The list of weights for the sparse matrix.
         """
-        rows, cols, weights = [], [], []
+        if index_map is None:
+            index_map = - np.ones_like(mesh, dtype=np.int64)
+            index_map[mesh > 0] = np.arange(np.count_nonzero(mesh > 0))
 
-        for i in range(len(w_list)):
-            w = w_list[i]
-            ijk_i = ijk_list[i]
-            rows += [np.ravel_multi_index(ijk[:, w != 0], mesh.shape)]
-            cols += [np.ravel_multi_index(ijk_i[:, w != 0], mesh.shape)]
-            weights += [direction * w[w != 0]]
-
+        rows, cols, weights = nonzero_weight_numba(mesh, ijk, ijk_list, w_list, index_map, direction)
         return rows, cols, weights
              
     def build_neighbor(self, ijk, shift, axis):
@@ -150,13 +141,8 @@ class Stencil(ABC):
         numpy.ndarray
             A boolean array indicating the validity of each index.
         """
-        mask = np.ones(index.shape[1], dtype=bool)
-
-        for i in range(mesh.ndim):
-            mask &= ((index[i] >= 0) & (index[i] < mesh.shape[i]))
-
-        mask[mask] = mesh[tuple(index[:, mask])] == 1
-        return mask
+        valid = is_valid_indexes_numba(index, mesh)
+        return valid
     
     def reindex_matrix(self, mesh, rows, cols, indexes):
         """
@@ -186,3 +172,60 @@ class Stencil(ABC):
         rows = c_indexes[rows]
         cols = c_indexes[cols]
         return rows, cols
+
+
+@njit
+def is_valid_index(multi_index, limits, mesh):
+    for axis in range(mesh.ndim):
+        coord = multi_index[axis]
+        limit = limits[axis]
+        if coord < 0 or coord >= limit:
+            return False
+
+    flat_index = ravel_multi_index_numba(multi_index, mesh.shape)
+    return mesh.flat[flat_index] == 1
+    
+
+@njit(parallel=True)
+def is_valid_indexes_numba(multi_indexes, mesh):
+    n_points = multi_indexes.shape[1]
+    limits = np.array(mesh.shape)
+    mask = np.zeros(n_points, dtype=np.bool_)
+    for i in prange(n_points):
+        index = multi_indexes[:, i]
+        mask[i] = is_valid_index(index, limits, mesh)
+    return mask
+
+
+@njit
+def ravel_multi_index_numba(multi_index, shape):
+    flat_index = 0
+    for axis in range(len(shape)):
+        flat_index = flat_index * shape[axis] + multi_index[axis]
+    return flat_index
+
+
+@njit(parallel=False)
+def nonzero_weight_numba(mesh, ijk, ijk_list, w_list, index_map, direction=1):
+    n_weights = len(w_list)
+    n_points = ijk.shape[1]
+    rows = np.empty(n_weights * n_points, dtype=np.int64)
+    cols = np.empty(n_weights * n_points, dtype=np.int64)
+    weights = np.empty(n_weights * n_points, dtype=w_list[0].dtype)
+
+    count = 0
+    for i in range(n_points):
+        for j in range(n_weights):
+            w = w_list[j][i]
+            if w == 0:
+                continue
+
+            ind = count
+            flat_index = ravel_multi_index_numba(ijk[:, i], mesh.shape)
+            neighbor_flat_index = ravel_multi_index_numba(ijk_list[j][:, i], mesh.shape)
+            rows[ind] = index_map.flat[flat_index]
+            cols[ind] = index_map.flat[neighbor_flat_index]
+            weights[ind] = direction * w
+            count += 1
+
+    return rows[:count], cols[:count], weights[:count]

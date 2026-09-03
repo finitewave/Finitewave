@@ -71,10 +71,9 @@ class CardiacSimulationBase:
         self.command_sequence = None
         self.state_loader = None
         self.state_saver = None
-
-        self.solver = None
-        self.diffusion_model = None
         self.cardiac_model = None
+        self.spatial_discretization = None
+        self.time_integrator = None
 
         self.dt = dt
         self.t_max = t_max
@@ -99,10 +98,9 @@ class CardiacSimulationBase:
         """
         self.step = 0
         self.t = 0
-
         self.cardiac_model.initialize(self)
-        self.diffusion_model.initialize(self)
-        self.solver.initialize(self)
+        self.spatial_discretization.initialize(self)
+        self.time_integrator.initialize(self)
 
         if self.stim_sequence:
             self.stim_sequence.initialize(self)

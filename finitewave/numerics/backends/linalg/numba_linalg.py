@@ -50,7 +50,7 @@ def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
 
     return x0, b
 
-def update_active_indexes(x, active_indexes, out):
+def update_at_active_indexes(x, active_indexes, out):
     if active_indexes.size != out.size:
         out = set_values_numba(x, active_indexes, out)
     else:

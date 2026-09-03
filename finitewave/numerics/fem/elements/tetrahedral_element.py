@@ -12,6 +12,8 @@ class LinearTetrahedralElement:
 
     Attributes:
     ----------
+    name: str
+        Name of the element type.
     mass_coef: float
         Coefficient for mass matrix calculation.
     elem_mass: (4, 4) ndarray
@@ -25,6 +27,8 @@ class LinearTetrahedralElement:
     """
 
     def __init__(self):
+        self.name = "Tetrahedral"
+        self.order = 1
         self.mass_coef = 20.0
 
         self.elem_mass = 1 / self.mass_coef * np.array([[2, 1, 1, 1],

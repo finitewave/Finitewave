@@ -49,11 +49,11 @@ class Backend:
         """
         return self.lib.array(arr, dtype=self.int_dtype)
 
-    def wrap_sparse(self, csr_matrix, indexes=None, local_indexing=False):
+    def wrap_sparse(self, csr_matrix, indexes=None, row_reduced=False, local_indexing=False):
         """
         Converts a sparse matrix in CSR format to the backend's compatible format.
         """
-        pass
+        raise NotImplementedError("wrap_sparse must be implemented.")
 
     def select_values(self, arr, inds):
         """

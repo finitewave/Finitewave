@@ -1,8 +1,9 @@
 from scipy import sparse
-from finitewave.core.solver.solver_base import SolverBase
+from finitewave.core.numerics.time_integrator import TimeIntegrator
 
 
-class ForwardEulerSolver(SolverBase):
+
+class ForwardEulerTimeIntegrator(TimeIntegrator):
     """Implements the Forward Euler time integration method for cardiac
     simulations.
 
@@ -68,7 +69,7 @@ class ForwardEulerSolver(SolverBase):
         """
         dt = self.simulation.dt
         myo_indexes = self.simulation.cardiac_tissue.myo_indexes
-        stiff, mass = self.simulation.diffusion_model.weights
+        stiff, mass = self.simulation.spatial_discretization.weights
 
         a_rhs_matrix = self.assemble_rhs_matrix(stiff, mass, dt)
         self.a_rhs_matrix = self.simulation.backend.wrap_sparse(

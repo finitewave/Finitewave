@@ -16,7 +16,6 @@ class CardiacTissueBase(ABC):
         A dictionary containing metadata about the tissue.
     """
     def __init__(self):
-        self.meta = {}
         self.D_ac = 1/9
         self.D_al = 1
 

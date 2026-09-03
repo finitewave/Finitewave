@@ -29,7 +29,7 @@ simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
 # set up the solver, if not specified Crank-Nicolson is used by default:
 # ! Forward Euler is conditionally stable for quadrilateral meshes
-simulation.solver = fw.ImplicitSolver(atol=1e-8, maxiter=100, order=2)
+simulation.time_integrator = fw.ForwardEulerTimeIntegrator()
 
 # run the model:
 simulation.run()
@@ -37,7 +37,7 @@ simulation.run()
 # get the resulting potential at the element centers:
 u = simulation.cardiac_model.output("u")
 u_elems = np.zeros(tissue.elems.shape[0]) * np.nan
-u_elems[tissue.myo_elems_indexes] = u[tissue.myo_elements].mean(axis=1)
+u_elems[tissue.myo_elems_indexes] = u[tissue.myo_elems].mean(axis=1)
 
 grid = fw.PyVistaSurfaceGrid(coords, elems)
 grid["u"] = u_elems

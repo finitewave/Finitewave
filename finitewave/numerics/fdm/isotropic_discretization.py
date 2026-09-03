@@ -1,53 +1,13 @@
 import numpy as np
-from .stencil import Stencil
+from .asymmetric_discretization import AsymmetricDiscretization
 
 
-class IsotropicStencil(Stencil):
+class IsotropicDiscretization(AsymmetricDiscretization):
     """
-    4-point stencil with second-order accuracy for boundary conditions.
+    Isotropic finite difference discretization with second-order accuracy for boundary.
     """
-
-    def __init__(self):
-        super().__init__()
-
-    def compute_diffusion_weights(self, mesh, diffusion, dr, indexes):
-        """
-        Computes the weights for the isotropic stencil with first-order
-        boundary conditions.
-
-        Parameters
-        ----------
-        mesh : numpy.ndarray
-            The mesh of the simulation.
-        diffusion : numpy.ndarray [*mesh.shape, ndim, ndim]
-            The diffusion tensor at connections between nodes.
-        dr : float
-            The grid spacing.
-        indexes : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
-
-        Returns
-        -------
-        tuple of np.ndarray
-            The rows, columns, and weights for the sparse matrix.
-        """
-        rows = []
-        cols = []
-        weights = []
-
-        ijk = np.array(np.unravel_index(indexes, mesh.shape))
-        for axis in range(mesh.ndim):
-            r, c, w = self.compute_diffusion_along_axis(mesh, diffusion, dr, ijk, axis)
-            rows.append(r)
-            cols.append(c)
-            weights.append(w)
-
-        rows = np.concatenate(rows)
-        cols = np.concatenate(cols)
-        weights = np.concatenate(weights)
-        return rows, cols, weights
     
-    def compute_diffusion_along_axis(self, mesh, diffusion, dr, ijk, axis):
+    def _diffusion_operator_component(self, mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map):
         """
         Computes the diffusion weights from the flux weights.
 
@@ -73,15 +33,15 @@ class IsotropicStencil(Stencil):
         weights : np.ndarray
             The weights for the sparse matrix.
         """
-        ijk_list, w_list = self.compute_flux_weights(mesh, diffusion, dr, ijk, axis)
-        rows, cols, weights = self.nonzero_weights(mesh, ijk, ijk_list, w_list)
+        ijk_list, w_list = self._flux_weights(mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map)
+        rows, cols, weights = self.nonzero_weights(mesh, ijk, ijk_list, w_list, tissue_index_map, direction=1)
 
         rows = np.concatenate(rows)
         cols = np.concatenate(cols)
         weights = np.concatenate(weights) / dr
         return rows, cols, weights
 
-    def compute_flux_weights(self, mesh, diffusion, dr, ijk, axis):
+    def _flux_weights(self, mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map):
         """
         Computes the flux weights along a given axis using the formula:
 
@@ -113,11 +73,8 @@ class IsotropicStencil(Stencil):
         valid_pos = self.is_valid_index(ijk_pos, mesh)
         valid_neg = self.is_valid_index(ijk_neg, mesh)
 
-        d_pos = np.zeros(valid_pos.shape, dtype=diffusion.dtype)
-        d_neg = np.zeros(valid_neg.shape, dtype=diffusion.dtype)
-
-        d_pos[valid_pos] = diffusion[*ijk[:, valid_pos], axis, axis]
-        d_neg[valid_neg] = diffusion[*ijk_neg[:, valid_neg], axis, axis]
+        d_pos = self.diffusion_tensor_component(diffusion, connectivity, ijk, ijk_pos, valid_pos, axis, tissue_index_map)
+        d_neg = self.diffusion_tensor_component(diffusion, connectivity, ijk, ijk_neg, valid_neg, axis, tissue_index_map)
 
         invalid_pos = (~valid_pos) & valid_neg
         invalid_neg = (~valid_neg) & valid_pos

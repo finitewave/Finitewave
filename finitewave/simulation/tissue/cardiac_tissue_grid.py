@@ -41,17 +41,29 @@ class CardiacTissueGrid(CardiacTissueBase):
             (distance between adjacent points).
         """
         super().__init__()
-        self.meta["dim"] = len(shape)
-        self.meta["shape"] = shape
-        self.meta["type"] = "Grid"
-        self.meta["dr"] = dr
         self.mesh = np.ones(shape, dtype=np.int8)
         self.D_ac = 1. / 9.
         self.D_al = 1
         self.conductivity = 1.
         self.connectivity = 1.
+        self.local_index_map = None
         self.dr = dr
         self.fibers = None
+
+    @property
+    def meta(self):
+        """
+        Returns
+        -------
+        dict
+            A dictionary containing metadata about the tissue.
+        """
+        return {
+            "dim": self.mesh.ndim,
+            "shape": self.mesh.shape,
+            "type": "Grid",
+            "dr": self.dr
+        }
 
     @property
     def coords(self):
@@ -103,3 +115,62 @@ class CardiacTissueGrid(CardiacTissueBase):
             The flat indices of the ``mesh`` where value is not ``0``.
         """
         return np.flatnonzero(self.mesh > 0)
+
+    @property
+    def tissue_index_map(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            A mapping from the flat indices of the ``mesh`` to the flat indices
+            of the tissue mesh (where mesh value is not ``0``).
+        """
+        tissue_index_map = - np.zeros_like(self.mesh, dtype=np.int64)
+        tissue_indexes = self.tissue_indexes
+        tissue_index_map.flat[tissue_indexes] = np.arange(len(tissue_indexes))
+        return tissue_index_map
+
+    @property
+    def diffusion_tensor(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            The diffusion tensor of the tissue.
+        """
+        fibers = self._extract_tissue_fibers()
+
+        if fibers is None and np.asarray(self.conductivity).size == 1:
+            return self.conductivity
+
+        conductivity = self.conductivity
+        if np.asarray(conductivity).shape == self.mesh.shape:
+            conductivity = conductivity[self.mesh > 0]
+
+        ndim = self.meta["dim"]
+
+        if fibers is None:
+            tissue_shape = self.mesh[self.mesh > 0].shape
+            diffusion_tensor = np.zeros(tissue_shape + (ndim, ndim))
+            for i in range(ndim):
+                diffusion_tensor[..., i, i] = conductivity
+            return diffusion_tensor
+
+        outer_product = np.einsum('ij,ik->ijk', fibers, fibers, optimize='optimal')
+        diffusion_tensor = self.D_ac * np.eye(ndim) + (self.D_al - self.D_ac) * outer_product
+        return diffusion_tensor * np.atleast_1d(conductivity)[:, None, None]
+
+    def _extract_tissue_fibers(self):
+        if self.fibers is None:
+            return None
+
+        if self.fibers.shape == self.mesh.shape + (self.mesh.ndim,):
+            return self.fibers[self.mesh > 0]
+
+        if self.fibers.shape == self.mesh[self.mesh > 0].shape + (self.mesh.ndim,):
+            return self.fibers
+
+        raise ValueError(
+            f"Fibers shape {self.fibers.shape} is not compatible with mesh" +
+            f" shape {self.mesh.shape} or tissue shape {self.mesh[self.mesh > 0].shape}."
+        )

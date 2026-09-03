@@ -51,6 +51,7 @@ import finitewave as fw
 n, m = 400, 400
 # fiber orientation angle
 tissue = fw.CardiacTissueGrid([n, m], dr=0.25)
+tissue.mesh += (np.random.rand(n, m) < 0.1).astype(np.int8)  # add some fibrotic tissue
 alpha = np.pi / 4
 # add fibers orientation vectors
 tissue.fibers = np.zeros([n, m, 2])

@@ -5,21 +5,25 @@ from finitewave.core.simulation.cardiac_simulation_base import (
     CardiacSimulationBase
 )
 
-from finitewave.numerics.solver.backward_euler_solver import BackwardEulerSolver
-from finitewave.numerics.solver.forward_euler_solver import ForwardEulerSolver
-from finitewave.numerics.fdm.diffusion_model import DiffusionModel
-from finitewave.numerics.fem.diffusion_model_elements import DiffusionModelElements
+from finitewave.numerics.time_integrator.backward_euler_time_integrator import (
+    BackwardEulerTimeIntegrator
+)
+from finitewave.numerics.time_integrator.forward_euler_time_integrator import (
+    ForwardEulerTimeIntegrator
+)
+from finitewave.numerics.fdm.asymmetric_discretization import AsymmetricDiscretization
+from finitewave.numerics.fem.finite_element_discretization import FiniteElementDiscretization
 
 
 class CardiacSimulation(CardiacSimulationBase):
     def initialize(self):
         self.backend = self.select_backend(self.backend_name)
 
-        if self.solver is None:
-            self.solver = self.default_solver()
+        if self.time_integrator is None:
+            self.time_integrator = self.default_time_integrator()
 
-        if self.diffusion_model is None:
-            self.diffusion_model = self.default_diffusion_model()
+        if self.spatial_discretization is None:
+            self.spatial_discretization = self.default_spatial_discretization()
 
         super().initialize()
 
@@ -74,7 +78,7 @@ class CardiacSimulation(CardiacSimulationBase):
             self.stim_sequence.stimulate_next()
 
         self.cardiac_model.run()
-        self.solver.run()
+        self.time_integrator.run()
 
         self.t += self.dt
         self.step += 1
@@ -120,8 +124,8 @@ class CardiacSimulation(CardiacSimulationBase):
         
         raise ValueError(f"Unsupported backend: {backend_name}")
 
-    def default_solver(self):
-        """Selects the default solver based on the type of cardiac tissue.
+    def default_time_integrator(self):
+        """Selects the default time integrator based on the type of cardiac tissue.
         For grid-based tissues, it uses the Forward Euler method. For element-based
         tissues, it uses the Backward Euler method with Conjugate Gradient solver.
 
@@ -131,25 +135,25 @@ class CardiacSimulation(CardiacSimulationBase):
              The default solver instance based on the tissue type.
         """
         if self.cardiac_tissue.meta["type"] == "Grid":
-            return ForwardEulerSolver()
+            return ForwardEulerTimeIntegrator()
 
         if self.cardiac_tissue.meta["type"] == "Elements":
-            return BackwardEulerSolver()
+            return BackwardEulerTimeIntegrator()
 
         raise ValueError("Unsupported tissue type")
     
-    def default_diffusion_model(self):
-        """Selects the default diffusion model based on tissue type.
+    def default_spatial_discretization(self):
+        """Selects the default spatial discretization based on tissue type.
 
         Returns
         -------
-        DiffusionModel
-            The selected diffusion model instance.
+        SpatialDiscretization
+            The selected spatial discretization instance.
         """
         if self.cardiac_tissue.meta['type'] == 'Grid':
-            return DiffusionModel()
+            return AsymmetricDiscretization()
 
         if self.cardiac_tissue.meta['type'] == 'Elements':
-            return DiffusionModelElements()
+            return FiniteElementDiscretization()
         
         raise ValueError("Unsupported tissue type")

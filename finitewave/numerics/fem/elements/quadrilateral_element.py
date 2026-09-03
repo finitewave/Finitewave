@@ -11,6 +11,8 @@ class LinearQuadrilateralElement:
 
     Attributes:
     ----------
+    name: str
+        Name of the element type.
     mass_coef: float
         Coefficient for mass matrix calculation.
     elem_mass: (4, 4) ndarray
@@ -24,6 +26,8 @@ class LinearQuadrilateralElement:
     """
     def __init__(self):
         super().__init__()
+        self.name = "Quadrilateral"
+        self.order = 1
         self.mass_coef = 36.  # consistent with 4-node quads
 
         self.elem_mass = 1 / self.mass_coef * np.array([[4, 2, 1, 2],

@@ -10,6 +10,8 @@ class LinearTriangleElement:
 
     Attributes:
     ----------
+    name: str
+        Name of the element type.
     mass_coef: float
         Coefficient for mass matrix calculation.
     elem_mass: (3, 3) ndarray
@@ -23,6 +25,8 @@ class LinearTriangleElement:
     """
 
     def __init__(self):
+        self.name = "Triangle"
+        self.order = 1
         self.mass_coef = 12.
         self.elem_mass = (1 / self.mass_coef) * np.array([[2, 1, 1],
                                                           [1, 2, 1],
