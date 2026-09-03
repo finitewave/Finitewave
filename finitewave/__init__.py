@@ -14,7 +14,6 @@ extensible, allowing users to create custom models and trackers for their
 specific research needs.
 
 """
-from .cpuwave import *
 from .core import *
 from .tools import *
 from .numerics import *

@@ -57,15 +57,15 @@ n = 400
 
 # print("Mesh shape:", mesh.shape)
 
-tissue = fw.CardiacTissueGrid((n, n), dr=0.2)
+tissue = fw.CardiacTissueGrid((n, n), dr=0.25)
 # tissue.mesh = mesh
-tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(int)  # add some fibroblasts
+# tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(int)  # add some fibroblasts
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
-                                           x_min=n//2 - 3, x_max=n//2 + 3,
-                                           y_min=n//2 - 3, y_max=n//2 + 3))
+                                           x_min=n//2 - 5, x_max=n//2 + 5,
+                                           y_min=n//2 - 5, y_max=n//2 + 5))
 
 # stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 #                                            x_min=0, x_max=n//5,
@@ -73,13 +73,18 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 #                                            z_min=0, z_max=n//5))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="mlx", sync_step=1)
+simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="jax")
 simulation.cardiac_model = cardiac_model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
 
 # run the model:
 simulation.run()
+
+# plt.figure()
+# plt.imshow(simulation.spatial_discretization.weights[0].toarray(), cmap='viridis', origin="lower")
+# plt.colorbar(label="Weight")
+# plt.show()
 
 u = simulation.cardiac_model.output("u")
 

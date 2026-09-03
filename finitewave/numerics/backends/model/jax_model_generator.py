@@ -219,7 +219,7 @@ class JAXModelGenerator(ModelGenerator):
         step_func_name, step_func_signature, step_func_body = step_res
 
         kernel_func =f"""\
-            @jax.jit
+            @jax.jit(static_argnames=({', '.join([f'"{arg}"' for arg in scalars])}))
             def {self.kernel_func_name}({kernel_args_str}):
                 {input_setup}
                 {step_func_signature}
