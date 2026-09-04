@@ -1,3 +1,4 @@
+import numpy as np
 from scipy import sparse
 from finitewave.core.numerics.time_integrator import TimeIntegrator
 
@@ -19,8 +20,8 @@ class ForwardEulerTimeIntegrator(TimeIntegrator):
         The solution vector at the current time step.
     rhs : np.ndarray
         The right-hand side vector from the cardiac model.
-    myo_indexes : np.ndarray
-        Indexes of myocardial nodes in the simulation.
+    myo_mask : np.ndarray
+        A boolean mask indicating the myocyte cells in the simulation.
     num_iterations : list
         List to track the number of iterations per time step.
     """
@@ -29,7 +30,7 @@ class ForwardEulerTimeIntegrator(TimeIntegrator):
         self.u_new = None
         self.u = None
         self.rhs = None
-        self.myo_indexes = None
+        self.myo_mask = None
         self.num_iterations = []
         self.solver = None
         self.ionic_lumping = ionic_lumping
@@ -73,16 +74,18 @@ class ForwardEulerTimeIntegrator(TimeIntegrator):
 
         a_rhs_matrix = self.assemble_rhs_matrix(stiff, mass, dt)
         self.a_rhs_matrix = self.simulation.backend.wrap_sparse(
-            a_rhs_matrix, myo_indexes, row_reduced=True)
+            a_rhs_matrix, myo_indexes, row_reduced=False)
 
         a_ion_matrix = self.assemble_ion_matrix(mass, dt)
         self.a_ion_matrix = self.simulation.backend.wrap_sparse(
-            a_ion_matrix, myo_indexes, row_reduced=True)
+            a_ion_matrix, myo_indexes, row_reduced=False)
 
         if self.solver is None:
             self.solver = self.linalg.select_explicit_solver(self.u, myo_indexes)
 
-        self.myo_indexes = self.simulation.backend.wrap_indexes(myo_indexes)
+        myo_mask = np.zeros_like(self.u, dtype=bool)
+        myo_mask[myo_indexes] = True
+        self.myo_mask = self.simulation.backend.wrap_mask(myo_mask)
 
     def assemble_rhs_matrix(self, stiff, mass, dt):
         """Assembles the right-hand side matrix for the Forward Euler method.
@@ -141,7 +144,7 @@ class ForwardEulerTimeIntegrator(TimeIntegrator):
             self.u_old,
             self.a_ion_matrix,
             self.rhs,
-            self.myo_indexes, 
+            self.myo_mask, 
             self.u
         )
 

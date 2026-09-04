@@ -43,12 +43,12 @@ import numpy as np
 # stim_prepacing.add_stim(n_beats=30, cycle_length=500., curr_value=20., duration=2.)
 
 # create model object and set up parameters
-cardiac_model = fw.Courtemanche()
+cardiac_model = fw.AlievPanfilov()
 # cardiac_model.prepacing(stim_prepacing)
 
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n = 1000
 
 # path = "/Users/arstanbekokenov/Projects/Fibrowave/simulations/data/PID09/segment/seg_mesh.npy"
 # mesh = np.load(path)
@@ -59,7 +59,7 @@ n = 400
 
 tissue = fw.CardiacTissueGrid((n, n), dr=0.25)
 # tissue.mesh = mesh
-# tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(int)  # add some fibroblasts
+tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(int)  # add some fibrosis
 
 # set up stimulation parameters:
 stim_sequence = fw.StimSequence()
@@ -73,7 +73,7 @@ stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
 #                                            z_min=0, z_max=n//5))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="jax")
+simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="numba")
 simulation.cardiac_model = cardiac_model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence

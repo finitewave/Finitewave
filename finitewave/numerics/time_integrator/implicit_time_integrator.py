@@ -30,6 +30,8 @@ class ImplicitTimeIntegrator(TimeIntegrator):
         The solution vector at the current time step.
     a_lhs_matrix : scipy.sparse.csr_matrix
         The left-hand side system matrix for the implicit method.
+        Shape should be (num_active_cells, num_active_cells) and
+        indexing should be local to the active cells.
     a_rhs_matrix : scipy.sparse.csr_matrix
         The right-hand side system matrix for the implicit method.
     a_ion_matrix : scipy.sparse.csr_matrix

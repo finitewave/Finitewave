@@ -9,7 +9,7 @@ def select_explicit_solver(x, active_indexes):
     raise ValueError("Invalid combination of x and active_indexes sizes.")
 
 
-def explicit_step(A_x, x, A_y, y, active_indexes, out):
+def explicit_step(A_x, x, A_y, y, active_mask, out):
     """Performs the matrix-vector multiplication and addition with half-lumped mass matrix.
 
     Parameters
@@ -22,8 +22,8 @@ def explicit_step(A_x, x, A_y, y, active_indexes, out):
         The mass matrix representing the mass operator.
     y : np.ndarray
         Vector to be scaled and added to the result of the matrix-vector multiplication.
-    active_indexes : np.ndarray
-        Array of indexes where the solution is defined.
+    active_mask : np.ndarray
+        Boolean mask indicating the active cells in the simulation.
     out : np.ndarray
         Output solution vector to store the updated solution after the Forward Euler step.
 

@@ -21,8 +21,8 @@ def explicit_step(A_x, x, A_y, y, active_indexes, out):
 
 
 @mx.compile
-def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
-    out[active_indexes] = matvec(A_x, x) + matvec(A_y, y)
+def explicit_step_indexed(A_x, x, A_y, y, active_mask, out):
+    out = mx.where(active_mask, matvec(A_x, x) + matvec(A_y, y), out)
     return out
 
 

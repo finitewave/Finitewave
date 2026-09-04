@@ -73,6 +73,24 @@ class MlxBackend(Backend):
 
         self._float_dtype = value
 
+    def wrap_array(self, arr):
+        """
+        Wraps an array into the backend's array type if it is not already.
+        """
+        wraped_arr = self.lib.array(arr, dtype=self.float_dtype)
+        if wraped_arr.size == 1:
+            return arr
+        return wraped_arr
+
+    def wrap_mask(self, arr):
+        return self.lib.array(arr, dtype=self.lib.bool_)
+        
+    def wrap_indexes(self, arr):
+        """
+        Wraps an array of indexes into the backend's array type if it is not already.
+        """
+        return self.lib.array(arr, dtype=self.int_dtype)
+
     def select_values(self, arr, inds):
         return arr[inds]
     

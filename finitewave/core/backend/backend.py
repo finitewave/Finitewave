@@ -37,17 +37,23 @@ class Backend:
         """
         Wraps an array into the backend's array type if it is not already.
         """
-        # if hasattr(arr, "__array_namespace__") and arr.size > 1: - do lists have this?
-        #     return self.lib.array(arr, dtype=self.float_dtype)
-        if isinstance(arr, (int, float)):
+        # If the array is boolean wrap is as boolean
+        wraped_arr = self.lib.asarray(arr, dtype=self.float_dtype)
+        if wraped_arr.size == 1:
             return arr
-        return self.lib.array(arr, dtype=self.float_dtype)
+        return self.lib.asarray(arr, dtype=self.float_dtype)
     
     def wrap_indexes(self, arr):
         """
         Wraps an array of indexes into the backend's array type if it is not already.
         """
-        return self.lib.array(arr, dtype=self.int_dtype)
+        return self.lib.asarray(arr, dtype=self.int_dtype)
+
+    def wrap_mask(self, arr):
+        """
+        Wraps an array of boolean values into the backend's array type if it is not already.
+        """
+        return self.lib.asarray(arr, dtype=self.lib.bool_)
 
     def wrap_sparse(self, csr_matrix, indexes=None, row_reduced=False, local_indexing=False):
         """

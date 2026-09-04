@@ -72,7 +72,8 @@ def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
     np.ndarray
         The result of the operation.
     """
-    out = out.at[active_indexes].set(matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y))
+    # out = out.at[active_indexes].set(matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y))
+    out = jnp.where(active_indexes, matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y), out)
     return out
 
 
