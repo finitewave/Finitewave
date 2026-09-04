@@ -1,3 +1,3 @@
 from .computational_model import CardiacModelBase
-from .observer import Observer
-from .kernel_generator import KernelGenerator
+from .kernel.observer import Observer
+from .kernel.vectorized_kernel_generator import KernelGenerator

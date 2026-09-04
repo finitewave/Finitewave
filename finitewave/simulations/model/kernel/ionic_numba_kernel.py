@@ -1,10 +1,11 @@
 import textwrap
 import numpy as np
-from finitewave.core.model.kernel_generator import KernelGenerator
-from ._func_builder import build_func, wrap_numba_func
+from finitewave.core.model.kernel.loop_kernel_generator import LoopKernelGenerator
+from finitewave.core.model.kernel.tools.wrapping_functions import build_func
+from finitewave.numerics.backends.wrappers.numba_wrapper import wrap_numba_func
 
 
-class IonicNumbaKernel(KernelGenerator):
+class IonicNumbaKernel(LoopKernelGenerator):
     """
     Class for generating numba CPU kernel function to update state variables
     and compute the ionic current (rhs) of the cardiac model.
@@ -74,66 +75,6 @@ class IonicNumbaKernel(KernelGenerator):
         if name in arrays:
             return f"{name}.flat[idx]"
         return name
-    
-    def _generate_args(self, vars, base="", suffix="", exclude=[]):
-        """
-        Helper function to generate argument strings for the step function
-        and kernel function.
-        
-        Parameters
-        ----------
-        vars : list of str
-            List of variable names to include in the argument string.
-        base : str, optional
-            Initial string to which the variables will be appended.
-        suffix : str, optional
-            Suffix to append to each variable name (e.g., "_new" or "_old").
-        exclude : list of str, optional
-            List of variable names to exclude from the argument string.
-        
-        Returns
-        -------
-        str
-            A string of the form "base, var1{suffix}, var2{suffix}, ..."
-            for all vars not in exclude.
-        """
-
-        for var in vars:
-            if var in exclude:
-                continue
-
-            if base == "":
-                base += f"{var}{suffix}"
-                continue
-
-            base += f", {var}{suffix}"
-
-        return base
-    
-    def _add_indent(self, code, indent):
-        """
-        Helper function to add indentation to a block of code.
-
-        Parameters
-        ----------
-        code : str
-            The code block to indent.
-        indent : int
-            The number of spaces to use for indentation.
-
-        Returns
-        -------
-        str
-            The indented code block.
-        """
-        if code.strip() == "":
-            return ""
-        return textwrap.indent("\n" + textwrap.dedent(code).strip(), " " * indent)
-    
-    def generate_input_setup(self, arrays, scalars, indent):
-        """
-        Generate code for setting up input variables before the loop."""
-        return ""
 
     def generate_loop(self, indent):
         """
@@ -199,25 +140,6 @@ class IonicNumbaKernel(KernelGenerator):
         update_vars = "\n".join(f"{self._update_indexing(var, arrays)} = {var}_new" for var in update_vars)
         return self._add_indent(update_vars, indent)
     
-    def generate_output(self, output_args, indent):
-        """
-        Generate return statement for the kernel function based on the specified output arguments.
-
-        Parameters
-        ----------
-        output_args : list of str
-            List of argument names to include in the output.
-        indent : int
-            The number of spaces to use for indentation.
-
-        Returns
-        -------
-        str
-            Code for return statement of the kernel function.
-        """
-        output = "return " + ", ".join(f"{var}" for var in output_args) if output_args else ""
-        return self._add_indent(output, indent)
-    
     def generate_step_func(self, step_func, arrays, scalars, state_vars, obs_args):
         """
         Generate the step function that computes the new state variables and rhs based on the current state and parameters.
@@ -277,34 +199,6 @@ class IonicNumbaKernel(KernelGenerator):
 
         func_signature = f"{signature_returns} = {func_name}({signature_inputs})"
         return func_name, func_signature, func_body
-    
-    def generate_observers(self, observers, state_vars, indent):
-        if len(observers) == 0:
-            return "", set(), set()   
-
-        names = set()
-        expr_lines = []
-        expr_args = []
-        kernel_args = []
-
-        for obs in observers:
-            
-            name, expr, e_args, k_args = obs.generate(state_vars)
-            
-            if name in set(kernel_args):
-                raise ValueError(f"Observer name '{name}' collides with kernel arg name.")
-
-            if name in names:
-                raise ValueError(f"Duplicate observer name '{name}'.")
-
-            names.add(name)
-            expr_lines.append(expr)
-            expr_args.extend(e_args)
-            kernel_args.extend(k_args)
-
-        expr_lines = self._add_indent("\n".join(expr_lines), indent)
-
-        return expr_lines, set(expr_args), set(kernel_args)
 
     def generate_body(self, step_func, arrays, scalars, state_vars,
                       observers=[], output_args=[]):
@@ -423,29 +317,3 @@ class IonicNumbaKernel(KernelGenerator):
         kernel_func, kernel_args = self.generate_kernel(ops, arrays, scalars,
                                                         state_vars, observers, output_args)
         return kernel_func, kernel_args
-
-    def _collect_model_arrays(self, model):
-        """Collect array and scalar variable names from the model.
-        
-        Parameters
-        ----------
-        model : CardiacModel
-            The cardiac model instance from which to collect variable names.
-            
-        Returns
-        -------
-        arrays : list of str
-            List of variable names that correspond to arrays (state variables).
-        scalars : list of str
-            List of variable names that correspond to scalars (parameters).
-        """
-        arrays = list(model.state_vars)
-        scalars = []
-
-        for param in model.state_pars:
-            if np.isscalar(getattr(model, f"{param}")):
-                scalars.append(param)
-            else:
-                arrays.append(param)
-
-        return arrays, scalars
