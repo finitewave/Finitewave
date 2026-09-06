@@ -5,6 +5,7 @@ from finitewave.core.backend.backend import Backend
 
 class NumbaBackend(Backend):
     def __init__(self):
+        super().__init__()
         import numpy as np
         from .linalg import numba_linalg
         from .model.numba_model_generator import NumbaModelGenerator

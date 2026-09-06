@@ -38,6 +38,7 @@ def _jax_jit(func):
 
 class JAXBackend(Backend):
     def __init__(self):
+        super().__init__()
         _check_jax_installed()
         import jax
         import jax.numpy as jnp
@@ -88,6 +89,21 @@ class JAXBackend(Backend):
             warnings.warn(
                 "Using float64 with JAX may lead to slower performance. "
                 "Consider using float32 for better performance."
+            )
+            jax.config.update("jax_enable_x64", True)
+
+    @property
+    def int_dtype(self):
+        return self._int_dtype
+
+    @int_dtype.setter
+    def int_dtype(self, value):
+        import jax
+        self._int_dtype = value
+        if value == self.lib.int64 or value == "int64":
+            warnings.warn(
+                "Using int64 with JAX may lead to slower performance. "
+                "Consider using int32 for better performance."
             )
             jax.config.update("jax_enable_x64", True)
 

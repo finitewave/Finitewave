@@ -83,6 +83,62 @@ def build_quadrilateral_plane(n, m, x_range, y_range):
     return coords, elems
 
 
+def build_hexahedral_slab(nx, ny, nz, x_range, y_range, z_range):
+    """Build a structured slab of eight-node hexahedral elements.
+
+    The elements are cubes when the spacing is the same along all three axes;
+    otherwise, they are rectangular hexahedra. Nodes on each element are
+    ordered around the lower face first and then around the upper face, as
+    expected by :class:`LinearHexahedralElement`.
+
+    Parameters
+    ----------
+    nx, ny, nz : int
+        Number of elements along the x, y, and z axes.
+    x_range, y_range, z_range : tuple
+        Minimum and maximum coordinates along each axis.
+
+    Returns
+    -------
+    coords : (N, 3) ndarray
+        Node coordinates.
+    elems : (M, 8) ndarray
+        Hexahedral element connectivity.
+    """
+    x = np.linspace(x_range[0], x_range[1], nx + 1)
+    y = np.linspace(y_range[0], y_range[1], ny + 1)
+    z = np.linspace(z_range[0], z_range[1], nz + 1)
+    x_grid, y_grid, z_grid = np.meshgrid(x, y, z, indexing="ij")
+    coords = np.column_stack([
+        x_grid.ravel(),
+        y_grid.ravel(),
+        z_grid.ravel(),
+    ])
+
+    i, j, k = np.meshgrid(
+        np.arange(nx), np.arange(ny), np.arange(nz), indexing="ij"
+    )
+    i, j, k = i.ravel(), j.ravel(), k.ravel()
+
+    def node_index(i_coord, j_coord, k_coord):
+        return i_coord * (ny + 1) * (nz + 1) + j_coord * (nz + 1) + k_coord
+
+    n000 = node_index(i, j, k)
+    n100 = node_index(i + 1, j, k)
+    n110 = node_index(i + 1, j + 1, k)
+    n010 = node_index(i, j + 1, k)
+    n001 = node_index(i, j, k + 1)
+    n101 = node_index(i + 1, j, k + 1)
+    n111 = node_index(i + 1, j + 1, k + 1)
+    n011 = node_index(i, j + 1, k + 1)
+
+    elems = np.column_stack([
+        n000, n100, n110, n010,
+        n001, n101, n111, n011,
+    ])
+    return coords, elems
+
+
 def build_tetrahedral_slab(nx, ny, nz, x_range, y_range, z_range):
     """
     Build a slab of tetrahedral elements by subdividing a box into cubes and 

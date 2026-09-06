@@ -1,49 +1,50 @@
+"""Spatial cardiac reaction model and backend-kernel integration."""
+
 import numpy as np
-from warnings import warn
 
 from finitewave.core.model.cardiac_model_base import CardiacModelBase
 from .single_cell_model import SingleCellModel
 
 
 class CardiacModel(CardiacModelBase):
-    """
-    Base class for cardiac grid models.
+    """Backend-independent cardiac reaction model.
+
+    The model loads its equations from a Finitewave model plugin, allocates
+    state arrays over tissue points, and generates a backend-specific reaction
+    kernel.
 
     Attributes
     ----------
-    myo_indexes : np.ndarray
-        Array of indices corresponding to the myocytes in the mesh.
-        If `memory_saving` is True, the indexes correspond to `mesh.flat[tissue_indexes[myo_indexes]]`.
-        Otherwise, they correspond to `mesh.flat[myo_indexes]`.
-    tissue_indexes : np.ndarray
-        Array of indices corresponding to the tissue points. For consistency, when `memory_save` is False,
-        this will be an array of all indexes in the mesh.
-    ionic_kernel_generator : KernelGenerator
-        Object that generates the multithreaded `ionic_kernel` function for the model.
-    prepacing_generator : KernelGenerator
-        Object that generates the signle-cell `prepacing_kernel` function for the model.
-    step : int
-        The step size for the simulation. Default is 1.
+    myo_indexes : array-like
+        Backend array containing flat indexes of active myocytes.
+    tissue_indexes : array-like
+        Backend array containing flat indexes of all tissue points represented
+        by the compact model arrays.
+    backend : Backend
+        Computational backend selected by the simulation.
+    ionic_kernel : callable
+        Backend-generated kernel that evaluates the reaction model and updates
+        non-voltage state variables.
+    kernel_arg_names : list of str
+        Names of model values passed to ``ionic_kernel``.
+    ionic_kernel_args : list
+        Backend-wrapped values passed to ``ionic_kernel``.
     """
 
-    def __init__(self, step=1):
-        """
-        Initializes the CardiacModel instance with default parameters.
-        """
+    def __init__(self):
+        """Initialize model metadata and load the configured model plugin."""
         super().__init__()
-        self.step = step
         self.myo_indexes = None
         self.tissue_indexes = None
         self.ionic_kernel_generator = None
 
     def initialize(self, simulation):
-        """
-        Initializes the model for simulation.
+        """Allocate state and generate the reaction kernel for a simulation.
 
         Parameters
         ----------
         simulation : Simulation
-            The simulation object.
+            Simulation providing the tissue and computational backend.
         """
         self.simulation = simulation
         self.backend = simulation.backend
@@ -53,19 +54,7 @@ class CardiacModel(CardiacModelBase):
         self.collect_ionic_kernel_args()
 
     def run(self):
-        """
-        Executes the ionic kernel for the current time step.
-
-        Parameters
-        ----------
-        dt : float
-            Time step size for the simulation.
-        """
-
-        self.iter_counter += 1
-        if (self.iter_counter - 1) % self.step != 0:
-            return
-
+        """Evaluate the reaction model for one simulation time step."""
         res = self.ionic_kernel(
             self.simulation.dt,
             self.myo_indexes,
@@ -73,14 +62,27 @@ class CardiacModel(CardiacModelBase):
             self.u,
             *self.ionic_kernel_args,
         )
-
-        if (self.iter_counter - 1) % self.simulation.sync_step == 0:
-            self.simulation.backend.sync_backend(res)
-
         self._reset_state_variables(res)
+
+    def sync_backend(self):
+        self.backend.sync(self.u, self.rhs, *self.ionic_kernel_args)
     
     def collect_ionic_kernel_args(self):
-        """Collects the arguments for the `ionic_kernel` function based on the `ionic_kernel_arg_names`."""
+        """Collect and validate arguments required by ``ionic_kernel``.
+
+        Model arrays are converted to backend arrays. Non-scalar arrays must
+        contain one value per represented tissue point.
+
+        Returns
+        -------
+        list
+            Backend-wrapped kernel arguments in ``kernel_arg_names`` order.
+
+        Raises
+        ------
+        ValueError
+            If an argument is uninitialized or has an incompatible size.
+        """
         size = len(self.simulation.cardiac_tissue.tissue_indexes)
         kernel_args = []
         for name in self.kernel_arg_names:
@@ -104,27 +106,32 @@ class CardiacModel(CardiacModelBase):
         return kernel_args
 
     def wrap_indexes(self):
-        """
-        Computes the myocyte and tissue indexes based on the cardiac tissue mesh.
-        """
+        """Convert tissue and myocyte indexes to backend arrays."""
         tissue = self.simulation.cardiac_tissue
         self.myo_indexes = self.backend.wrap_indexes(tissue.myo_indexes)
         self.tissue_indexes = self.backend.wrap_indexes(tissue.tissue_indexes)
 
     def output(self, var_name="u", dtype=np.float64):
-        """
-        Returns the state variable with the tissue shape for output.
+        """Return a model variable expanded to the full tissue shape.
+
+        Locations outside the represented tissue are filled with ``NaN``.
 
         Parameters
         ----------
-        var_name : str
-            Name of the variable to output. Default is "u" (transmembrane potential).
+        var_name : str, optional
+            Variable to return. Default is ``"u"``.
+        dtype : numpy dtype, optional
+            Output dtype. Default is ``numpy.float64``.
 
         Returns
         -------
-        np.ndarray (*mesh.shape)
-            The state variable array reshaped to the tissue mesh shape,
-            with values only at the tissue indexes.
+        np.ndarray
+            Full-size array with the same shape as the tissue mesh.
+
+        Raises
+        ------
+        ValueError
+            If the requested variable does not exist.
         """
         if not hasattr(self, f"{var_name}"):
             raise ValueError(f"Variable '{var_name}' not found in the model.")
@@ -132,26 +139,32 @@ class CardiacModel(CardiacModelBase):
 
         mesh = self.simulation.cardiac_tissue.mesh
         var_data = np.array(getattr(self, f"{var_name}"), copy=False)
+
+        if mesh.shape == var_data.shape:
+            return var_data.astype(dtype)
+
+        if mesh.size == var_data.size:
+            return var_data.reshape(mesh.shape).astype(dtype)
         
         tissue_indexes = np.array(self.tissue_indexes, copy=False)
-
         var_mesh = np.full_like(mesh, np.nan, dtype=dtype)
         var_mesh.flat[tissue_indexes] = var_data.astype(dtype)
         return var_mesh
     
     def __getitem__(self, key):
+        """Return a full-size model variable by name."""
         return self.output(var_name=key)
        
     def prepacing(self, stim_prepacing, history=False):
-        """
-        Prepaces the model using the provided stimulation sequence.
+        """Compute initial conditions by pacing a single-cell model.
         
         Parameters
         ----------
         stim_prepacing : StimSingleCell
-            Object containing the stimulation sequence and parameters.
+            Single-cell stimulation containing the time step and current trace.
         history : bool, optional
-            Whether to store the pacing history in `self.u_pacing`.
+            If True, store pacing times, stimuli, and voltage history. Default
+            is False.
         """
 
         cell_model = SingleCellModel()
@@ -168,14 +181,20 @@ class CardiacModel(CardiacModelBase):
         self.set_state_variables(state_vars)
     
     def update_state_variables(self, vars):
-        """
-        Updates the model's initial conditions with the provided values.
-        The arrays will be wrapped to fulfill the backend requirements.
+        """Update current state arrays on an initialized model.
+
+        Scalar values are broadcast to the current state shape. Updated values
+        are converted to backend arrays and the kernel argument list is rebuilt.
 
         Parameters
         ----------
         vars : dict
-            Dictionary of variable names and their new values to update.
+            Mapping from state-variable names to scalar or array values.
+
+        Raises
+        ------
+        ValueError
+            If a variable is unknown or an array has an incompatible shape.
         """
 
         for name, value in vars.items():
@@ -199,13 +218,11 @@ class CardiacModel(CardiacModelBase):
         self.collect_ionic_kernel_args()
 
     def initialize_variables_and_parameters(self):
-        """
-        Initializes the model's variables and parameters based on the provided ops object.
-        
-        Parameters
-        ----------
-        ops : Ops
-            Object containing the model's variables and parameters.
+        """Load defaults exposed by the model operations plugin.
+
+        Parameters become direct attributes, while state defaults are exposed
+        as ``init_<name>`` attributes. Runtime state arrays are allocated later
+        by :meth:`initialize`.
         """
         self.default_parameters = self.ops.get_parameters()
         self.default_variables = self.ops.get_variables()
@@ -227,13 +244,12 @@ class CardiacModel(CardiacModelBase):
             setattr(self, name, None)      
 
     def _allocate_arrays(self, simulation):
-        """
-        Allocates the model's state variable arrays based on the simulation's cardiac tissue mesh.
+        """Allocate state and parameter arrays for represented tissue points.
         
         Parameters
         ----------
         simulation : Simulation
-            The simulation object containing the cardiac tissue mesh.
+            Simulation providing the tissue layout and backend.
         """
         size = len(simulation.cardiac_tissue.tissue_indexes)
         shape = (size,)
@@ -259,13 +275,13 @@ class CardiacModel(CardiacModelBase):
             setattr(self, name, self.backend.wrap_array(par))
     
     def _initialize_ionic_kernel(self):
-        """Construct the `ionic_kernel` function for the model using the IonicKernelGenerator."""
+        """Generate the backend-specific reaction kernel."""
         self.ionic_kernel, self.kernel_arg_names = (
-            self.simulation.backend.model_generator.generate_model_kernel(self)
+            self.backend.model_generator.generate_model_kernel(self)
         )
     
     def _reset_state_variables(self, new_values):
-        """Updates the model's state variables with the new values from the ionic kernel."""
+        """Store the reaction term and state values returned by the kernel."""
         self.rhs = new_values[0]
         for i, name in enumerate(self.state_vars):
             if name == "u":

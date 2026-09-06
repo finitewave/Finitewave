@@ -1,3 +1,4 @@
+from .hexahedral_element import LinearHexahedralElement
 from .quadrilateral_element import LinearQuadrilateralElement
 from .triangle_element import LinearTriangleElement
 from .tetrahedral_element import LinearTetrahedralElement
@@ -10,10 +11,11 @@ class ElementType:
     TRIANGLE = "Triangle"
     QUAD = "Quadrilateral"
     TETRA = "Tetrahedra"
+    HEXAHEDRON = "Hexahedron"
 
-    values = [TRIANGLE, QUAD, TETRA]
+    values = [TRIANGLE, QUAD, TETRA, HEXAHEDRON]
     surface = [TRIANGLE, QUAD]
-    volume = [TETRA]
+    volume = [TETRA, HEXAHEDRON]
 
     @staticmethod
     def is_valid(name):
@@ -47,5 +49,7 @@ class ElementType:
             return LinearQuadrilateralElement()
         elif name == ElementType.TETRA and order == 1:
             return LinearTetrahedralElement()
+        elif name == ElementType.HEXAHEDRON and order == 1:
+            return LinearHexahedralElement()
         else:
             raise ValueError(f"Invalid element type: {name}, or order: {order}.")

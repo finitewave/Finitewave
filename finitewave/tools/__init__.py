@@ -6,6 +6,7 @@ from .pyvista_grids import (
     PyVistaTetraGrid
 )
 from .build_element_mesh import (
+    build_hexahedral_slab,
     build_quadrilateral_plane,
     build_tetrahedral_slab,
     build_triangulated_plane,

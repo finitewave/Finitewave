@@ -1,8 +1,30 @@
+"""Conversions between sparse-matrix formats used by numerical backends."""
+
 import numpy as np
 
 
 
 def csr_to_ellpack(csr_matrix):
+    """Convert a SciPy CSR matrix to Finitewave's ELLPACK representation.
+
+    Parameters
+    ----------
+    csr_matrix : scipy.sparse.csr_matrix
+        The input CSR matrix.
+
+    Returns
+    -------
+    ellpack_indices : np.ndarray
+        Column indexes with shape ``(n_rows, max_entries_per_row)``.
+    ellpack_data : np.ndarray
+        Matrix values with the same shape as ``ellpack_indices``. Unused
+        entries are padded with zeros.
+
+    Notes
+    -----
+    Padded column indexes default to the row index. Their corresponding values
+    are zero, so they do not affect matrix-vector products.
+    """
     indptr = csr_matrix.indptr
     indices = csr_matrix.indices
     data = csr_matrix.data
@@ -18,6 +40,5 @@ def csr_to_ellpack(csr_matrix):
     mask = inds < rows_len[:, None]
     ellpack_indices[mask] = indices
     ellpack_data[mask] = data
-    
+
     return ellpack_indices, ellpack_data
-    

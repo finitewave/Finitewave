@@ -1,3 +1,4 @@
+from .hexahedral_element import LinearHexahedralElement
 from .quadrilateral_element import LinearQuadrilateralElement
 from .tetrahedral_element import LinearTetrahedralElement
 from .triangle_element import LinearTriangleElement

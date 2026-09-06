@@ -1,11 +1,33 @@
+"""MLX implementations of linear-algebra operations used by Finitewave."""
+
 import mlx.core as mx
 
 
 def matvec(A, x):
+    """Compute ``A @ x`` for an ELLPACK matrix."""
     return matvec_ellpack(A, x)
 
 
 def select_explicit_solver(x, active_indexes):
+    """Select an explicit-step function for the MLX solution layout.
+
+    Parameters
+    ----------
+    x : mx.array
+        Solution array.
+    active_indexes : mx.array
+        Integer indexes of active cells.
+
+    Returns
+    -------
+    callable
+        Either the full-domain or masked explicit-step function.
+
+    Raises
+    ------
+    ValueError
+        If ``x`` has fewer entries than ``active_indexes``.
+    """
     if x.size == active_indexes.size:
         return explicit_step
     
@@ -17,43 +39,118 @@ def select_explicit_solver(x, active_indexes):
 
 @mx.compile
 def explicit_step(A_x, x, A_y, y, active_indexes, out):
+    """Compute ``A_x @ x + A_y @ y`` over the full domain.
+
+    ``active_indexes`` and ``out`` are retained for the common backend
+    interface but are not used by this full-domain implementation.
+
+    Parameters
+    ----------
+    A_x, A_y : tuple
+        ELLPACK arrays ``(indices, data)``.
+    x, y : mx.array
+        Solution and reaction-term vectors, respectively.
+    active_indexes : mx.array
+        Active-cell selector retained for interface compatibility.
+    out : mx.array
+        Output buffer retained for interface compatibility.
+
+    Returns
+    -------
+    mx.array
+        Result of the explicit update.
+    """
     return matvec(A_x, x) + matvec(A_y, y)
 
 
 @mx.compile
 def explicit_step_indexed(A_x, x, A_y, y, active_mask, out):
+    """Compute an explicit update while retaining inactive values.
+
+    Parameters
+    ----------
+    A_x, A_y : tuple
+        ELLPACK arrays ``(indices, data)``.
+    x, y : mx.array
+        Solution and reaction-term vectors, respectively.
+    active_mask : mx.array
+        Boolean mask identifying active cells.
+    out : mx.array
+        Values to retain at inactive cells.
+
+    Returns
+    -------
+    mx.array
+        Updated solution with inactive values preserved.
+    """
     out = mx.where(active_mask, matvec(A_x, x) + matvec(A_y, y), out)
     return out
 
 
 @mx.compile
-def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
+def prepare_implicit_step(
+        A_rhs, A_reaction, x_old, x_old_2, reaction_term, active_indexes):
+    """Prepare the initial estimate and right-hand side for an implicit step.
+
+    Parameters
+    ----------
+    A_rhs, A_reaction : tuple
+        ELLPACK arrays for the solution and reaction matrices.
+    x_old : mx.array
+        Solution vector from the previous time step.
+    x_old_2 : mx.array
+        Solution vector from two time steps ago.
+    reaction_term : mx.array
+        Reaction term computed by the cardiac model.
+    active_indexes : mx.array
+        Integer indexes of active cells.
+
+    Returns
+    -------
+    x0 : mx.array
+        Extrapolated initial estimate at active cells.
+    b : mx.array
+        Linear-system right-hand side.
+    """
     x0 = 2. * x_old[active_indexes] - x_old_2[active_indexes]
-    b = matvec(A_rhs, x_old) + matvec(A_ion, i_ion)
+    b = matvec(A_rhs, x_old) + matvec(A_reaction, reaction_term)
     return x0, b
 
 
 @mx.compile
 def update_at_active_indexes(x, active_indexes, out):
+    """Write active-cell values into a full-domain output array.
+
+    Parameters
+    ----------
+    x : mx.array
+        Updated values at active cells.
+    active_indexes : mx.array
+        Integer indexes of active cells.
+    out : mx.array
+        Full-domain output array.
+
+    Returns
+    -------
+    mx.array
+        ``out`` with active entries updated.
+    """
     out[active_indexes] = x
     return out
 
 
 def cg(A, b, x0, *, atol=1e-8, maxiter=1):
-    """
-    Conjugate Gradient solver for Ax = b where A is represented in ELLPACK format.
+    """Solve ``A @ x = b`` using the Conjugate Gradient method.
     
     Parameters
     ----------
     A : tuple
-        A tuple containing (indices, data) representing the matrix in ELLPACK format.
-    b : 1D array of float
+        ELLPACK arrays ``(indices, data)`` for a symmetric positive-definite
+        matrix.
+    b : mx.array
         Right-hand side vector.
-    x0 : 1D array of float, optional
-        Initial guess for the solution. If None, a zero vector is used.
-    indexes : 1D array of int, optional
-        Array of indexes where the solution is defined.
-        If None, the solution is defined for all entries.
+    x0 : mx.array
+        Initial solution estimate.
     atol : float, optional
         Absolute tolerance for convergence.
     maxiter : int, optional
@@ -61,10 +158,10 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
         
     Returns
     -------
-    x : 1D array of float
+    x : mx.array
         Approximate solution vector.
-    int
-        Number of iterations performed, or -1 if not converged within maxiter.
+    iteration : int
+        Zero-based index of the final iteration.
     """
     # Initial residual and direction
     # r = b - A@x
@@ -84,26 +181,27 @@ def cg(A, b, x0, *, atol=1e-8, maxiter=1):
 
 @mx.compile
 def prepare_cg(A, b, x0):
-    """
-    Prepares the initial residual and direction for the Conjugate Gradient solver.
+    """Initialize the state of the Conjugate Gradient iteration.
 
     Parameters
     ----------
     A : tuple
-        A tuple containing (indices, data) representing the matrix in ELLPACK format.
-    b : 1D array of float
+        ELLPACK arrays ``(indices, data)`` for the system matrix.
+    b : mx.array
         Right-hand side vector.
-    x0 : 1D array of float
-        Initial guess for the solution.
+    x0 : mx.array
+        Initial solution estimate.
 
     Returns
     -------
-    r : 1D array of float
+    x : mx.array
+        Initial solution estimate.
+    r : mx.array
         Initial residual vector.
-    p : 1D array of float
+    p : mx.array
         Initial direction vector.
-    r_norm : float
-        Norm of the initial residual.
+    r_norm : mx.array
+        Squared Euclidean norm of the initial residual.
     """
     r = b - matvec(A, x0)
     p = r
@@ -112,6 +210,30 @@ def prepare_cg(A, b, x0):
 
 @mx.compile
 def cg_n_steps(A, x, r, p, r_norm, n_steps):
+    """Run a fixed number of Conjugate Gradient iterations.
+
+    Parameters
+    ----------
+    A : tuple
+        ELLPACK arrays ``(indices, data)`` for the system matrix.
+    x, r, p : mx.array
+        Current solution, residual, and search-direction vectors.
+    r_norm : mx.array
+        Squared Euclidean norm of ``r``.
+    n_steps : int
+        Number of iterations to execute.
+
+    Returns
+    -------
+    x : mx.array
+        Updated solution estimate.
+    r : mx.array
+        Updated residual.
+    p : mx.array
+        Updated search direction.
+    r_norm : mx.array
+        Updated squared residual norm.
+    """
     for _ in range(n_steps):
         x, r, p, r_norm = cg_step(A, x, r, p, r_norm)
 
@@ -120,6 +242,28 @@ def cg_n_steps(A, x, r, p, r_norm, n_steps):
 
 @mx.compile
 def cg_step(A, x, r, p, r_norm):
+    """Perform one Conjugate Gradient iteration.
+
+    Parameters
+    ----------
+    A : tuple
+        ELLPACK arrays ``(indices, data)`` for the system matrix.
+    x, r, p : mx.array
+        Current solution, residual, and search-direction vectors.
+    r_norm : mx.array
+        Squared Euclidean norm of ``r``.
+
+    Returns
+    -------
+    x : mx.array
+        Updated solution estimate.
+    r : mx.array
+        Updated residual.
+    p : mx.array
+        Updated search direction.
+    r_norm : mx.array
+        Updated squared residual norm.
+    """
     # 1. SpMV: Ap = A @ p
     Ap = matvec(A, p)
 
@@ -139,20 +283,19 @@ def cg_step(A, x, r, p, r_norm):
 
 @mx.compile
 def matvec_coo(A, x):
-    """
-    Performs A @ x where A is represented in COO format.
+    """Compute ``A @ x`` for a COO matrix.
 
     Parameters
     ----------
     A : tuple
-        A tuple containing (row, col, data) representing the matrix in COO format.
-    x : 1D array of float
-        Input vector to be multiplied by A.
+        COO arrays ``(row, col, data)``.
+    x : mx.array
+        Input vector.
 
     Returns
     -------
-    np.ndarray (len(row),)
-        Result of the matrix-vector product.
+    mx.array
+        Matrix-vector product with the same shape and dtype as ``x``.
     """
     row, col, data = A
     out = mx.zeros(x.shape, dtype=x.dtype)
@@ -162,20 +305,20 @@ def matvec_coo(A, x):
 
 @mx.compile
 def matvec_ellpack(A, x):
-    """
-    Performs A @ x where A is represented in ELLPACK format.
+    """Compute ``A @ x`` for an ELLPACK matrix.
 
     Parameters
     ----------
     A : tuple
-        A tuple containing (indices, data) representing the matrix in ELLPACK format.
-    x : 1D array of float
-        Input vector to be multiplied by A.
+        ELLPACK arrays ``(indices, data)``. Each row of ``indices`` contains
+        column indexes corresponding to the values in ``data``.
+    x : mx.array
+        Input vector.
 
     Returns
     -------
-    np.ndarray (len(indexes),)
-        Result of the matrix-vector product.
+    mx.array
+        Matrix-vector product with one value per matrix row.
     """
     indices, data = A
     out = mx.sum(data * x[indices], axis=1)

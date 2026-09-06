@@ -17,6 +17,7 @@ def _check_mlx_installed():
 
 class MlxBackend(Backend):
     def __init__(self):
+        super().__init__()
         _check_mlx_installed()
         import mlx.core as mx
         from .linalg import mlx_linalg
@@ -31,7 +32,12 @@ class MlxBackend(Backend):
         self.linalg = mlx_linalg
         self.model_generator = MLXModelGenerator()
 
-    def config(self, device=None, float_dtype=None, num_of_threads=None):
+    def config(self, device=None, float_dtype=None, sync_step=1):
+        """
+        Configures the MLX backend to use the specified device.
+        Important: MLX device configuration must be done at the very beginning of the program,
+        before any MLX arrays are created.
+        """
         import mlx.core as mx
 
         if device is not None:
@@ -47,8 +53,10 @@ class MlxBackend(Backend):
         if float_dtype is not None:
             self.float_dtype = float_dtype
 
-    def sync_backend(self, *args):
-        self.lib.eval(args)
+        self.sync_step = sync_step
+
+    def sync(self, *args):
+        self.lib.eval(*args)
 
     def device_info(self):
         import mlx.core as mx
@@ -72,6 +80,25 @@ class MlxBackend(Backend):
             )
 
         self._float_dtype = value
+
+    @property
+    def int_dtype(self):
+        return self._int_dtype
+
+    @int_dtype.setter
+    def int_dtype(self, value):
+        if value == "int32":
+            value = self.lib.int32
+        elif value == "int64":
+            value = self.lib.int64
+
+        if value == self.lib.int64 and getattr(self, "device", "gpu") == "gpu":
+            raise ValueError(
+                "MLX int64 arrays only work with CPU operations. "
+                "Use int32 for MLX GPU or set device='cpu'."
+            )
+
+        self._int_dtype = value
 
     def wrap_array(self, arr):
         """

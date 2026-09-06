@@ -1,4 +1,3 @@
-import warnings
 
 
 class Backend:
@@ -6,21 +5,38 @@ class Backend:
         import numpy as np
         self.name = "numpy"
         self.lib = np
-        self.float_dtype = np.float64
-        self.int_dtype = np.int64
+        self._float_dtype = np.float64
+        self._int_dtype = np.int64
         self.sparse_support = True
         self.gpu_support = False
-        self.linalg_operator = None
-        self.linalg_method = None
+        self.linalg = None
+        self.model_generator = None
+        self.sync_step = 1
 
-    def config(self, device=None, float_dtype=None, num_of_threads=None):
+    @property
+    def float_dtype(self):
+        return self._float_dtype
+
+    @float_dtype.setter
+    def float_dtype(self, value):
+        self._float_dtype = value
+
+    @property
+    def int_dtype(self):
+        return self._int_dtype
+
+    @int_dtype.setter
+    def int_dtype(self, value):
+        self._int_dtype = value
+
+    def config(self, **kwargs):
         """
         Configures the backend with specific settings. 
         This method should be overridden by subclasses to implement backend-specific configuration options.
         """
         pass
 
-    def sync_backend(self, *args):
+    def sync(self, *args):
         """
         Synchronizes the backend if necessary. 
         This method should be overridden by subclasses to implement backend-specific synchronization.

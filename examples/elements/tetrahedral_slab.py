@@ -27,15 +27,15 @@ simulation = fw.CardiacSimulation(dt=0.01, t_max=10, backend="mlx")
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.FentonKarma()
 simulation.stim_sequence = stim_sequence
-# set up the time integrator, if not specified BackwardEulerTimeIntegrator is used by default:
-simulation.time_integrator = fw.BackwardEulerTimeIntegrator(atol=1e-6, maxiter=100)
+# Set up time integration. BackwardEulerTimeIntegration is used by default:
+simulation.time_integration = fw.BackwardEulerTimeIntegration(atol=1e-6, maxiter=100)
 
 # run the model:
 simulation.run()
 
 # import matplotlib.pyplot as plt
 
-# plt.plot(simulation.time_integrator.num_iterations)
+# plt.plot(simulation.time_integration.num_iterations)
 # plt.show()
 
 # show the potential map at the end of calculations:

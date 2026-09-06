@@ -1,68 +1,104 @@
+from numbers import Real
+
 from tqdm import tqdm
 import numpy as np
 
-from finitewave.core.simulation.cardiac_simulation_base import (
-    CardiacSimulationBase
+from finitewave.core.simulation.simulation import Simulation
+
+from finitewave.numerics.time_integration.backward_euler_time_integration import (
+    BackwardEulerTimeIntegration
+)
+from finitewave.numerics.time_integration.forward_euler_time_integration import (
+    ForwardEulerTimeIntegration
+)
+from finitewave.numerics.fdm.asymmetric_discretization import (
+    AsymmetricDiscretization
+)
+from finitewave.numerics.fem.finite_element_discretization import (
+    FiniteElementDiscretization
 )
 
-from finitewave.numerics.time_integrator.backward_euler_time_integrator import (
-    BackwardEulerTimeIntegrator
-)
-from finitewave.numerics.time_integrator.forward_euler_time_integrator import (
-    ForwardEulerTimeIntegrator
-)
-from finitewave.numerics.fdm.asymmetric_discretization import AsymmetricDiscretization
-from finitewave.numerics.fem.finite_element_discretization import FiniteElementDiscretization
 
+class CardiacSimulation(Simulation):
+    """Coordinate initialization and execution of a cardiac simulation."""
 
-class CardiacSimulation(CardiacSimulationBase):
-    def initialize(self):
-        self.backend = self.select_backend(self.backend_name)
+    def initialize(self, **backend_options):
+        """Initialize the backend and all simulation components.
 
-        if self.time_integrator is None:
-            self.time_integrator = self.default_time_integrator()
+        Parameters
+        ----------
+        **backend_options
+            Backend-specific configuration such as ``device``, ``float_dtype``,
+            or ``num_of_threads``.
+        """
+        self._validate_configuration()
+        self.backend.config(**backend_options)
+
+        if self.time_integration is None:
+            self.time_integration = self.default_time_integration()
 
         if self.spatial_discretization is None:
             self.spatial_discretization = self.default_spatial_discretization()
 
         super().initialize()
 
-    def run(self, initialize=True, num_of_threads=None, prog_bar=True):
-        """
-        Runs the simulation loop. Handles stimuli, diffusion, ionic kernel
-        updates, and tracking.
+    def run(self, initialize=True, prog_bar=True, **backend_options):
+        """Run the simulation loop.
+
+        The loop applies stimuli, evaluates the cardiac reaction model,
+        advances time integration, executes commands, and records output.
 
         Parameters
         ----------
         initialize : bool, optional
             Whether to (re)initialize the model before running the simulation.
             Default is True.
+        prog_bar : bool, optional
+            Whether to display a progress bar. Default is True.
+        **backend_options
+            Backend-specific configuration passed to ``backend.config``.
         """
         if initialize:
-            self.initialize()
-
-        self.backend.config(num_of_threads)
+            self.initialize(**backend_options)
+        else:
+            self._validate_configuration()
+            if self.backend is None:
+                raise RuntimeError(
+                    "The simulation must be initialized before calling "
+                    "run(initialize=False)."
+                )
+            self.backend.config(**backend_options)
 
         if self.t_max < self.t:
-            raise ValueError("t_max must be greater than current t.")
+            raise ValueError("t_max must be greater than or equal to current t.")
 
         if self.state_loader:
             self.state_loader.load()
 
         bar_desc = self._create_bar_desc()
-        iters = int(np.floor((self.t_max - self.t) / self.dt))
+        total = self._remaining_steps()
 
-        for _ in tqdm(range(iters), total=iters, desc=bar_desc, disable=not prog_bar):
-            if self.iter_step():
-                break
-        
+        with tqdm(total=total, desc=bar_desc, disable=not prog_bar) as bar:
+            while not self.iter_step():
+                bar.update(1)
+
+                # Commands may change t_max while the simulation is running.
+                updated_total = bar.n + self._remaining_steps()
+                if updated_total != bar.total:
+                    bar.total = updated_total
+                    bar.refresh()
+
         # Last iteration tracking
         if self.tracker_sequence:
             self.tracker_sequence.tracker_next()
-    
+
     def iter_step(self):
-        """
-        Performs a single iteration of the simulation.
+        """Perform one simulation iteration.
+
+        Returns
+        -------
+        bool
+            True when no complete time step remains; otherwise, False.
         """
         if self.check_termination():
 
@@ -78,10 +114,13 @@ class CardiacSimulation(CardiacSimulationBase):
             self.stim_sequence.stimulate_next()
 
         self.cardiac_model.run()
-        self.time_integrator.run()
+        self.time_integration.run()
 
         self.t += self.dt
-        self.step += 1
+        self.iteration += 1
+
+        if self.iteration % self.backend.sync_step == 0:
+            self.cardiac_model.sync_backend()
 
         if self.state_saver:
             self.state_saver.save()
@@ -91,19 +130,46 @@ class CardiacSimulation(CardiacSimulationBase):
 
         return False
 
+    def _validate_configuration(self):
+        """Validate values and components required to initialize or run."""
+        if self.cardiac_model is None:
+            raise ValueError("cardiac_model must be set before initialization.")
+
+        if self.cardiac_tissue is None:
+            raise ValueError("cardiac_tissue must be set before initialization.")
+
+        if (not isinstance(self.dt, Real) or isinstance(self.dt, bool) or
+                not np.isfinite(self.dt)):
+            raise ValueError("dt must be a finite positive number.")
+
+        if self.dt <= 0:
+            raise ValueError("dt must be greater than zero.")
+
+        if (not isinstance(self.t_max, Real) or isinstance(self.t_max, bool) or
+                not np.isfinite(self.t_max)):
+            raise ValueError("t_max must be a finite non-negative number.")
+
+        if self.t_max < 0:
+            raise ValueError("t_max must be greater than or equal to zero.")
+
     def _create_bar_desc(self):
         return (f"Running {self.cardiac_model.__class__.__name__}" +
                 f" on {self.cardiac_tissue.meta['shape']}" +
                 f" {self.cardiac_tissue.meta['type']}")
 
     def select_backend(self, backend_name):
-        """
-        Selects the computational backend for the simulation.
+        """Select the computational backend for the simulation.
 
         Parameters
         ----------
         backend_name : Literal["numba", "mlx", "jax"]
-            The name of the backend to use. Supported values are "numba", "mlx", and "jax".
+            Name of the backend to use. Supported values are ``"numba"``,
+            ``"mlx"``, and ``"jax"``.
+
+        Returns
+        -------
+        Backend
+            Selected backend instance.
 
         Raises
         ------
@@ -124,36 +190,37 @@ class CardiacSimulation(CardiacSimulationBase):
         
         raise ValueError(f"Unsupported backend: {backend_name}")
 
-    def default_time_integrator(self):
-        """Selects the default time integrator based on the type of cardiac tissue.
-        For grid-based tissues, it uses the Forward Euler method. For element-based
-        tissues, it uses the Backward Euler method with Conjugate Gradient solver.
+    def default_time_integration(self):
+        """Select the default time integration for the cardiac tissue.
 
-         Returns
-         -------
-         Solver
-             The default solver instance based on the tissue type.
+        Grid tissues use Forward Euler. Element tissues use Backward Euler with
+        the Conjugate Gradient linear solver.
+
+        Returns
+        -------
+        TimeIntegration
+            The default time-integration instance based on the tissue type.
         """
         if self.cardiac_tissue.meta["type"] == "Grid":
-            return ForwardEulerTimeIntegrator()
+            return ForwardEulerTimeIntegration()
 
         if self.cardiac_tissue.meta["type"] == "Elements":
-            return BackwardEulerTimeIntegrator()
+            return BackwardEulerTimeIntegration()
 
         raise ValueError("Unsupported tissue type")
     
     def default_spatial_discretization(self):
-        """Selects the default spatial discretization based on tissue type.
+        """Select the default spatial discretization for the cardiac tissue.
 
         Returns
         -------
         SpatialDiscretization
             The selected spatial discretization instance.
         """
-        if self.cardiac_tissue.meta['type'] == 'Grid':
+        if self.cardiac_tissue.meta["type"] == "Grid":
             return AsymmetricDiscretization()
 
-        if self.cardiac_tissue.meta['type'] == 'Elements':
+        if self.cardiac_tissue.meta["type"] == "Elements":
             return FiniteElementDiscretization()
         
         raise ValueError("Unsupported tissue type")

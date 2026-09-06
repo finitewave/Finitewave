@@ -27,9 +27,9 @@ simulation.t_max = 100
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.AlievPanfilov()
 simulation.stim_sequence = stim_sequence
-# set up the solver, if not specified Crank-Nicolson is used by default:
+# Set up time integration. Backward Euler is used by default:
 # ! Forward Euler is conditionally stable for quadrilateral meshes
-simulation.time_integrator = fw.ForwardEulerTimeIntegrator()
+simulation.time_integration = fw.ForwardEulerTimeIntegration()
 
 # run the model:
 simulation.run()

@@ -1,12 +1,30 @@
+"""JAX implementations of linear-algebra operations used by Finitewave."""
+
 from functools import partial
 import jax
 import jax.numpy as jnp
-import numpy as np
-
-from jax.scipy.sparse.linalg import cg
 
 
 def select_explicit_solver(x, active_indexes):
+    """Select an explicit-step function for the JAX solution layout.
+
+    Parameters
+    ----------
+    x : jax.Array
+        Solution array.
+    active_indexes : jax.Array
+        Integer indexes of active cells.
+
+    Returns
+    -------
+    callable
+        Either the full-domain or masked explicit-step function.
+
+    Raises
+    ------
+    ValueError
+        If ``x`` has fewer entries than ``active_indexes``.
+    """
     if x.size == active_indexes.size:
         return explicit_step
     
@@ -18,124 +36,147 @@ def select_explicit_solver(x, active_indexes):
 
 @jax.jit
 def explicit_step(A_x, x, A_y, y, active_indexes, out):
-    """
-    Performs the operation:
-    out = A_x @ x + A_y @ y
+    """Compute ``A_x @ x + A_y @ y`` over the full domain.
 
     Parameters
     ----------
     A_x : tuple
-        A tuple containing (indices, data) representing the matrix A_x in ELLPACK format.
-    x : 1D array of float
-        Input vector to be multiplied by A_x.
+        ELLPACK arrays ``(indices, data)`` for the solution matrix.
+    x : jax.Array
+        Solution vector multiplied by ``A_x``.
     A_y : tuple
-        A tuple containing (indices, data) representing the matrix A_y in ELLPACK format.
-    y : 1D array of float
-        Input vector to be multiplied by A_y.
-    active_indexes : 1D array of int
-        Indexes corresponding to active cells.
-    out : 1D array of float
-        Output vector to store the result.
+        ELLPACK arrays ``(indices, data)`` for the reaction matrix.
+    y : jax.Array
+        Reaction-term vector multiplied by ``A_y``.
+    active_indexes : jax.Array
+        Active-cell selector retained for the common backend interface.
+        This full-domain implementation does not use it.
+    out : jax.Array
+        Output buffer retained for the common backend interface. JAX returns a
+        new array instead of modifying this buffer.
 
     Returns
     -------
-    np.ndarray
-        The result of the operation.
-
+    jax.Array
+        Result of the explicit update.
     """
     return matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y)
 
 
 @jax.jit
 def explicit_step_indexed(A_x, x, A_y, y, active_indexes, out):
-    """
-    Performs the operation:
-    out[active_indexes] = A_x @ x[active_indexes] + A_y @ y[active_indexes]
+    """Compute an explicit update and retain inactive values from ``out``.
 
     Parameters
     ----------
     A_x : tuple
-        A tuple containing (indices, data) representing the matrix A_x in ELLPACK format.
-    x : 1D array of float
-        Input vector to be multiplied by A_x.
+        ELLPACK arrays ``(indices, data)`` for the solution matrix.
+    x : jax.Array
+        Solution vector multiplied by ``A_x``.
     A_y : tuple
-        A tuple containing (indices, data) representing the matrix A_y in ELLPACK format.
-    y : 1D array of float
-        Input vector to be multiplied by A_y.
-    active_indexes : 1D array of int
-        Indexes corresponding to active cells.
-    out : 1D array of float
-        Output vector to store the result.
+        ELLPACK arrays ``(indices, data)`` for the reaction matrix.
+    y : jax.Array
+        Reaction-term vector multiplied by ``A_y``.
+    active_indexes : jax.Array
+        Boolean mask identifying active cells.
+    out : jax.Array
+        Values to retain at inactive cells.
 
     Returns
     -------
-    np.ndarray
-        The result of the operation.
+    jax.Array
+        Updated solution with inactive values preserved.
     """
-    # out = out.at[active_indexes].set(matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y))
     out = jnp.where(active_indexes, matvec_ellpack(A_x, x) + matvec_ellpack(A_y, y), out)
     return out
 
 
 @jax.jit
 def cg(A, b, x0=None, *, tol=0.0, atol=1e-8, maxiter=None, M=None):
+    """Solve ``A @ x = b`` using JAX's Conjugate Gradient implementation.
+
+    Parameters
+    ----------
+    A : tuple
+        ELLPACK arrays ``(indices, data)`` for a symmetric positive-definite
+        matrix.
+    b : jax.Array
+        Right-hand-side vector.
+    x0 : jax.Array, optional
+        Initial solution estimate.
+    tol : float, optional
+        Relative convergence tolerance.
+    atol : float, optional
+        Absolute convergence tolerance.
+    maxiter : int, optional
+        Maximum number of iterations.
+    M : callable, optional
+        Preconditioner accepted by :func:`jax.scipy.sparse.linalg.cg`.
+
+    Returns
+    -------
+    x : jax.Array
+        Approximate solution.
+    info : int
+        Compatibility status value. This wrapper currently returns 0.
+    """
     matvec = lambda x: matvec_ellpack(A, x)
-    res, info = jax.scipy.sparse.linalg.cg(matvec, b, x0=x0, tol=tol, atol=atol, maxiter=maxiter, M=M)
-    return res, 0
+    x, info = jax.scipy.sparse.linalg.cg(matvec, b, x0=x0, tol=tol, atol=atol,
+                                         maxiter=maxiter, M=M)
+    return x, 0
 
 
 @jax.jit
-def prepare_implicit_step(A_rhs, A_ion, x_old, x_old_2, i_ion, active_indexes):
-    """
-    Prepares the initial guess and right-hand side for the implicit step.
+def prepare_implicit_step(A_rhs, A_reaction, x_old, x_old_2, reaction_term, active_indexes):
+    """Prepare the initial estimate and right-hand side for an implicit step.
 
     Parameters
     ----------
     A_rhs : tuple
-        Right-hand side matrix in ELLPACK format.
-        Indexing should be global to the entire domain.
-    A_ion : tuple
-        Ionic contribution matrix in ELLPACK format.
-        Indexing should be global to the entire domain.
-    x_old : 1D array of float
-        Previous solution vector.
-    x_old_2 : 1D array of float
+        ELLPACK arrays for the matrix applied to ``x_old``. Column indexes use
+        global domain indexing.
+    A_reaction : tuple
+        ELLPACK arrays for the matrix applied to ``reaction_term``. Column
+        indexes use global domain indexing.
+    x_old : jax.Array
+        Solution vector from the previous time step.
+    x_old_2 : jax.Array
         Solution vector from two time steps ago.
-    i_ion : 1D array of float
-        Ionic current vector.
-    active_indexes : 1D array of int
-        Indexes corresponding to active cells.
+    reaction_term : jax.Array
+        Reaction term computed by the cardiac model.
+    active_indexes : jax.Array
+        Integer indexes of active cells.
 
     Returns
     -------
-    x0 : 1D array of float
-        Initial guess for the implicit solver.
-    b : 1D array of float
-        Right-hand side vector for the implicit solver.
+    x0 : jax.Array
+        Extrapolated initial estimate at active cells.
+    b : jax.Array
+        Linear-system right-hand side.
     """
     x0 = 2. * x_old[active_indexes] - x_old_2[active_indexes]
-    b = matvec_ellpack(A_rhs, x_old) + matvec_ellpack(A_ion, i_ion)
+    b = (matvec_ellpack(A_rhs, x_old) +
+         matvec_ellpack(A_reaction, reaction_term))
     return x0, b
 
 
 @jax.jit
 def update_at_active_indexes(x, active_indexes, out):
-    """
-    Updates the output vector with the values from x at the specified active indexes.
+    """Write active-cell values into a full-domain output array.
 
     Parameters
     ----------
-    x : 1D array of float
-        Input vector containing updated values.
-    active_indexes : 1D array of int
-        Indexes corresponding to active cells.
-    out : 1D array of float
-        Output vector to be updated.
+    x : jax.Array
+        Updated values at active cells.
+    active_indexes : jax.Array
+        Integer indexes of active cells.
+    out : jax.Array
+        Full-domain output array.
 
     Returns
     -------
-    np.ndarray
-        Updated output vector with values from x at the active indexes.
+    jax.Array
+        Copy of ``out`` with active entries updated.
     """
     out = out.at[active_indexes].set(x)
     return out
@@ -143,20 +184,20 @@ def update_at_active_indexes(x, active_indexes, out):
 
 @jax.jit
 def matvec_ellpack(A, x):
-    """
-    Performs A @ x where A is represented in ELLPACK format.
+    """Compute ``A @ x`` for an ELLPACK matrix.
 
     Parameters
     ----------
     A : tuple
-        A tuple containing (indices, data, indexes) representing the matrix in ELLPACK format.
-    x : 1D array of float
-        Input vector to be multiplied by A.
+        ELLPACK arrays ``(indices, data)``. Each row of ``indices`` contains
+        column indexes corresponding to the values in ``data``.
+    x : jax.Array
+        Input vector.
 
     Returns
     -------
-    np.ndarray
-        Result of the matrix-vector multiplication A @ x.
+    jax.Array
+        Matrix-vector product with one value per matrix row.
     """
     indices, data = A
     out = jnp.sum(data * x[indices], axis=1)
