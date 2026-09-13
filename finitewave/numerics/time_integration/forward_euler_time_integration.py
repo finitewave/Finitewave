@@ -5,7 +5,7 @@ from finitewave.core.numerics.time_integration import TimeIntegration
 
 
 class ForwardEulerTimeIntegration(TimeIntegration):
-    """Implements the Forward Euler time integration method for cardiac simulations.
+    """Advance cardiac simulations with Forward Euler time integration.
 
     Attributes
     ----------
@@ -30,8 +30,36 @@ class ForwardEulerTimeIntegration(TimeIntegration):
     reaction_lumping : bool
         If True, uses lumping for the reaction term; otherwise, uses the full
         mass matrix.
+
+    Examples
+    --------
+    Run a short Aliev-Panfilov simulation on a 2D grid with a voltage stimulus.
+    The simulation initializes the integrator and advances it at each time step.
+
+    >>> import finitewave as fw
+    ...
+    >>> sim = fw.CardiacSimulation(dt=0.01, t_max=1.0, backend="numba")
+    >>> sim.cardiac_tissue = fw.CardiacTissue(shape=(100, 100), dr=0.25)
+    >>> sim.cardiac_model = fw.AlievPanfilov()
+    >>> sim.time_integration = fw.ForwardEulerTimeIntegration()
+    >>> sim.stim_sequence = fw.StimSequence()
+    >>> _ = sim.stim_sequence.add_stim(
+    ...         fw.StimVoltageCoord(time=0.0, volt_value=1.0,
+    ...                             x_min=0, x_max=5, y_min=40, y_max=60)
+    ... )
+    >>> sim.run(prog_bar=False)
+    >>> u = sim.cardiac_model.u
+
     """
     def __init__(self, reaction_lumping=False):
+        """Initializes the Forward Euler time integration method.
+        
+        Parameters
+        ----------
+        reaction_lumping : bool, optional
+            If True, uses lumping for the reaction term; otherwise, uses the full
+            mass matrix. Default is False.
+        """
         self.a_rhs_matrix = None
         self.a_reaction_matrix = None
         self.u_old = None

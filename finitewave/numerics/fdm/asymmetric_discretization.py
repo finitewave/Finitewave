@@ -73,12 +73,15 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         weights = []
 
         if indexes is None:
-            indexes = np.arange(mesh[mesh == 1].size, dtype=np.int64)
+            indexes = np.flatnonzero(mesh == 1)
 
-        tissue_size = mesh[mesh > 0].size
+        tissue_size = np.count_nonzero(mesh > 0)
 
         tissue_index_map = - np.ones(mesh.shape, dtype=indexes.dtype)
         tissue_index_map[mesh > 0] = np.arange(tissue_size, dtype=indexes.dtype)
+
+        if np.any(tissue_index_map.flat[indexes] < 0):
+            raise ValueError("Tissue index mapping failed. Check the mesh and indexes.")
 
         ijk = np.array(np.unravel_index(indexes, mesh.shape))
 
@@ -91,6 +94,7 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         rows = np.concatenate(rows)
         cols = np.concatenate(cols)
         weights = np.concatenate(weights)
+
         return sparse.csr_matrix((weights, (rows, cols)), shape=(tissue_size, tissue_size))
     
     def _diffusion_operator_component(self, mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map):
@@ -131,6 +135,7 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         rows = np.concatenate([major_to_center[0], center_to_major[0]])
         cols = np.concatenate([major_to_center[1], center_to_major[1]])
         weights = np.concatenate([major_to_center[2], center_to_major[2]]) / dr
+
         return rows, cols, weights
     
     def _flux_weights(self, mesh, diffusion, connectivity, dr, ijk, major_axis, tissue_index_map):

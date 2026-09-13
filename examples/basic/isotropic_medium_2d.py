@@ -49,7 +49,7 @@ cardiac_model.step = 2
 
 
 # create a tissue of size 400x400 with cardiomycytes:
-n = 400
+n, m = 400, 200
 
 # path = "/Users/arstanbekokenov/Projects/Fibrowave/simulations/data/PID09/segment/seg_mesh.npy"
 # mesh = np.load(path)
@@ -58,7 +58,7 @@ n = 400
 
 # print("Mesh shape:", mesh.shape)
 
-tissue = fw.CardiacTissue((n, n), dr=0.25)
+tissue = fw.CardiacTissue((n, m), dr=0.25)
 # tissue.mesh = mesh
 # tissue.mesh += (np.random.rand(*tissue.mesh.shape) < 0.1).astype(int)  # add some fibrosis
 
@@ -66,13 +66,14 @@ tissue = fw.CardiacTissue((n, n), dr=0.25)
 stim_sequence = fw.StimSequence()
 stim_sequence.add_stim(fw.StimVoltageCoord(time=0, volt_value=1,
                                            x_min=n//2 - 5, x_max=n//2 + 5,
-                                           y_min=n//2 - 5, y_max=n//2 + 5))
+                                           y_min=m//2 - 5, y_max=m//2 + 5))
 
 # create model object and set up parameters:
 simulation = fw.CardiacSimulation(dt=0.01, t_max=50, backend="mlx")
 simulation.cardiac_model = cardiac_model
 simulation.cardiac_tissue = tissue
 simulation.stim_sequence = stim_sequence
+simulation.spatial_discretization = fw.IsotropicDiscretization()
 
 # run the model:
 simulation.run(sync_step=10)

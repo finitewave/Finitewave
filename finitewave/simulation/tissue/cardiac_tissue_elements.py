@@ -134,12 +134,13 @@ class CardiacTissueElements(CardiacTissueBase):
             diffusion_tensor = np.zeros((self.elems.shape[0], self.meta["dim"], self.meta["dim"]))
             for i in range(self.meta["dim"]):
                 diffusion_tensor[:, i, i] = self.conductivity
-            return diffusion_tensor
+            return diffusion_tensor[self.myo_elems_mask]
 
         outer_product = np.einsum('ij,ik->ijk', self.fibers, self.fibers, optimize='optimal')
         diffusion_tensor = self.D_ac * np.eye(self.meta["dim"]) + (self.D_al - self.D_ac) * outer_product
-        return diffusion_tensor * np.atleast_1d(self.conductivity)[:, None, None]
-    
+        diffusion_tensor = diffusion_tensor * np.atleast_1d(self.conductivity)[:, None, None]
+        return diffusion_tensor[self.myo_elems_mask]
+
     def clean(self):
         self.mesh_elems[self.mesh_elems == 2] = 1
         self.mesh[self.mesh == 2] = 1

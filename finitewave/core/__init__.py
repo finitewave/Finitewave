@@ -1,4 +1,4 @@
-# from finitewave.core.command import Command, CommandSequence
+from finitewave.core.command import Command, CommandSequence
 # from finitewave.core.fibrosis import (
 #     FibrosisPattern,
 #     Diffuse2DPattern,

@@ -134,27 +134,36 @@ class ECGTracker(Tracker):
         np.save(Path(self.path, self.file_name), self.output)
 
 
-def ecg_func(backend):
+def ecg_func(backend, coords, i, j, k, dr, distance_power=1.0):
     if backend.name == "numba":
         from numba import njit, prange
 
         @njit(parallel=True, fastmath=True)
-        def calc_ecg_numba(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
+        def calc_ecg_numba(tr_current, coords, i, j, k, weight, distance_power=1):
 
             n = coords.shape[0]
-            ecg = np.empty(n, dtype=tr_current.dtype)
+            out = np.empty(n, dtype=tr_current.dtype)
+            # out.fill(0.0)
 
             for c in prange(n):
                 x, y, z = coords[c]
-                ds = (i - x) ** 2 + (j - y) ** 2 + (k - z) ** 2
-                ds = np.where(ds == 0, 1, ds)
-                d = np.sqrt(ds) ** distance_power
-                ecg[c] = np.sum(tr_current / (d * dr * dt)) / (4 * math.pi * cond)
 
-            return ecg
+                res = 0.0
+                for idx in prange(len(i)):
+                    ds = (i[idx] - x) ** 2 + (j[idx] - y) ** 2 + (k[idx] - z) ** 2
+                    ds = np.sqrt(ds)
+                    if ds < 0.5:
+                        d = 1.0
+                    else:
+                        d = ds ** distance_power
         
-        return calc_ecg_numba
-    
+                    res += tr_current[idx] / (d * weight)
+                out[c] = res
+            return out
+
+        return lambda x: calc_ecg_numba(x, coords, i, j, k, dr, distance_power)
+
+
     if backend.name == "jax":
         import jax
         import jax.numpy as jnp
@@ -172,7 +181,7 @@ def ecg_func(backend):
             _, ecg = jax.lax.scan(single_ecg, None, coords)
             return ecg
         
-        return calc_ecg_jax
+        return lambda x: calc_ecg_jax(x, coords, i, j, k, dr, distance_power, cond=1.0)
     
     if backend.name == "mlx":
         import mlx.core as mx

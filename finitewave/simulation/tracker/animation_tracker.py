@@ -15,7 +15,7 @@ from finitewave.tools.pyvista_grids import (
     PyVistaTetraGrid
 )
 
-from finitewave.core.numerics.fem.elements.element_type import ElementType
+from finitewave.numerics.fem.elements.element_type import ElementType
 
 
 class AnimationTracker(FrameTracker):

@@ -35,7 +35,7 @@ class FiniteDifferenceDiscretization(SpatialDiscretization):
         diffusion = tissue.diffusion_tensor
         connectivity = tissue.connectivity
         dr = tissue.dr
-        indexes = tissue.myo_indexes
+        indexes = tissue.tissue_indexes[tissue.myo_indexes]
 
         stiffness = self.compute_diffusion_operator(mesh, dr, indexes, diffusion, connectivity)
         mass = sp.eye(stiffness.shape[0], dtype=stiffness.dtype, format='csr')
@@ -217,7 +217,7 @@ def nonzero_weight_numba(mesh, ijk, ijk_list, w_list, index_map, direction=1):
     for i in range(n_points):
         for j in range(n_weights):
             w = w_list[j][i]
-            if w == 0:
+            if abs(w) < 1e-12:
                 continue
 
             ind = count

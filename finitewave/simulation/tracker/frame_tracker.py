@@ -123,7 +123,7 @@ class FrameTracker(Tracker):
 
         The frames are saved in the specified directory as NumPy files.
         """
-        frame_raw = getattr(self.simulation.cardiac_model, self.var_name)
+        frame_raw = getattr(self.simulation.cardiac_model, f"_{self.var_name}")
         frame_raw = np.asarray(frame_raw, dtype=self.output_dtype)
 
         if self.keep_shape:
