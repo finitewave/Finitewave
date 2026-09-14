@@ -4,14 +4,21 @@ from .finite_difference_discretization import FiniteDifferenceDiscretization
 
 
 class AsymmetricDiscretization(FiniteDifferenceDiscretization):
-    """
-    This class computes diffusion operator for the asymmetric finite difference stencil.
+    """Conservative finite differences for tensor-valued diffusion.
+
+    The method constructs the flux through every positive grid face and adds
+    that flux with opposite signs to the two adjacent rows.  Diagonal tensor
+    terms use the two face-adjacent cells; off-diagonal terms use four cells
+    surrounding the face.  The assembled CSR matrix approximates
+    ``-div(D grad(u))`` and is symmetric for a symmetric diffusion tensor and
+    symmetric edge connectivity.
 
     Notes
     -----
-    The asymmetric stencil reduces to the isotropic stencil with first-order
-    boundary conditions if the ``fibers = None`` or ``fibers`` are aligned with
-    the grid and ``D_al = D_ac``.
+    With scalar diffusion, or an axis-aligned diagonal tensor, the interior
+    stencil reduces to the usual centered stencil.  Its boundary treatment is
+    different from :class:`IsotropicDiscretization`: a missing face has zero
+    flux instead of a mirrored opposite contribution.
 
     Rules for handling boundaries are:
     - If a major (directly adjacent) neighbor is invalid
@@ -31,56 +38,101 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
     https://doi.org/10.1016/j.jcp.2014.04.046
     """
     def __init__(self, averaging_method="arithmetic"):
-        """
-        Initializes the AsymmetricDiscretization class.
+        """Select how diffusion tensors are interpolated to grid faces.
         
         Parameters
         ----------
         averaging_method : str, optional
-            The method to average diffusion coefficients. Options are "arithmetic" or "harmonic".
+            ``"arithmetic"`` averages tensor-row components elementwise.
+            ``"harmonic"`` uses ``2*d1*d2/(d1+d2)`` elementwise and returns
+            zero where the denominator is zero.
+
+        Raises
+        ------
+        ValueError
+            If ``averaging_method`` is not ``"arithmetic"`` or ``"harmonic"``.
         """
         super().__init__()
         if averaging_method == "arithmetic":
-            self.diffusion_averaging_method = lambda d1, d2: 0.5 * (d1 + d2)
+            self.diffusion_averaging_method = self._arithmetic_mean
         elif averaging_method == "harmonic":
-            self.diffusion_averaging_method = lambda d1, d2: 2 * (d1 * d2) / (d1 + d2)
+            self.diffusion_averaging_method = self._harmonic_mean
         else:
             raise ValueError(f"Invalid averaging method: {averaging_method}. "
                              "Choose 'arithmetic' or 'harmonic'.")
 
     def compute_diffusion_operator(self, mesh, dr, indexes=None, diffusion=1., connectivity=1.):
-        """
-        Builds the diffusion operator as sparse matrix with the asymmetric stencil.
+        """Assemble ``K``, the sparse approximation of ``-div(D grad(u))``.
+
+        Matrix rows and columns use compressed tissue indexing based on
+        ``mesh > 0``.  Only coordinates selected by ``indexes`` generate flux
+        faces; the returned matrix nevertheless includes every tissue point.
 
         Parameters
         ----------
         mesh : numpy.ndarray
-            The mesh of the simulation.
-        diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+            Integer grid where ``0`` is empty, ``1`` is active, and ``2`` is a
+            retained non-excitable point.
         dr : float
             The grid spacing.
-        indexes : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
+        indexes : numpy.ndarray, optional
+            Positions of active cells in the compressed tissue array
+            ``mesh[mesh > 0]``. By default all cells where ``mesh == 1``.
+        diffusion : scalar or numpy.ndarray
+            Scalar diffusion, a constant tensor, or diffusion tensors stored
+            either on the full grid or in compressed tissue indexing.
+        connectivity : scalar or numpy.ndarray
+            Positive-edge multiplier. ``connectivity[p, a]`` scales the face
+            joining point ``p`` to its ``+a`` neighbor.  Accepted storage is a
+            scalar, an ``(ndim,)`` vector, ``mesh.shape + (ndim,)``, or
+            ``(n_tissue, ndim)``.
 
         Returns
         -------
         scipy.sparse.csr_matrix
-            The diffusion operator as a sparse matrix.
+            Square matrix with shape ``(count(mesh > 0),) * 2``.  Duplicate
+            face contributions are summed during CSR construction.
+
+        Raises
+        ------
+        ValueError
+            If ``dr`` is non-positive or an input shape/index contract is
+            violated.
         """
         rows = []
         cols = []
         weights = []
 
-        if indexes is None:
-            indexes = np.arange(mesh[mesh == 1].size, dtype=np.int64)
+        if dr <= 0:
+            raise ValueError("dr must be positive.")
 
-        tissue_size = mesh[mesh > 0].size
+        tissue_flat_indexes = np.flatnonzero(mesh > 0)
+        tissue_size = tissue_flat_indexes.size
+
+        if indexes is None:
+            indexes = np.flatnonzero(mesh.flat[tissue_flat_indexes] == 1)
+        else:
+            indexes = np.asarray(indexes, dtype=np.int64)
+
+        if indexes.ndim != 1:
+            raise ValueError("indexes must be a one-dimensional array.")
+
+        if np.any((indexes < 0) | (indexes >= tissue_size)):
+            raise ValueError("indexes must refer to positions in the tissue array.")
+
+        myo_flat_indexes = tissue_flat_indexes[indexes]
+        if np.any(mesh.flat[myo_flat_indexes] != 1):
+            raise ValueError("indexes must only refer to active cells (mesh == 1).")
+
+        diffusion = self._normalize_diffusion(diffusion, mesh, tissue_flat_indexes)
+        connectivity = self._normalize_connectivity(
+            connectivity, mesh, tissue_flat_indexes
+        )
 
         tissue_index_map = - np.ones(mesh.shape, dtype=indexes.dtype)
         tissue_index_map[mesh > 0] = np.arange(tissue_size, dtype=indexes.dtype)
 
-        ijk = np.array(np.unravel_index(indexes, mesh.shape))
+        ijk = np.array(np.unravel_index(myo_flat_indexes, mesh.shape))
 
         for axis in range(mesh.ndim):
             r, c, w = self._diffusion_operator_component(mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map)
@@ -92,12 +144,76 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         cols = np.concatenate(cols)
         weights = np.concatenate(weights)
         return sparse.csr_matrix((weights, (rows, cols)), shape=(tissue_size, tissue_size))
+
+    @staticmethod
+    def _arithmetic_mean(d1, d2):
+        """Return the elementwise arithmetic mean of two face values."""
+        return 0.5 * (d1 + d2)
+
+    @staticmethod
+    def _harmonic_mean(d1, d2):
+        """Return the elementwise harmonic mean, using zero for a zero sum."""
+        denominator = d1 + d2
+        result = np.zeros_like(denominator, dtype=np.result_type(d1, d2, float))
+        return np.divide(2 * d1 * d2, denominator, out=result,
+                         where=denominator != 0)
+
+    @staticmethod
+    def _normalize_diffusion(diffusion, mesh, tissue_flat_indexes):
+        """Normalize supported diffusion layouts to scalar or tissue order.
+
+        A constant ``(ndim, ndim)`` tensor and a full-grid tensor field are
+        converted to ``(n_tissue, ndim, ndim)``.  A scalar is kept scalar so
+        downstream code can use its isotropic fast path.
+        """
+        diffusion = np.asarray(diffusion)
+        ndim = mesh.ndim
+        tissue_size = tissue_flat_indexes.size
+
+        if diffusion.size == 1:
+            return diffusion
+        if diffusion.shape == (ndim, ndim):
+            return np.broadcast_to(diffusion, (tissue_size, ndim, ndim))
+        if diffusion.shape == mesh.shape + (ndim, ndim):
+            return diffusion.reshape((-1, ndim, ndim))[tissue_flat_indexes]
+        if diffusion.shape == (tissue_size, ndim, ndim):
+            return diffusion
+
+        raise ValueError(
+            "diffusion must be scalar, a constant (ndim, ndim) tensor, "
+            "a full-grid tensor, or a tissue-indexed tensor."
+        )
+
+    @staticmethod
+    def _normalize_connectivity(connectivity, mesh, tissue_flat_indexes):
+        """Normalize connectivity to scalar, axis-wise, or tissue order.
+
+        Full-grid data are compressed using ``tissue_flat_indexes``.  Scalars
+        and constant ``(ndim,)`` vectors are kept in their compact form.
+        """
+        connectivity = np.asarray(connectivity)
+        ndim = mesh.ndim
+        tissue_size = tissue_flat_indexes.size
+
+        if connectivity.size == 1 or connectivity.shape == (ndim,):
+            return connectivity
+        if connectivity.shape == mesh.shape + (ndim,):
+            return connectivity.reshape((-1, ndim))[tissue_flat_indexes]
+        if connectivity.shape == (tissue_size, ndim):
+            return connectivity
+
+        raise ValueError(
+            "connectivity must be scalar, an (ndim,) vector, a full-grid "
+            "array, or a tissue-indexed array."
+        )
     
     def _diffusion_operator_component(self, mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map):
-        """
-        Computes the diffusion weights along a given axis.
+        """Convert positive-face fluxes for one axis into COO triplets.
 
-        - (q_x1 - q_x0) / dr
+        For each face, the same flux expression is added to the center row and
+        subtracted from the positive-neighbor row.  Division by ``dr`` here is
+        the discrete divergence; flux weights already contain another
+        ``1 / dr`` from the discrete gradient.
 
         Parameters
         ----------
@@ -106,13 +222,11 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         dr : float
             The grid spacing.
         ijk : numpy.ndarray
-            The indexes of the non-empty points in the mesh.
-        ijk_major : numpy.ndarray
-            The indexes of the major neighbor points.
-        ijk_list : list
-            A list of numpy arrays containing the indexes of the involved points.
-        w_list : list
-            A list of numpy arrays containing the flux weights for the involved points.
+            Active center coordinates with shape ``(mesh.ndim, n_active)``.
+        axis : int
+            Normal direction of the positive faces.
+        tissue_index_map : numpy.ndarray
+            Grid-shaped map to compressed tissue indexes.
 
         Returns
         -------
@@ -134,8 +248,13 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         return rows, cols, weights
     
     def _flux_weights(self, mesh, diffusion, connectivity, dr, ijk, major_axis, tissue_index_map):
-        """
-        Computes the flux weights for
+        """Build one linear flux expression for every positive-axis face.
+
+        ``major_axis`` is the face normal.  The tensor row ``D[major_axis, :]``
+        supplies one normal-gradient coefficient and, in anisotropic media,
+        one transverse coefficient per minor axis.  Invalid major faces have
+        no flux.  A transverse term is included only when all four surrounding
+        minor points are active.
 
         .. code-block:: text
             minor_3 ---- minor_4
@@ -149,13 +268,17 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         mesh : numpy.ndarray
             The mesh of the simulation.
         diffusion : numpy.ndarray
-            The diffusion tensor as a (*mesh.shape, ndim, ndim).
+            Normalized scalar or tissue-indexed diffusion tensor.
+        connectivity : scalar or numpy.ndarray
+            Normalized multiplier of each positive face.
         dr : float
             The grid spacing.
         ijk : numpy.ndarray
-            The indexes of the non-empty cells in the mesh.
+            Active center coordinates with shape ``(mesh.ndim, n_active)``.
         major_axis : int
             The axis of the major direction.
+        tissue_index_map : numpy.ndarray
+            Grid-shaped map to compressed tissue indexes.
 
         Returns 
         -------
@@ -187,10 +310,11 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         return ijk_major, ijk_list, w_list
     
     def _major_flux_weights(self, diffusion_major, dr, ijk, ijk_major, m_major):
-        """Computes the weights for the major component of the flux from
-        major to center.
+        """Build the normal-gradient part of a positive-face flux.
 
-        q_x = - Dxx * (u_major - u_center) / dr
+        The returned coefficients represent
+        ``D_aa * (u_center - u_major) / dr``.  Both coefficients are zero when
+        the positive neighbor is invalid.
         
         Parameters
         ----------
@@ -219,11 +343,12 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
 
     def _minor_flux_weights(self, diffusion_minor, dr, ijk_center, ijk_major,
                            m_major, minor_axis, mesh):
-        """
-        Calculates the minor flux weights.
+        """Build one transverse-gradient part of a positive-face flux.
 
-        qy = - Dxy * (du/dy)
-           = - Dxy * ((u_3 + u_4) / 4 - (u_1 + u_2) / 4)
+        For minor axis ``b`` and major axis ``a``, the approximation is
+        ``D_ab * (u_1 + u_2 - u_3 - u_4) / (4*dr)`` using the four cells around
+        the face.  It is suppressed unless the major neighbor and all four
+        minor cells are active.
 
         .. code-block:: text
             minor_3 ---- minor_4
@@ -255,11 +380,6 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
             A tuple containing the ijk coordinates of the involved cells and
             their flux weights.
 
-        Notes
-        -----
-        The diffusion components are calculated in the middle of central and
-        major nodes, therefore the diffusion coefficient is averaged between
-        the corresponding nodes.
         """
         ijk_1 = self.build_neighbor(ijk_center, -1, minor_axis)
         ijk_2 = self.build_neighbor(ijk_major, -1, minor_axis)
@@ -280,6 +400,7 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
 
     def _diffusion_tensor_component(self, diffusion, connectivity, ijk, ijk_major, 
                                    mask_major, major_axis, tissue_index_map):
+        """Return the connectivity-scaled tensor row on each positive face."""
         diffusion_along_major = self._average_diffusion_component(
             diffusion, ijk, ijk_major, mask_major, major_axis, tissue_index_map)
         connectivity_along_major = self._connectivity_component(
@@ -287,50 +408,63 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         return diffusion_along_major * connectivity_along_major[:, None]
 
     def _average_diffusion_component(self, diffusion, ijk, ijk_neighbor, mask, axis, tissue_index_map):
-        diffusion = np.atleast_1d(diffusion)
-        ndim, n_points = ijk_neighbor.shape
-        if diffusion.size == 1:
-            return diffusion * np.eye(ndim)[axis]
+        """Interpolate tensor row ``axis`` from cell centers to valid faces.
 
-        center_indexes = tissue_index_map[*ijk[:, mask > 0]]
-        neighbor_indexes = tissue_index_map[*ijk_neighbor[:, mask > 0]]
+        The result always has shape ``(n_points, mesh.ndim)``.  Invalid faces
+        are filled with zeros.  Scalar diffusion populates only the diagonal
+        component, which represents isotropic ``D * I``.
+        """
+        diffusion = np.asarray(diffusion)
+        ndim, n_points = ijk_neighbor.shape
+        d_full = np.zeros(
+            (n_points, ndim), dtype=np.result_type(diffusion.dtype, float)
+        )
+
+        if diffusion.size == 1:
+            d_full[mask, axis] = diffusion.item()
+            return d_full
+
+        center_indexes = tissue_index_map[*ijk[:, mask]]
+        neighbor_indexes = tissue_index_map[*ijk_neighbor[:, mask]]
         d_axis = self.diffusion_averaging_method(
             diffusion[center_indexes, axis, :], diffusion[neighbor_indexes, axis, :])
 
-        d_full = np.zeros((n_points, ndim))
-        d_full[mask > 0] = d_axis
+        d_full[mask] = d_axis
         return d_full
 
     def _connectivity_component(self, connectivity, ijk, mask, axis, tissue_index_map):
-        """
-        Computes the connectivity along a given axis.
+        """Read the multiplier stored at each center's positive-axis edge.
 
         Parameters
         ----------
         connectivity : scalar or numpy.ndarray
-            The connectivity values.
+            Normalized scalar, ``(ndim,)`` vector, or tissue-indexed array.
         ijk : numpy.ndarray
-            The indexes of the central nodes.
+            Center coordinates with shape ``(mesh.ndim, n_points)``.
         mask : numpy.ndarray
-            The validity mask of the cells.
+            Boolean vector selecting valid positive faces.
         axis : int
             The axis along which to compute the connectivity.
 
         Returns
         -------
         numpy.ndarray
-            The connectivity along the specified axis.
+            Vector of length ``n_points``; invalid faces contain zero.
         """
         connectivity = np.asarray(connectivity)
         ndim, n_points = ijk.shape
-        center_indexes = tissue_index_map[*ijk[:, mask > 0]]
-    
+        connectivity_along_axis = np.zeros(
+            n_points, dtype=np.result_type(connectivity.dtype, float)
+        )
+
         if connectivity.size == 1:
-            return np.atleast_1d(connectivity)
-        
-        if connectivity.size == ndim:
-            return np.atleast_1d(connectivity[axis])
-        
-        connectivity_along_axis = connectivity[:, axis].copy()
-        connectivity_along_axis[center_indexes] = 0.
+            connectivity_along_axis[mask] = connectivity.item()
+            return connectivity_along_axis
+
+        if connectivity.shape == (ndim,):
+            connectivity_along_axis[mask] = connectivity[axis]
+            return connectivity_along_axis
+
+        center_indexes = tissue_index_map[*ijk[:, mask]]
+        connectivity_along_axis[mask] = connectivity[center_indexes, axis]
         return connectivity_along_axis
