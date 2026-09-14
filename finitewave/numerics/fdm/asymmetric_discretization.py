@@ -10,8 +10,8 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
     that flux with opposite signs to the two adjacent rows.  Diagonal tensor
     terms use the two face-adjacent cells; off-diagonal terms use four cells
     surrounding the face.  The assembled CSR matrix approximates
-    ``-div(D grad(u))`` and is symmetric for a symmetric diffusion tensor and
-    symmetric edge connectivity.
+    ``-div(D grad(u))`` and conserves flux: every face expression is added to
+    one row and subtracted from the adjacent row.
 
     Notes
     -----
@@ -20,11 +20,20 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
     different from :class:`IsotropicDiscretization`: a missing face has zero
     flux instead of a mirrored opposite contribution.
 
-    Rules for handling boundaries are:
-    - If a major (directly adjacent) neighbor is invalid
-        (out of bounds or in an empty cell), flux from this neighbor is zero.
-    - If any of the minor neighbor from upper or lower side is invalid,
-        the minor flux from this axis is zero.
+    Despite flux conservation, the matrix is generally non-symmetric when
+    off-diagonal tensor components are present, even if the continuous tensor
+    is symmetric.  ``Asymmetric`` in the class name refers to this stencil
+    property.  A solver that requires a symmetric positive-definite matrix,
+    such as Conjugate Gradient, is therefore not guaranteed to be applicable
+    to the fully anisotropic operator.
+
+    Boundary rules are as follows:
+
+    * If the major (directly adjacent) neighbor is invalid, the complete flux
+      through that face is zero.
+    * If any of the four points required for a transverse derivative is
+      invalid, that transverse contribution is zero.  The normal contribution
+      may still remain.
 
     Diffusion components are calculated in the middle of two nodes, therefore
     the diffusion coefficient is averaged between the corresponding nodes.
@@ -79,8 +88,10 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
             Positions of active cells in the compressed tissue array
             ``mesh[mesh > 0]``. By default all cells where ``mesh == 1``.
         diffusion : scalar or numpy.ndarray
-            Scalar diffusion, a constant tensor, or diffusion tensors stored
-            either on the full grid or in compressed tissue indexing.
+            A scalar isotropic coefficient, a constant ``(ndim, ndim)``
+            tensor, a full-grid field with shape
+            ``mesh.shape + (ndim, ndim)``, or a compressed field with shape
+            ``(n_tissue, ndim, ndim)``.
         connectivity : scalar or numpy.ndarray
             Positive-edge multiplier. ``connectivity[p, a]`` scales the face
             joining point ``p`` to its ``+a`` neighbor.  Accepted storage is a
@@ -91,7 +102,9 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         -------
         scipy.sparse.csr_matrix
             Square matrix with shape ``(count(mesh > 0),) * 2``.  Duplicate
-            face contributions are summed during CSR construction.
+            face contributions are summed during CSR construction.  Rows sum
+            to zero, but the matrix need not be symmetric for tensor-valued
+            diffusion.
 
         Raises
         ------
@@ -219,6 +232,10 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         ----------
         mesh : numpy.ndarray
             The mesh of the simulation.
+        diffusion : scalar or numpy.ndarray
+            Normalized scalar or tissue-indexed diffusion tensors.
+        connectivity : scalar or numpy.ndarray
+            Normalized positive-edge connectivity.
         dr : float
             The grid spacing.
         ijk : numpy.ndarray
@@ -231,11 +248,11 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         Returns
         -------
         rows : np.ndarray
-            The central node indexes.
+            Compressed row indexes for both cells adjacent to valid faces.
         cols : np.ndarray
-            The node indexes involved in diffusion calculation.
+            Compressed indexes of cells used by the flux expressions.
         weights : np.ndarray
-            The weights for connections.
+            COO values after both gradient and divergence scaling.
         """
         
         ijk_major, ijk_list, w_list = self._flux_weights(mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map)
@@ -283,11 +300,13 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         Returns 
         -------
         ijk_major : numpy.ndarray
-            The indexes of the major neighbor cells.
+            Positive-neighbor coordinates, including invalid coordinates whose
+            flux weights are zero.
         ijk_list : list
-            The list of coordinates of the involved nodes in the mesh.
+            Coordinate arrays used in the linear face-flux expressions.
         w_list : list
-            The list of weights for the involved nodes.
+            Matching one-dimensional coefficient arrays.  These contain the
+            gradient factor ``1 / dr`` but not the divergence factor.
         """
         ijk_major = self.build_neighbor(ijk, shift=1, axis=major_axis)
         m_major = self.is_valid_index(ijk_major, mesh)
@@ -323,17 +342,18 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         dr : float
             The grid spacing.
         ijk : numpy.ndarray
-            The indexes of the non-empty cells in the mesh.
+            Active center coordinates with shape ``(mesh.ndim, n_points)``.
         ijk_major : numpy.ndarray
-            The indexes of the major neighbor cells.
+            Positive-neighbor coordinates with the same shape as ``ijk``.
         m_major : numpy.ndarray
-            The validity mask of the major neighbor.
+            Boolean vector selecting valid positive faces.
 
         Returns
         -------
-        tuple
-            A tuple containing the ijk coordinates of the involved cells and
-            their flux weights.
+        ijk_list : list of numpy.ndarray
+            ``[ijk, ijk_major]``.
+        w_list : list of numpy.ndarray
+            Coefficients ``[w, -w]`` for center and major values.
         """
         w_major = np.where(m_major > 0, diffusion_major / dr, 0.)
 
@@ -366,19 +386,20 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         dr : float
             The grid spacing.
         ijk_center : numpy.ndarray
-            The indexes of the center cells.
+            Active center coordinates with shape ``(mesh.ndim, n_points)``.
         ijk_major : numpy.ndarray
-            The indexes of the major neighbor cells.
+            Positive-neighbor coordinates with the same shape.
         m_major : numpy.ndarray
-            The validity mask of the major neighbor.
+            Boolean vector selecting valid major faces.
         minor_axis : int
             The axis of the minor direction.
 
         Returns
         -------
-        tuple
-            A tuple containing the ijk coordinates of the involved cells and
-            their flux weights.
+        ijk_list : list of numpy.ndarray
+            Coordinates of the four cells surrounding each face.
+        w_list : list of numpy.ndarray
+            Coefficients ``[w, w, -w, -w]`` in matching order.
 
         """
         ijk_1 = self.build_neighbor(ijk_center, -1, minor_axis)
