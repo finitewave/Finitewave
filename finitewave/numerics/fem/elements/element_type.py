@@ -7,6 +7,8 @@ class ElementType:
     TETRA = "Tetrahedral"
     HEXAHEDRON = "Hexahedron"
 
+    # TODO: check hourglass mode for quadrilateral and hexahedral elements
+
     values = [TRIANGLE, QUAD, TETRA, HEXAHEDRON]
     surface = [TRIANGLE, QUAD]
     volume = [TETRA, HEXAHEDRON]

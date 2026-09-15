@@ -78,7 +78,7 @@ simulation.run()
 # plt.show()
 
 # visualize the results:
-plt.imshow(simulation.cardiac_model['u'], cmap='jet', origin='lower')
+plt.imshow(simulation.cardiac_model.u, cmap='jet', origin='lower')
 plt.colorbar(label='Transmembrane Potential (u)')
 plt.title('Fenton-Karma Model - Transmembrane Potential')
 plt.xlabel('X-axis')
