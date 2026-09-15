@@ -33,7 +33,7 @@ class FiniteElementDiscretization(SpatialDiscretization):
         sparse.csr_matrix
             The mass matrix with shape (non_empty_nodes, non_empty_nodes).
         """
-        diffusion = tissue.diffusion_tensor
+        diffusion = tissue.diffusion_tensor[tissue.myo_elems_mask]
         coords = tissue.coords
         elems = tissue.myo_elems
         self.reference_element = tissue.reference_element
