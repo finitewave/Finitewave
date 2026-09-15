@@ -94,9 +94,10 @@ class FiniteElementDiscretization(SpatialDiscretization):
             The stiffness matrix with shape (non_empty_nodes, non_empty_nodes).
         """
         n_points = coords.shape[0]
+        n_elem_points = elems.shape[1]
         shape = (n_points, n_points)
-        rows = np.repeat(elems, n_points, axis=1).ravel()
-        cols = np.tile(elems, (1, n_points)).ravel()
+        rows = np.repeat(elems, n_elem_points, axis=1).ravel()
+        cols = np.tile(elems, (1, n_elem_points)).ravel()
 
         jacobian = self.build_jacobian(coords, elems)
         elems_size = self._compute_elements_size(jacobian)
@@ -121,9 +122,10 @@ class FiniteElementDiscretization(SpatialDiscretization):
             The mass matrix with shape (non_empty_nodes, non_empty_nodes).
         """
         n_points = coords.shape[0]
+        n_elem_points = elems.shape[1]
         shape = (n_points, n_points)
-        rows = np.repeat(elems, n_points, axis=1).ravel()
-        cols = np.tile(elems, (1, n_points)).ravel()
+        rows = np.repeat(elems, n_elem_points, axis=1).ravel()
+        cols = np.tile(elems, (1, n_elem_points)).ravel()
 
         jacobian = self.build_jacobian(coords, elems)
         elems_size = self._compute_elements_size(jacobian)

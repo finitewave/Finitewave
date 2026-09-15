@@ -75,3 +75,29 @@ def test_build_hexahedral_slab_from_cubes():
         discretization.compute_elements_size(coords, elems),
         [1.0, 1.0],
     )
+
+
+def test_separate_matrix_builders_support_multi_element_mesh():
+    coords, elems = fw.build_hexahedral_slab(
+        2, 1, 1,
+        (0.0, 2.0),
+        (0.0, 1.0),
+        (0.0, 1.0),
+    )
+    discretization = fw.FiniteElementDiscretization()
+    discretization.reference_element = fw.LinearHexahedralElement()
+    diffusion = np.repeat(np.eye(3)[None, :, :], elems.shape[0], axis=0)
+
+    expected_stiffness, expected_mass = discretization.compute_system_matrices(
+        coords, elems, diffusion
+    )
+
+    stiffness = discretization.compute_diffusion_operator(
+        coords, elems, diffusion
+    )
+    mass = discretization.compute_mass_matrix(coords, elems)
+
+    np.testing.assert_allclose(
+        stiffness.toarray(), expected_stiffness.toarray()
+    )
+    np.testing.assert_allclose(mass.toarray(), expected_mass.toarray())
