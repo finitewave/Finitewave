@@ -139,6 +139,13 @@ class FiniteElementDiscretization(SpatialDiscretization):
         return mass_matrix.tocsr()
 
     def _compute_diffusion_operator(self, rows, cols, elems_size, grads, diffusion, shape):
+        if np.ndim(diffusion) == 0:
+            n_elems, dim_phys, _ = grads.shape
+            diffusion = np.broadcast_to(
+                diffusion * np.eye(dim_phys),
+                (n_elems, dim_phys, dim_phys),
+            )
+
         stiff_data = np.einsum('e,eki,elk,elj->eij', elems_size, grads, diffusion, grads, optimize='optimal')
         stiff_data = stiff_data.flatten()
         stiff_matrix = sp.coo_matrix((stiff_data, (rows, cols)), shape=shape)

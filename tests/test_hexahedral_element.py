@@ -101,3 +101,28 @@ def test_separate_matrix_builders_support_multi_element_mesh():
         stiffness.toarray(), expected_stiffness.toarray()
     )
     np.testing.assert_allclose(mass.toarray(), expected_mass.toarray())
+
+
+def test_scalar_diffusion_is_treated_as_isotropic():
+    coords, elems = _unit_cube()
+    discretization = fw.FiniteElementDiscretization()
+    discretization.reference_element = fw.LinearHexahedralElement()
+
+    default_stiffness, _ = discretization.compute_system_matrices(coords, elems)
+    scalar_stiffness = discretization.compute_diffusion_operator(
+        coords, elems, diffusion=2.5
+    )
+
+    identity_stiffness, _ = discretization.compute_system_matrices(
+        coords, elems, np.eye(3)[None, :, :]
+    )
+    tensor_stiffness, _ = discretization.compute_system_matrices(
+        coords, elems, (2.5 * np.eye(3))[None, :, :]
+    )
+
+    np.testing.assert_allclose(
+        default_stiffness.toarray(), identity_stiffness.toarray()
+    )
+    np.testing.assert_allclose(
+        scalar_stiffness.toarray(), tensor_stiffness.toarray()
+    )
