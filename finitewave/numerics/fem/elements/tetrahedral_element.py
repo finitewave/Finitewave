@@ -1,6 +1,8 @@
 
 import numpy as np
 
+from .element_type import ElementType
+
 
 class LinearTetrahedralElement:
     """Class representing a linear tetrahedral finite element.
@@ -27,7 +29,7 @@ class LinearTetrahedralElement:
     """
 
     def __init__(self):
-        self.name = "Tetrahedral"
+        self.name = ElementType.TETRA
         self.order = 1
         self.mass_coef = 20.0
 

@@ -1,5 +1,7 @@
 import numpy as np
 
+from .element_type import ElementType
+
 
 class LinearTriangleElement:
     """Class representing a linear triangular finite element.
@@ -25,7 +27,7 @@ class LinearTriangleElement:
     """
 
     def __init__(self):
-        self.name = "Triangle"
+        self.name = ElementType.TRIANGLE
         self.order = 1
         self.mass_coef = 12.
         self.elem_mass = (1 / self.mass_coef) * np.array([[2, 1, 1],

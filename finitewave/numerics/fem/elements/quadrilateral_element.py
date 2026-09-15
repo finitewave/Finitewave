@@ -1,5 +1,7 @@
 import numpy as np
 
+from .element_type import ElementType
+
 
 class LinearQuadrilateralElement:
     """Linear quadrilateral element with 4 nodes in 3D space.
@@ -26,7 +28,7 @@ class LinearQuadrilateralElement:
     """
     def __init__(self):
         super().__init__()
-        self.name = "Quadrilateral"
+        self.name = ElementType.QUAD
         self.order = 1
         self.mass_coef = 36.  # consistent with 4-node quads
 

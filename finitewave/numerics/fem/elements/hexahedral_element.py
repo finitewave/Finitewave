@@ -1,5 +1,7 @@
 import numpy as np
 
+from .element_type import ElementType
+
 
 class LinearHexahedralElement:
     """Trilinear hexahedral element with eight nodes in 3D space.
@@ -38,7 +40,7 @@ class LinearHexahedralElement:
     """
 
     def __init__(self):
-        self.name = "Hexahedron"
+        self.name = ElementType.HEXAHEDRON
         self.order = 1
         self.mass_coef = 216.0
 
