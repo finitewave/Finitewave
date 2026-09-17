@@ -96,6 +96,76 @@ class AsymmetricDiscretization(FiniteDifferenceDiscretization):
         weights = np.concatenate(weights)
 
         return sparse.csr_matrix((weights, (rows, cols)), shape=(tissue_size, tissue_size))
+
+    def compute_gradient_operator(self, mesh, *, dr=1.0, indexes=None, **kwargs):
+        """
+        Computes the weights for calculating the gradient operator.
+
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        dr : float
+            The grid spacing.
+        indexes : numpy.ndarray
+            The indexes of the non-empty nodes in the mesh.
+        **kwargs : dict
+            Additional keyword arguments for specific discretization methods.
+
+        Returns
+        -------
+        grad_ops : list of scipy.sparse.csr_matrix
+            The gradient operators for each axis.
+        """
+        if indexes is None:
+            indexes = np.flatnonzero(mesh == 1)
+
+        tissue_size = np.count_nonzero(mesh > 0)
+        tissue_index_map = - np.ones_like(mesh, dtype=np.int64)
+        tissue_index_map[mesh > 0] = np.arange(tissue_size)
+
+        if np.any(tissue_index_map.flat[indexes] < 0):
+            raise ValueError("Tissue index mapping failed. Check the mesh and indexes.")
+
+        ijk = np.array(np.unravel_index(indexes, mesh.shape))
+
+        grad_ops = []
+        for axis in range(mesh.ndim):
+            
+            ijk_pos = self.build_neighbor(ijk, 1, axis)
+            ijk_neg = self.build_neighbor(ijk, -1, axis)
+
+            is_valid_pos = self.is_valid_index(ijk_pos, mesh)
+            is_valid_neg = self.is_valid_index(ijk_neg, mesh)
+
+            is_valid = is_valid_pos | is_valid_neg
+            invalid_pos = (~is_valid_pos) & is_valid_neg
+            invalid_neg = (~is_valid_neg) & is_valid_pos
+            one_sided = invalid_pos | invalid_neg
+
+            ijk_pos[:, invalid_pos] = ijk[:, invalid_pos]
+            ijk_neg[:, invalid_neg] = ijk[:, invalid_neg]
+
+            w_pos = np.zeros(len(indexes), dtype=np.float64)
+            w_neg = np.zeros(len(indexes), dtype=np.float64)
+
+            w_pos[is_valid] = 1.0 / (2 * dr)
+            w_neg[is_valid] = -1.0 / (2 * dr)
+    
+            w_pos[one_sided] = 1.0 / dr
+            w_neg[one_sided] = -1.0 / dr
+
+            ijk_list = [ijk_pos, ijk_neg]
+            w_list = [w_pos, w_neg]
+
+            rows, cols, weights = self.nonzero_weights(mesh, ijk, ijk_list,
+                                                        w_list, tissue_index_map,
+                                                        direction=1)
+            grad_ops.append(
+                sparse.coo_matrix((weights, (rows, cols)),
+                                  shape=(tissue_size, tissue_size)).tocsr()
+            )
+        return grad_ops
     
     def _diffusion_operator_component(self, mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map):
         """

@@ -14,7 +14,7 @@ class SpatialDiscretization(ABC):
         self.update_weights()
 
     @abstractmethod
-    def compute_weights(self, tissue):
+    def compute_weights(self, tissue, D_model=1.):
         """
         Computes the weights for the diffusion operator and mass matrix.
 
@@ -22,6 +22,8 @@ class SpatialDiscretization(ABC):
         ----------
         tissue : CardiacTissueBase
             The tissue object containing the mesh and diffusion tensor.
+        D_model : float, optional
+            The diffusion coefficient to scale the stiffness matrix, by default 1.
 
         Returns
         -------
@@ -34,5 +36,6 @@ class SpatialDiscretization(ABC):
 
     def update_weights(self):
         D_model = self.simulation.cardiac_model.D_model
-        stiffness, mass = self.compute_weights(self.simulation.cardiac_tissue)
-        self.weights = (stiffness * D_model, mass)
+        tissue = self.simulation.cardiac_tissue
+        stiffness, mass = self.compute_weights(tissue, D_model)
+        self.weights = (stiffness, mass)

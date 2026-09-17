@@ -31,3 +31,4 @@ from .multi_variable_tracker import MultiVariableTracker
 # from .threshold_tracker import ThresholdTracker
 # from .period_tracker import PeriodTracker
 from .animation_tracker import AnimationTracker
+from .egm_tracker import EGMTracker

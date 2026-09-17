@@ -61,7 +61,8 @@ class StimElectrodes:
         numpy.ndarray
             The indexes of the nodes that are within the stimulation area.
         """
+        coords = np.atleast_2d(self.coords)
         tree = spatial.KDTree(myo_coords)
-        inds = tree.query_ball_point(self.coords, self.size)
+        inds = tree.query_ball_point(coords, self.size)
         inds = np.unique(np.concatenate(inds)).astype(np.int32)
         return myo_indexes[inds]

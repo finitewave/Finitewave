@@ -34,7 +34,7 @@ simulation.stim_sequence = stim_sequence
 simulation.run()
 
 # get the resulting potential at the element centers:
-u = simulation.cardiac_model.output("u")
+u = simulation.cardiac_model.u
 
 # show the potential map at the end of calculations:
 mesh = fw.PyVistaSurfaceGrid(coords, elems)

@@ -4,7 +4,7 @@ from .asymmetric_discretization import AsymmetricDiscretization
 
 class IsotropicDiscretization(AsymmetricDiscretization):
     """
-    Isotropic finite difference discretization with second-order accuracy for boundary.
+    Isotropic finite difference discretization with ghost nodes for Neumann boundary conditions.
     """
     
     def _diffusion_operator_component(self, mesh, diffusion, connectivity, dr, ijk, axis, tissue_index_map):

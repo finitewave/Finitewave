@@ -17,7 +17,7 @@ class FiniteElementDiscretization(SpatialDiscretization):
     def __init__(self):
         self.reference_element = None
 
-    def compute_weights(self, tissue):
+    def compute_weights(self, tissue, D_model=1.):
         """
         Computes the weights for the diffusion operator.
 
@@ -25,6 +25,8 @@ class FiniteElementDiscretization(SpatialDiscretization):
         ----------
         tissue : CardiacTissueBase
             The tissue object containing the mesh and diffusion tensor.
+        D_model : float, optional
+            The diffusion coefficient to scale the stiffness matrix, by default 1.
 
         Returns
         -------
@@ -37,7 +39,8 @@ class FiniteElementDiscretization(SpatialDiscretization):
         coords = tissue.coords
         elems = tissue.myo_elems
         self.reference_element = tissue.reference_element
-        return self.compute_system_matrices(coords, elems, diffusion)
+        K, M = self.compute_system_matrices(coords, elems, diffusion)
+        return K * D_model, M
 
     def compute_system_matrices(self, coords, elems, diffusion=1.):
         """
@@ -66,7 +69,7 @@ class FiniteElementDiscretization(SpatialDiscretization):
 
         jacobian = self.build_jacobian(coords, elems)
         elems_size = self._compute_elements_size(jacobian)
-        grads = self._compute_gradients(jacobian)
+        grads = self._compute_gradient_operator(jacobian)
         stiffness = self._compute_diffusion_operator(rows, cols, elems_size, grads, diffusion, shape)
         mass = self._compute_mass_matrix(rows, cols, elems_size, self.reference_element.elem_mass, shape)
         return stiffness, mass
@@ -100,7 +103,7 @@ class FiniteElementDiscretization(SpatialDiscretization):
 
         jacobian = self.build_jacobian(coords, elems)
         elems_size = self._compute_elements_size(jacobian)
-        grads = self._compute_gradients(jacobian)
+        grads = self._compute_gradient_operator(jacobian)
         stiffness = self._compute_diffusion_operator(rows, cols, elems_size, grads, diffusion, shape)
         return stiffness
 
@@ -170,9 +173,9 @@ class FiniteElementDiscretization(SpatialDiscretization):
 
         return jacobian
     
-    def compute_gradients(self, coords, elems):
+    def compute_gradient_operator(self, coords, elems, *, as_sparse=True, **kwargs):
         """
-        Compute global gradients for elements.
+        Compute global gradient operators for elements.
 
         Parameters:
         ----------
@@ -180,16 +183,36 @@ class FiniteElementDiscretization(SpatialDiscretization):
             Coordinates of the mesh nodes.
         elems : (N_elems, N_points)
             Element connectivity (node indices for each element).
+        as_sparse : bool, optional
+            If True, returns the gradient operators as collection of
+            sparse matrices, by default True.
+        **kwargs : dict
+            For consitency with other discretization methods.
 
         Returns:
         -------
-            grads: (N_elems, dim_phys, N_points)
+            grads: (N_elems, dim_phys, N_points) or tuple of sparse matrices
                 Gradient of shape functions in global coordinates for each
                 element.
         """
         jacobian = self.build_jacobian(coords, elems)
-        grads = self._compute_gradients(jacobian)
-        return grads
+        grads = self._compute_gradient_operator(jacobian)
+
+        if not as_sparse:
+            return grads
+
+        n_elems, dim_phys, n_points = grads.shape
+
+        rows = np.repeat(np.arange(n_elems), n_points)
+        cols = elems.ravel()
+        shape = (n_elems, coords.shape[0])
+
+        grads_ops = tuple(
+            sp.coo_matrix((grads[:, axis, :].ravel(), (rows, cols)),
+                          shape=shape,).tocsr()
+            for axis in range(dim_phys)
+        )
+        return grads_ops
     
     def compute_elements_size(self, coords, elems):
         """
@@ -208,7 +231,7 @@ class FiniteElementDiscretization(SpatialDiscretization):
         jacobian = self.build_jacobian(coords, elems)
         return self._compute_elements_size(jacobian)
 
-    def _compute_gradients(self, jacobian):
+    def _compute_gradient_operator(self, jacobian):
         """Compute global gradients for triangle elements.
 
         Parameters:

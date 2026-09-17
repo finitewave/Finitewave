@@ -13,7 +13,7 @@ class FiniteDifferenceDiscretization(SpatialDiscretization):
     def __init__(self):
         pass
 
-    def compute_weights(self, tissue):
+    def compute_weights(self, tissue, D_model=1.):
         """
         Computes the weights for the diffusion operator.
 
@@ -21,6 +21,8 @@ class FiniteDifferenceDiscretization(SpatialDiscretization):
         ----------
         tissue : CardiacTissueBase
             The tissue object containing the mesh and diffusion tensor.
+        D_model : float, optional
+            The diffusion coefficient to scale the stiffness matrix, by default 1.
 
         Returns
         -------
@@ -37,9 +39,32 @@ class FiniteDifferenceDiscretization(SpatialDiscretization):
         dr = tissue.dr
         indexes = tissue.tissue_indexes[tissue.myo_indexes]
 
-        stiffness = self.compute_diffusion_operator(mesh, dr, indexes, diffusion, connectivity)
-        mass = sp.eye(stiffness.shape[0], dtype=stiffness.dtype, format='csr')
-        return stiffness, mass
+        K = self.compute_diffusion_operator(mesh, dr, indexes, diffusion, connectivity)
+        M = sp.eye(K.shape[0], dtype=K.dtype, format='csr')
+        return K * D_model, M
+
+    @abstractmethod
+    def compute_gradient_operator(self, mesh, *, dr=1.0, indexes=None, **kwargs):
+        """
+        Computes the weights for calculating the gradient operator.
+
+        Parameters
+        ----------
+        mesh : numpy.ndarray
+            The mesh of the simulation.
+        dr : float
+            The grid spacing.
+        indexes : numpy.ndarray
+            The indexes of the non-empty nodes in the mesh.
+        **kwargs : dict
+            Additional keyword arguments for specific discretization methods.
+
+        Returns
+        -------
+        grad_ops : list of scipy.sparse.csr_matrix
+            The gradient operators for each axis.
+        """
+        raise NotImplementedError()
 
     @abstractmethod
     def compute_diffusion_operator(self, mesh, dr, indexes, diffusion, connectivity):
