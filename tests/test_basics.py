@@ -1,76 +1,83 @@
-import os
-import shutil
 import numpy as np
-import pytest
+
 import finitewave as fw
+from finitewave.core.command import Command, CommandSequence
+from finitewave.core.state import StateLoader, StateSaver
 
 
-def test_state_loading():
-    n = 5
-    tissue = fw.CardiacTissue2D([n, n])
+class StateModel:
+    D_model = 0.0
+    state_vars = ("u", "v")
 
-    stim_sequence = fw.StimSequence()
-    stim_sequence.add_stim(fw.StimCurrentCoord2D(0, 10, 0.5, 1, n//2, n//2 + 1,
-                                                 n//2, n//2 + 1))
+    def initialize(self, simulation):
+        n_points = simulation.cardiac_tissue.tissue_indexes.size
+        self._u = np.zeros(n_points)
+        self._v = np.ones(n_points)
+        self._rhs = np.zeros(n_points)
 
-    state_saver = fw.StateSaverCollection()
-    state_saver.savers.append(fw.StateSaver("state_0", time=3))
+    @property
+    def u(self):
+        return self._u.copy()
 
-    model = fw.FentonKarma2D()
-    model.dt = 0.01
-    model.dr = 0.25
-    model.t_max = 5
+    @property
+    def v(self):
+        return self._v.copy()
 
-    model.cardiac_tissue = tissue
-    model.stim_sequence = stim_sequence
-    model.state_saver = state_saver
+    def update_state_variables(self, values):
+        for name, value in values.items():
+            setattr(self, f"_{name}", np.array(value, copy=True))
 
-    model.run()
+    def run(self):
+        self._v += 0.1
 
-    u_before = model.u.copy()
-    v_before = model.v.copy()
-    w_before = model.w.copy()
+    def sync_backend(self):
+        pass
 
-    # recreate the model
-    model = fw.FentonKarma2D()
-    model.dt = 0.01
-    model.dr = 0.25
-    model.t_max = 5
 
-    model.cardiac_tissue = tissue
-    model.state_loader = fw.StateLoader("state_0")
+def _state_simulation(t_max):
+    simulation = fw.CardiacSimulation(dt=0.01, t_max=t_max)
+    simulation.cardiac_tissue = fw.CardiacTissue(
+        shape=(5, 5), dr=0.25
+    )
+    simulation.cardiac_model = StateModel()
+    return simulation
 
-    model.run()
-    u_after = model.u.copy()
-    v_after = model.v.copy()
-    w_after = model.w.copy()
 
-    assert np.allclose(u_before, u_after, atol=1e-5), "u states are not equal"
-    assert np.allclose(v_before, v_after, atol=1e-5), "v states are not equal"
-    assert np.allclose(w_before, w_after, atol=1e-5), "w states are not equal"
+def test_state_loading(tmp_path):
+    state_path = tmp_path / "state"
+    simulation = _state_simulation(t_max=0.05)
+    simulation.state_saver = StateSaver(
+        str(state_path), time=0.03
+    )
 
-def test_commands():
-    n = 5
-    tissue = fw.CardiacTissue2D([n, n])
+    simulation.run(prog_bar=False)
+    expected = {
+        name: getattr(simulation.cardiac_model, name).copy()
+        for name in simulation.cardiac_model.state_vars
+    }
 
-    stim_sequence = fw.StimSequence()
+    resumed = _state_simulation(t_max=0.02)
+    resumed.state_loader = StateLoader(str(state_path))
+    resumed.run(prog_bar=False)
 
-    model = fw.FentonKarma2D()
-    model.dt = 0.01
-    model.dr = 0.25
-    model.t_max = 10
+    for name, expected_values in expected.items():
+        np.testing.assert_allclose(
+            getattr(resumed.cardiac_model, name),
+            expected_values,
+            atol=1e-12,
+        )
 
-    class ExcitationCommand(fw.Command):
-        def execute(self, model):
-            model.u[1:-1, 1:-1] = 1
 
-    command_sequence = fw.CommandSequence()
-    command_sequence.add_command(ExcitationCommand(5))
+def test_commands_receive_simulation():
+    simulation = _state_simulation(t_max=0.03)
 
-    model.cardiac_tissue = tissue
-    model.stim_sequence = stim_sequence
-    model.command_sequence = command_sequence
+    class RecordExecution(Command):
+        def execute(self, active_simulation):
+            active_simulation.meta["command_executed"] = True
 
-    model.run()   
+    simulation.command_sequence = CommandSequence()
+    simulation.command_sequence.add_command(RecordExecution(time=0.01))
 
-    assert np.mean(model.u[1:-1, 1:-1]) > 0.5, "Command did not work"
+    simulation.run(prog_bar=False)
+
+    assert simulation.meta["command_executed"] is True

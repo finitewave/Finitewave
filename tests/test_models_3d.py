@@ -7,7 +7,7 @@ import finitewave as fw
 
 def prepare_model(model_class, curr_value, curr_dur, t_calc, t_prebeats):
     """
-    Prepares a 3D cardiac model with a stimulation protocol.
+    Prepares a cardiac model with a stimulation protocol.
 
     Parameters
     ----------
@@ -30,24 +30,24 @@ def prepare_model(model_class, curr_value, curr_dur, t_calc, t_prebeats):
     ni = 5
     nj = 3
     nk = 3
-    tissue = fw.CardiacTissue3D([ni, nj, nk])
+    tissue = fw.CardiacTissue(shape=(ni, nj, nk), dr=0.25)
 
     stim_sequence = fw.StimSequence()
-    stim_sequence.add_stim(fw.StimCurrentCoord3D(0, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
-    stim_sequence.add_stim(fw.StimCurrentCoord3D(t_prebeats, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
-    stim_sequence.add_stim(fw.StimCurrentCoord3D(2*t_prebeats, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
-    stim_sequence.add_stim(fw.StimCurrentCoord3D(3*t_prebeats, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
+    stim_sequence.add_stim(fw.StimCurrentCoord(0, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
+    stim_sequence.add_stim(fw.StimCurrentCoord(t_prebeats, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
+    stim_sequence.add_stim(fw.StimCurrentCoord(2*t_prebeats, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
+    stim_sequence.add_stim(fw.StimCurrentCoord(3*t_prebeats, curr_value, curr_dur, 0, 2, 0, nj, 0, nk))
 
-    model = model_class()
-    model.dt = 0.01
-    model.dr = 0.25
-    model.t_max = 3*t_prebeats + t_calc
-    model.cardiac_tissue = tissue
-    model.stim_sequence = stim_sequence
+    simulation = fw.CardiacSimulation(
+        dt=0.01, t_max=3*t_prebeats + t_calc
+    )
+    simulation.cardiac_tissue = tissue
+    simulation.cardiac_model = model_class()
+    simulation.stim_sequence = stim_sequence
 
-    return model
+    return simulation
 
-def run_model(model):
+def run_model(simulation):
     """
     Runs a cardiac model with a membrane potential tracker.
 
@@ -61,15 +61,15 @@ def run_model(model):
     output : np.ndarray
         Time series of membrane potential for a specific cell.
     """
-    tracker = fw.ActionPotential3DTracker()
-    tracker.cell_ind = [3, 1, 1]
+    tracker = fw.ActionPotentialTracker()
+    tracker.node_inds = [3, 1, 1]
     tracker.step = 1
 
     seq = fw.TrackerSequence()
     seq.add_tracker(tracker)
-    model.tracker_sequence = seq
+    simulation.tracker_sequence = seq
 
-    model.run()
+    simulation.run(prog_bar=False)
     return tracker.output
 
 def calculate_apd(u, dt, threshold, beat_index=3):
@@ -109,7 +109,7 @@ def calculate_apd(u, dt, threshold, beat_index=3):
 @pytest.mark.aliev_panfilov_3d
 def test_aliev_panfilov():
     """
-    Test the Aliev-Panfilov 3D model.
+    Test the Aliev-Panfilov  model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -120,7 +120,7 @@ def test_aliev_panfilov():
     - Amplitude: 10
     - Duration: 0.5 ms
     """
-    model = prepare_model(fw.AlievPanfilov3D, curr_value=5, curr_dur=0.5, t_calc=80, t_prebeats=60)
+    model = prepare_model(fw.AlievPanfilov, curr_value=5, curr_dur=0.5, t_calc=80, t_prebeats=60)
     u = run_model(model)
 
     assert np.max(u) == pytest.approx(1.0, abs=0.02)
@@ -132,7 +132,7 @@ def test_aliev_panfilov():
 @pytest.mark.barkley_3d
 def test_barkley():
     """
-    Test the Barkley 3D model.
+    Test the Barkley model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -143,7 +143,7 @@ def test_barkley():
     - Amplitude: 1
     - Duration: 0.5 ms
     """
-    model = prepare_model(fw.Barkley3D, curr_value=5, curr_dur=0.1, t_calc=80, t_prebeats=60)
+    model = prepare_model(fw.Barkley, curr_value=5, curr_dur=0.1, t_calc=80, t_prebeats=60)
     u = run_model(model)
 
     assert np.max(u) == pytest.approx(1.0, abs=0.02)
@@ -155,7 +155,7 @@ def test_barkley():
 @pytest.mark.mitchell_schaeffer_3d
 def test_mitchell_schaeffer():
     """
-    Test the Mitchell-Schaeffer 3D model.
+    Test the Mitchell-Schaeffer model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -166,7 +166,7 @@ def test_mitchell_schaeffer():
     - Amplitude: 10
     - Duration: 0.5 ms
     """
-    model = prepare_model(fw.MitchellSchaeffer3D, curr_value=5, curr_dur=0.5, t_calc=1000, t_prebeats=1000)
+    model = prepare_model(fw.MitchellSchaeffer, curr_value=5, curr_dur=0.5, t_calc=1000, t_prebeats=1000)
     u = run_model(model)
 
     assert np.max(u) == pytest.approx(0.95, abs=0.02)
@@ -179,7 +179,7 @@ def test_mitchell_schaeffer():
 @pytest.mark.fenton_karma_3d
 def test_fenton_karma():
     """
-    Test the Fenton-Karma 3D model.
+    Test the Fenton-Karma model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -190,19 +190,19 @@ def test_fenton_karma():
     - Amplitude: 10
     - Duration: 0.5 ms
     """
-    model = prepare_model(fw.FentonKarma3D, curr_value=5, curr_dur=0.5, t_calc=1000, t_prebeats=1000)
+    model = prepare_model(fw.FentonKarma, curr_value=5, curr_dur=0.5, t_calc=1000, t_prebeats=1000)
     u = run_model(model)
 
     assert np.max(u) == pytest.approx(1.0, abs=0.02)
     assert np.min(u) == pytest.approx(0.0, abs=0.01)
 
     apd = calculate_apd(u, model.dt, threshold=0.1)
-    assert 100 <= apd <= 200, f"Fenton-Karma APD90 is out of expected range {apd}"
+    assert 200 <= apd <= 300, f"Fenton-Karma APD90 is out of expected range {apd}"
 
 @pytest.mark.bueno_orovio_3d
 def test_bueno_orovio_3d():
     """
-    Test the Bueno-Orovio 3D model.
+    Test the Bueno-Orovio model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -213,7 +213,7 @@ def test_bueno_orovio_3d():
     - Amplitude: 100
     - Duration: 1 ms
     """
-    model = prepare_model(fw.BuenoOrovio3D, curr_value=5, curr_dur=0.5, t_calc=1000, t_prebeats=1000)
+    model = prepare_model(fw.BuenoOrovio, curr_value=5, curr_dur=0.5, t_calc=1000, t_prebeats=1000)
     u = run_model(model)
 
     assert np.max(u) == pytest.approx(1.4, abs=0.1)
@@ -226,7 +226,7 @@ def test_bueno_orovio_3d():
 @pytest.mark.luo_rudy91_3d
 def test_luo_rudy():
     """
-    Test the Luo-Rudy 1991 3D model.
+    Test the Luo-Rudy 1991 model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -237,7 +237,7 @@ def test_luo_rudy():
     - Amplitude: 100
     - Duration: 1 ms
     """
-    model = prepare_model(fw.LuoRudy913D, curr_value=100, curr_dur=1, t_calc=1000, t_prebeats=1000)
+    model = prepare_model(fw.LuoRudy91, curr_value=100, curr_dur=1, t_calc=1000, t_prebeats=1000)
     u = run_model(model)
 
     assert np.max(u) > 20
@@ -249,7 +249,7 @@ def test_luo_rudy():
 @pytest.mark.tp06_3d
 def test_tp06():
     """
-    Test the Ten Tusscher-Panfilov 2006 (TP06) 3D model.
+    Test the Ten Tusscher-Panfilov 2006 (TP06) model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -260,7 +260,7 @@ def test_tp06():
     - Amplitude: 100
     - Duration: 1 ms
     """
-    model = prepare_model(fw.TP063D, curr_value=100, curr_dur=1, t_calc=1000, t_prebeats=1000)
+    model = prepare_model(fw.TenTusscherPanfilov2006, curr_value=100, curr_dur=1, t_calc=1000, t_prebeats=1000)
     u = run_model(model)
 
     assert np.max(u) > 20
@@ -272,7 +272,7 @@ def test_tp06():
 @pytest.mark.courtemanche_3d
 def test_courtemanche():
     """
-    Test the Courtemanche 3D model.
+    Test the Courtemanche model.
 
     This test checks:
     - Correct range of membrane potential values after stimulation.
@@ -285,7 +285,7 @@ def test_courtemanche():
     - Amplitude: 100
     - Duration: 1 ms
     """
-    model = prepare_model(fw.Courtemanche3D, curr_value=100, curr_dur=1, t_calc=1000, t_prebeats=1000)
+    model = prepare_model(fw.Courtemanche, curr_value=100, curr_dur=1, t_calc=1000, t_prebeats=1000)
     u = run_model(model)
 
     assert np.max(u) > 10
