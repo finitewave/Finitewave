@@ -11,8 +11,8 @@ from finitewave.numerics.time_integration.backward_euler_time_integration import
 from finitewave.numerics.time_integration.forward_euler_time_integration import (
     ForwardEulerTimeIntegration
 )
-from finitewave.numerics.fdm.asymmetric_discretization import (
-    AsymmetricDiscretization
+from finitewave.numerics.fdm.finite_difference_discretization import (
+    FiniteDifferenceDiscretization
 )
 from finitewave.numerics.fem.finite_element_discretization import (
     FiniteElementDiscretization
@@ -248,7 +248,7 @@ class CardiacSimulation(Simulation):
             The selected spatial discretization instance.
         """
         if self.cardiac_tissue.meta["type"] == "Grid":
-            return AsymmetricDiscretization()
+            return FiniteDifferenceDiscretization()
 
         if self.cardiac_tissue.meta["type"] == "Elements":
             return FiniteElementDiscretization()

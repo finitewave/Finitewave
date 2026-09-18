@@ -3,6 +3,11 @@ import numpy as np
 import finitewave as fw
 
 
+def _element_sizes(diffusion, coords, elems):
+    jacobian = diffusion._build_integration_jacobian(coords, elems)
+    return diffusion._compute_integration_weights(jacobian).sum(axis=1)
+
+
 def _unit_cube():
     coords = np.array([
         [0.0, 0.0, 0.0],
@@ -43,18 +48,20 @@ def test_unit_cube_metrics_and_system_matrices():
     discretization.reference_element = fw.LinearHexahedralElement()
 
     np.testing.assert_allclose(
-        discretization.compute_elements_size(coords, elems),
+        _element_sizes(discretization.diffusion, coords, elems),
         [1.0],
     )
 
-    gradients = discretization.compute_gradients(coords, elems)
+    gradients = discretization.build_gradient_operator(
+        coords, elems, as_sparse=False
+    )
     np.testing.assert_allclose(gradients.sum(axis=2), 0.0)
 
     diffusion = np.eye(3)[None, :, :]
-    stiffness, mass = discretization.compute_system_matrices(
+    stiffness, mass = discretization.build_system_matrices(
         coords, elems, diffusion
     )
-    np.testing.assert_allclose(stiffness.toarray().sum(axis=1), 0.0)
+    np.testing.assert_allclose(stiffness.toarray().sum(axis=1), 0.0, atol=1e-14)
     np.testing.assert_allclose(mass.toarray().sum(), 1.0)
 
 
@@ -72,6 +79,6 @@ def test_build_hexahedral_slab_from_cubes():
     discretization = fw.FiniteElementDiscretization()
     discretization.reference_element = fw.LinearHexahedralElement()
     np.testing.assert_allclose(
-        discretization.compute_elements_size(coords, elems),
+        _element_sizes(discretization.diffusion, coords, elems),
         [1.0, 1.0],
     )

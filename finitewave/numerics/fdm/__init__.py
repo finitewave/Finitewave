@@ -1,2 +1,4 @@
-from .asymmetric_discretization import AsymmetricDiscretization
-from .isotropic_discretization import IsotropicDiscretization
+from .finite_difference_discretization import FiniteDifferenceDiscretization
+from .asymmetric_diffusion import AsymmetricDiffusion
+from .isotropic_diffusion import IsotropicDiffusion
+from .finite_difference_gradient import FiniteDifferenceGradient

@@ -1,2 +1,4 @@
 from .finite_element_discretization import FiniteElementDiscretization
+from .finite_element_diffusion import FiniteElementDiffusion
+from .finite_element_gradient import FiniteElementGradient
 from .elements import *

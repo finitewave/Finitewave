@@ -1,21 +1,54 @@
-
 import numpy as np
 import scipy.sparse as sp
 
 from finitewave.core.numerics.spatial_discretization import SpatialDiscretization
+from .finite_element_diffusion import FiniteElementDiffusion
+from .finite_element_gradient import FiniteElementGradient
 
 
 class FiniteElementDiscretization(SpatialDiscretization):
-    """
-    Class for assembling volume element diffusion models.
+    """Coordinate finite-element stiffness, mass, and gradient assembly.
+
+    Parameters
+    ----------
+    reference_element : object, optional
+        Reference shape functions and quadrature data. Supply this before
+        building mesh operators, or call ``compute_weights`` to use the
+        tissue's reference element.
 
     Attributes
     ----------
-    reference_element : ReferenceElement
-        The reference element used for numerical integration.
+    diffusion : FiniteElementDiffusion
+        Assembles stiffness and provides quadrature geometry helpers.
+    gradient : FiniteElementGradient
+        Builds center-gradient operators.
+    reference_element : object
+        Assign through this property to update both operators together.
+
+    Notes
+    -----
+    Mass assembly belongs to this class. ``build_system_matrices`` reuses
+    one set of quadrature Jacobians for stiffness and mass. Triangle,
+    tetrahedron, quadrilateral, and hexahedron integration uses 3, 4, 4,
+    and 8 points respectively. Distorted tensor-product elements are
+    integrated numerically; stiffness need not be integrated exactly.
     """
-    def __init__(self):
-        self.reference_element = None
+    def __init__(self, reference_element=None):
+        self._reference_element = reference_element
+        self.diffusion = FiniteElementDiffusion(reference_element)
+        self.gradient = FiniteElementGradient(reference_element)
+
+    @property
+    def reference_element(self):
+        """Reference element; assignment synchronizes diffusion and gradient operators.
+        """
+        return self._reference_element
+
+    @reference_element.setter
+    def reference_element(self, value):
+        self._reference_element = value
+        self.diffusion.reference_element = value
+        self.gradient.reference_element = value
 
     def compute_weights(self, tissue, D_model=1.):
         """
@@ -25,290 +58,147 @@ class FiniteElementDiscretization(SpatialDiscretization):
         ----------
         tissue : CardiacTissueBase
             The tissue object containing the mesh and diffusion tensor.
+            N_nodes is the number of rows in ``tissue.coords``; nodes outside
+            ``tissue.myo_elems`` retain zero rows and columns in the matrices.
         D_model : float, optional
             The diffusion coefficient to scale the stiffness matrix, by default 1.
 
         Returns
         -------
         sparse.csr_matrix
-            The stiffness matrix with shape (non_empty_nodes, non_empty_nodes).
+            The stiffness matrix with shape (N_nodes, N_nodes).
         sparse.csr_matrix
-            The mass matrix with shape (non_empty_nodes, non_empty_nodes).
+            The mass matrix with shape (N_nodes, N_nodes).
         """
         diffusion = tissue.diffusion_tensor
         coords = tissue.coords
         elems = tissue.myo_elems
         self.reference_element = tissue.reference_element
-        K, M = self.compute_system_matrices(coords, elems, diffusion)
+        K, M = self.build_system_matrices(coords, elems, diffusion)
         return K * D_model, M
 
-    def compute_system_matrices(self, coords, elems, diffusion=1.):
-        """
-        Computes the stiffness and mass matrices.
+    def build_system_matrices(self, coords, elems, diffusion=1.):
+        """Build stiffness and consistent mass with shared quadrature Jacobians.
 
         Parameters
         ----------
-        coords : np.ndarray
-            The coordinates of the mesh nodes.
-        elems : np.ndarray
-            The connectivity of the mesh elements.
-        diffusion : np.ndarray, optional
-            The diffusion tensors for each element, by default 1.
+        coords : numpy.ndarray, shape (N_nodes, dim_phys)
+            Physical coordinates of all mesh nodes, including unused nodes.
+        elems : numpy.ndarray, shape (N_elems, N_points)
+            Integer connectivity using indices into ``coords``.
+        diffusion : float or numpy.ndarray, optional
+            Isotropic coefficient or one physical tensor per element with shape
+            (N_elems, dim_phys, dim_phys). Constant within each element. Default is 1.
 
         Returns
         -------
-        sparse.csr_matrix
-            The stiffness matrix with shape (non_empty_nodes, non_empty_nodes).
-        sparse.csr_matrix
-            The mass matrix with shape (non_empty_nodes, non_empty_nodes).
+        stiffness : scipy.sparse.csr_matrix
+            Stiffness matrix of shape (N_nodes, N_nodes), integrating
+            ``grad(N_i).T @ diffusion @ grad(N_j)``. Unused nodes retain zero
+            rows and columns. This is K in ``M du/dt = -K u`` for pure diffusion
+            with zero-flux boundaries, not the strong operator ``div(D grad(u))``.
+        mass : scipy.sparse.csr_matrix
+            Consistent mass matrix of shape (N_nodes, N_nodes).
         """
-        n_elem_points = elems.shape[1]
-        shape = (coords.shape[0], coords.shape[0])
-        rows = np.repeat(elems, n_elem_points, axis=1).ravel()
-        cols = np.tile(elems, (1, n_elem_points)).ravel()
-
-        jacobian = self.build_jacobian(coords, elems)
-        elems_size = self._compute_elements_size(jacobian)
-        grads = self._compute_gradient_operator(jacobian)
-        stiffness = self._compute_diffusion_operator(rows, cols, elems_size, grads, diffusion, shape)
-        mass = self._compute_mass_matrix(rows, cols, elems_size, self.reference_element.elem_mass, shape)
+        jacobian = self.diffusion._build_integration_jacobian(coords, elems)
+        stiffness = self.diffusion._build_diffusion_operator(coords, elems, diffusion, jacobian)
+        mass = self._build_mass_matrix(coords, elems, jacobian)
         return stiffness, mass
 
-    def compute_diffusion_operator(self, coords, elems, diffusion=1.):
-        """
-        Computes the stiffness and mass matrices.
+    def build_diffusion_operator(self, coords, elems, diffusion=1.):
+        """Delegate stiffness assembly to ``FiniteElementDiffusion``.
 
         Parameters
         ----------
-        coords : np.ndarray
-            The coordinates of the mesh nodes.
-        elems : np.ndarray
-            The connectivity of the mesh elements.
-        indexes : np.ndarray, optional
-            The indexes of the non-empty nodes in the mesh, by default None.
-        diffusion : np.ndarray, optional
-            The diffusion tensors for each element, by default 1.
-        conductivity : np.ndarray, optional
-            The conductivity values for each element, by default None.
+        coords : numpy.ndarray, shape (N_nodes, dim_phys)
+            Physical coordinates of all mesh nodes, including unused nodes.
+        elems : numpy.ndarray, shape (N_elems, N_points)
+            Integer connectivity using indices into ``coords``.
+        diffusion : float or numpy.ndarray, optional
+            Isotropic coefficient or one physical tensor per element with shape
+            (N_elems, dim_phys, dim_phys). Constant within each element. Default is 1.
 
         Returns
         -------
-        sparse.csr_matrix
-            The stiffness matrix with shape (non_empty_nodes, non_empty_nodes).
+        stiffness : scipy.sparse.csr_matrix
+            Stiffness matrix of shape (N_nodes, N_nodes), integrating
+            ``grad(N_i).T @ diffusion @ grad(N_j)``. Unused nodes retain zero
+            rows and columns. This is K in ``M du/dt = -K u`` for pure diffusion
+            with zero-flux boundaries, not the strong operator ``div(D grad(u))``.
         """
-        n_points = coords.shape[0]
-        shape = (n_points, n_points)
-        rows = np.repeat(elems, n_points, axis=1).ravel()
-        cols = np.tile(elems, (1, n_points)).ravel()
+        return self.diffusion.build_diffusion_operator(coords, elems, diffusion)
 
-        jacobian = self.build_jacobian(coords, elems)
-        elems_size = self._compute_elements_size(jacobian)
-        grads = self._compute_gradient_operator(jacobian)
-        stiffness = self._compute_diffusion_operator(rows, cols, elems_size, grads, diffusion, shape)
-        return stiffness
-
-    def compute_mass_matrix(self, coords, elems):
-        """
-        Computes the mass matrix.
+    def build_gradient_operator(self, coords, elems, *, as_sparse=True, **kwargs):
+        """Build physical gradients evaluated at element centers.
 
         Parameters
         ----------
-        coords : np.ndarray
-            The coordinates of the mesh nodes.
-        elems : np.ndarray
-            The connectivity of the mesh elements.
+        coords : numpy.ndarray, shape (N_nodes, dim_phys)
+            Physical coordinates of all mesh nodes, including unused nodes.
+        elems : numpy.ndarray, shape (N_elems, N_points)
+            Integer connectivity using indices into ``coords``.
+        as_sparse : bool, optional
+            Return one CSR matrix per physical axis when True (default).
+        **kwargs : dict
+            Ignored; accepted for compatibility with other discretizations.
 
         Returns
         -------
-        sparse.csr_matrix
-            The mass matrix with shape (non_empty_nodes, non_empty_nodes).
+        grads : tuple of scipy.sparse.csr_matrix or numpy.ndarray
+            Sparse matrices have shape (N_elems, N_nodes) and map nodal values
+            to element gradients. With ``as_sparse=False``, returns shape-function
+            gradients of shape (N_elems, dim_phys, N_points). Gradients are
+            constant within linear triangles/tetrahedra and evaluated at the
+            reference center for quadrilaterals/hexahedra. Embedded surfaces
+            return tangential gradients in physical coordinates.
         """
-        n_points = coords.shape[0]
-        shape = (n_points, n_points)
-        rows = np.repeat(elems, n_points, axis=1).ravel()
-        cols = np.tile(elems, (1, n_points)).ravel()
+        return self.gradient.build_gradient_operator(
+            coords, elems, as_sparse=as_sparse, **kwargs)
 
-        jacobian = self.build_jacobian(coords, elems)
-        elems_size = self._compute_elements_size(jacobian)
-        mass = self._compute_mass_matrix(rows, cols, elems_size, self.reference_element.elem_mass, shape)
-        return mass
+    def build_mass_matrix(self, coords, elems):
+        """Build the consistent mass matrix by integrating shape-function products.
 
-    def _compute_mass_matrix(self, rows, cols, elems_size, elem_mass, shape):
-        mass_data = np.einsum('e,ij->eij', elems_size, elem_mass, optimize='optimal')
+        Parameters
+        ----------
+        coords : numpy.ndarray, shape (N_nodes, dim_phys)
+            Physical coordinates of all mesh nodes, including unused nodes.
+        elems : numpy.ndarray, shape (N_elems, N_points)
+            Integer connectivity using indices into ``coords``.
+
+        Returns
+        -------
+        mass : scipy.sparse.csr_matrix
+            Consistent mass matrix of shape (N_nodes, N_nodes). Unused nodes
+            retain zero rows and columns.
+        """
+        jacobian = self.diffusion._build_integration_jacobian(coords, elems)
+        return self._build_mass_matrix(coords, elems, jacobian)
+
+    def _build_mass_matrix(self, coords, elems, jacobian):
+        """Assemble consistent mass using existing quadrature Jacobians.
+
+        Parameters
+        ----------
+        coords : numpy.ndarray, shape (N_nodes, dim_phys)
+            Physical coordinates of all mesh nodes, including unused nodes.
+        elems : numpy.ndarray, shape (N_elems, N_points)
+            Integer connectivity using indices into ``coords``.
+        jacobian : numpy.ndarray, shape (N_elems, N_quad, dim_ref, dim_phys)
+            Jacobians at quadrature points for the supplied mesh.
+
+        Returns
+        -------
+        mass : scipy.sparse.csr_matrix
+            Consistent mass matrix of shape (N_nodes, N_nodes). Unused nodes
+            retain zero rows and columns.
+        """
+        rows, cols = self.diffusion._build_matrix_rows_cols(elems)
+        weights = self.diffusion._compute_integration_weights(jacobian)
+        shape_values = self.reference_element.integration_N
+        shape = (coords.shape[0], coords.shape[0])
+
+        mass_data = np.einsum('eq,qi,qj->eij', weights,
+                              shape_values, shape_values, optimize=True)
         mass_data = mass_data.flatten()
         mass_matrix = sp.coo_matrix((mass_data, (rows, cols)), shape=shape)
         return mass_matrix.tocsr()
-
-    def _compute_diffusion_operator(self, rows, cols, elems_size, grads, diffusion, shape):
-        stiff_data = np.einsum('e,eki,elk,elj->eij', elems_size, grads, diffusion, grads, optimize='optimal')
-        stiff_data = stiff_data.flatten()
-        stiff_matrix = sp.coo_matrix((stiff_data, (rows, cols)), shape=shape)
-        return stiff_matrix.tocsr()
-
-    def build_jacobian(self, coords, elems):
-        """
-        Build Jacobian matrices for elements.
-
-        Parameters
-        ----------
-        coords : (N_nodes, dim_phys)
-            Coordinates of the mesh nodes.
-        elems : (N_elems, N_points)
-            Element connectivity (node indices for each element).
-
-        Returns
-        -------
-        jacobian : (N_elems, dim_ref, dim_phys)
-            Jacobian matrices for each element.
-        """
-        n_elems = elems.shape[0]
-        dim_ref = len(self.reference_element.dN)
-        dim_phys = coords.shape[1]
-        jacobian = np.zeros((n_elems, dim_ref, dim_phys))
-
-        for i in range(self.reference_element.n_points):
-            for j in range(len(self.reference_element.dN)):
-                jacobian[:, j, :] += (self.reference_element.dN[j, i] *
-                                      coords[elems[:, i]])
-
-        return jacobian
-    
-    def compute_gradient_operator(self, coords, elems, *, as_sparse=True, **kwargs):
-        """
-        Compute global gradient operators for elements.
-
-        Parameters:
-        ----------
-        coords : (N_nodes, dim_phys)
-            Coordinates of the mesh nodes.
-        elems : (N_elems, N_points)
-            Element connectivity (node indices for each element).
-        as_sparse : bool, optional
-            If True, returns the gradient operators as collection of
-            sparse matrices, by default True.
-        **kwargs : dict
-            For consitency with other discretization methods.
-
-        Returns:
-        -------
-            grads: (N_elems, dim_phys, N_points) or tuple of sparse matrices
-                Gradient of shape functions in global coordinates for each
-                element.
-        """
-        jacobian = self.build_jacobian(coords, elems)
-        grads = self._compute_gradient_operator(jacobian)
-
-        if not as_sparse:
-            return grads
-
-        n_elems, dim_phys, n_points = grads.shape
-
-        rows = np.repeat(np.arange(n_elems), n_points)
-        cols = elems.ravel()
-        shape = (n_elems, coords.shape[0])
-
-        grads_ops = tuple(
-            sp.coo_matrix((grads[:, axis, :].ravel(), (rows, cols)),
-                          shape=shape,).tocsr()
-            for axis in range(dim_phys)
-        )
-        return grads_ops
-    
-    def compute_elements_size(self, coords, elems):
-        """
-        Compute area/volume of elements.
-
-        Parameters:
-        ----------
-        jacobian: (N_elems, dim_ref, dim_phys)
-            Jacobian matrices for N elements.
-
-        Returns:
-        -------
-            elements_size: (N_elems,)
-                Area or volume of each element.
-        """
-        jacobian = self.build_jacobian(coords, elems)
-        return self._compute_elements_size(jacobian)
-
-    def _compute_gradient_operator(self, jacobian):
-        """Compute global gradients for triangle elements.
-
-        Parameters:
-        ----------
-        jacobian: (N_elems, dim_ref, dim_phys)
-            Jacobian matrices for N triangle elements.
-
-        Returns:
-        -------
-            grads: (N_elems, dim_phys, N_points)
-                Gradient of shape functions in global coordinates for each
-                element.
-
-        Note:
-            The output shape is (N_elems, dim_phys, N_points) to match the expected format
-            for subsequent computations.
-        """
-        n_elems, dim_ref, dim_phys = jacobian.shape
-        jacobian_inv = self.invert_jacobian(jacobian)
-        n_points = self.reference_element.n_points
-        grads = np.zeros((n_elems, dim_phys, n_points))
-
-        for i in range(n_points):
-            dN_ref = np.stack(
-                [np.full(n_elems, self.reference_element.dN[j, i]) for j in range(dim_ref)],
-                axis=1
-            )
-            grads[:, :, i] = (jacobian_inv @ dN_ref[..., None])[..., 0]
-
-        return grads
-
-    def _compute_elements_size(self, jacobian):
-        """Compute areas/volumes of elements from their Jacobian matrices.
-
-        Parameters:
-        ----------
-        jacobian: (N_elems, dim_ref, dim_phys)
-            Jacobian matrices for N elements.
-
-        Returns:
-        -------
-            elements_size: (N_elems,)
-                Area or volume of each element.
-        """
-        if jacobian.shape[1] == 2:
-            v1 = jacobian[:, 0, :]
-            v2 = jacobian[:, 1, :]
-            if v1.shape[1] != 3:
-                v1 = np.hstack([v1, np.zeros((v1.shape[0], 1))])
-            if v2.shape[1] != 3:
-                v2 = np.hstack([v2, np.zeros((v2.shape[0], 1))])
-
-            cross_prod = np.linalg.norm(np.cross(v1, v2), axis=1)
-            return self.reference_element.quad_weights * cross_prod
-        
-        jacobian_det = np.abs(np.linalg.det(jacobian))
-        return self.reference_element.quad_weights * jacobian_det
-
-    def invert_jacobian(self, jacobian):
-        """Invert Jacobian matrices.
-
-        Parameters:
-        ----------
-        jacobian: (N_elems, dim_ref, dim_phys)
-            Jacobian matrices for N elements.
-
-        Returns:
-        -------
-            jacobian_inv: (N_elems, dim_phys, dim_ref)
-                Inverted Jacobian matrices for N elements.
-        """
-        if jacobian.shape[1] == jacobian.shape[2]:
-            return np.linalg.inv(jacobian)
-        
-        # pseudo-inverse for non-square Jacobian (e.g., for surface elements)
-        JT = np.transpose(jacobian, (0, 2, 1))  # (N, 3, 2)
-        G = np.matmul(jacobian, JT)             # (N, 2, 2)
-        invG = np.linalg.inv(G)
-        Jplus = np.matmul(JT, invG)             # (N, 3, 2) — right pseudoinverse
-        return Jplus
