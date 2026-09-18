@@ -1,2 +1,3 @@
 from .protocol.stim_s1s2_cross import StimS1S2Cross
 from .stim_adaptive_time import StimAdaptiveTime
+from .protocol.stim_grouped_electrodes import StimGroupedElectrodes

@@ -4,4 +4,4 @@ from .model import (AlievPanfilov, Barkley, BuenoOrovio, Courtemanche,
                     TenTusscherPanfilov2006)
 from .tissue import CardiacTissue, CardiacTissueElements, CardiacTissueGrid
 from .tracker import *
-from .stimul import StimS1S2Cross, StimAdaptiveTime
+from .stimul import StimS1S2Cross, StimAdaptiveTime, StimGroupedElectrodes
