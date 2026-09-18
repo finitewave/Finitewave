@@ -155,6 +155,26 @@ class FiniteElementDiscretization(SpatialDiscretization):
         return self.gradient.build_gradient_operator(
             coords, elems, as_sparse=as_sparse, **kwargs)
 
+    def compute_element_sizes(self, coords, elems):
+        """Compute element sizes (area/volume) for each element in the mesh.
+
+        Parameters
+        ----------
+        coords : numpy.ndarray, shape (N_nodes, dim_phys)
+            Physical coordinates of all mesh nodes, including unused nodes.
+        elems : numpy.ndarray, shape (N_elems, N_points)
+            Integer connectivity using indices into ``coords``.
+
+        Returns
+        -------
+        sizes : numpy.ndarray, shape (N_elems,)
+            Sizes of each element in the mesh.
+        """
+        jacobian = self.diffusion._build_integration_jacobian(coords, elems)
+        weights = self.diffusion._compute_integration_weights(jacobian)
+        sizes = np.sum(weights, axis=1)
+        return sizes
+
     def build_mass_matrix(self, coords, elems):
         """Build the consistent mass matrix by integrating shape-function products.
 
