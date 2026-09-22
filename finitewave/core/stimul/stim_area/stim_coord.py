@@ -34,17 +34,17 @@ class StimCoord:
         Parameters
         ----------
         x_min : int
-            The minimum x-coordinate of the region of interest.
+            Inclusive minimum x-index of the region of interest.
         x_max : int
-            The maximum x-coordinate of the region of interest.
+            Exclusive maximum x-index of the region of interest.
         y_min : int
-            The minimum y-coordinate of the region of interest.
+            Inclusive minimum y-index of the region of interest.
         y_max : int
-            The maximum y-coordinate of the region of interest.
+            Exclusive maximum y-index of the region of interest.
         z_min : int, optional
-            The starting z-coordinate of the region of interest.
+            Inclusive minimum z-index of the region of interest.
         z_max : int, optional
-            The ending z-coordinate of the region of interest.
+            Exclusive maximum z-index of the region of interest.
         """
         self._range = [x_min, x_max, y_min, y_max, z_min, z_max]
 
@@ -65,7 +65,7 @@ class StimCoord:
         mask[myo_indexes] = True
         for i_axis in range(coords.shape[1]):
             mask &= ((coords[:, i_axis] >= self._range[2 * i_axis]) &
-                     (coords[:, i_axis] <= self._range[2 * i_axis + 1]))
+                     (coords[:, i_axis] < self._range[2 * i_axis + 1]))
 
         stim_indexes = np.flatnonzero(mask)
         stim_indexes = simulation.backend.wrap_indexes(stim_indexes)

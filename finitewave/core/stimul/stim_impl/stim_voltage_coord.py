@@ -42,17 +42,17 @@ class StimVoltageCoord(StimVoltage):
         volt_value : float
             The voltage value to apply.
         x_min : int
-            The starting x-coordinate of the region of interest.
+            Inclusive starting x-index of the region of interest.
         x_max : int
-            The ending x-coordinate of the region of interest.
+            Exclusive ending x-index of the region of interest.
         y_min : int
-            The starting y-coordinate of the region of interest.
+            Inclusive starting y-index of the region of interest.
         y_max : int
-            The ending y-coordinate of the region of interest.
+            Exclusive ending y-index of the region of interest.
         z_min : int, optional
-            The starting z-coordinate of the region of interest.
+            Inclusive starting z-index of the region of interest.
         z_max : int, optional
-            The ending z-coordinate of the region of interest.
+            Exclusive ending z-index of the region of interest.
         """
         super().__init__(time, volt_value)
         self.stim_area = StimCoord(x_min, x_max, y_min, y_max, z_min, z_max)
