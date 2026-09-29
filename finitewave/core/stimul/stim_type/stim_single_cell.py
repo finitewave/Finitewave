@@ -24,7 +24,7 @@ class StimSingleCell:
         self.dt = dt
         self._stim_current = []
 
-    def add_stim(self, n_beats, cycle_length, curr_value, duration):
+    def add_stim(self, n_beats, cycle_length, curr_value, duration, t_last_beat=None):
         """
         Adds a stimulus to the prepacing sequence.
         
@@ -38,9 +38,14 @@ class StimSingleCell:
             Duration of the stimulus.
         curr_value : float
             Amplitude of the stimulus current.
+        t_last_beat : float, optional
+            Time after the last beat of the prepacing sequence.
+            If None, it is set to cycle_length.
         """
-        steps = int(n_beats * cycle_length / self.dt)
-
+        if t_last_beat is None:
+            t_last_beat = cycle_length
+        
+        steps = int(((n_beats - 1) * cycle_length + t_last_beat) / self.dt)
         stim_current = np.zeros(steps, dtype=np.float64)
 
         for s in np.arange(n_beats):

@@ -5,6 +5,11 @@ import jax
 import jax.numpy as jnp
 
 
+@jax.jit
+def matvec(A, x):
+    return matvec_ellpack(A, x)
+
+
 def select_explicit_solver(x, active_indexes):
     """Select an explicit-step function for the JAX solution layout.
 

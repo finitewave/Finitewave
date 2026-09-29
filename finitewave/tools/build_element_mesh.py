@@ -4,7 +4,12 @@ import pyvista as pv
 
 def build_triangulated_plane(n, m, x_range, y_range):
     """
-    Build a 
+    Build a staggered mesh of equilateral triangles.
+
+    All edges have the same length. The mesh is anchored at the lower
+    bounds and scaled uniformly to fit inside the supplied ranges, including
+    the half-edge offset of odd rows. Its sides zigzag, and one coordinate
+    range may not be filled completely.
 
     Parameters:
     ----------
@@ -13,9 +18,9 @@ def build_triangulated_plane(n, m, x_range, y_range):
     m: int
         Number of divisions along the y-axis.
     x_range: tuple
-        Range of x-coordinates (min, max).
+        Bounding range of x-coordinates (min, max).
     y_range: tuple
-        Range of y-coordinates (min, max).
+        Bounding range of y-coordinates (min, max).
 
     Returns:
     -------
@@ -24,9 +29,23 @@ def build_triangulated_plane(n, m, x_range, y_range):
     elems: (N_elems, 3) ndarray
         Element connectivity (node indices for each triangle).
     """
-    x = np.linspace(x_range[0], x_range[1], n + 1)
-    y = np.linspace(y_range[0], y_range[1], m + 1)
+    if (not isinstance(n, (int, np.integer)) or
+            not isinstance(m, (int, np.integer)) or n < 1 or m < 1):
+        raise ValueError("n and m must be positive integers.")
+    bounds = np.asarray([x_range, y_range], dtype=float)
+    if (bounds.shape != (2, 2) or not np.all(np.isfinite(bounds)) or
+            np.any(bounds[:, 1] <= bounds[:, 0])):
+        raise ValueError("Ranges must contain finite, increasing bounds.")
+
+    row_height = np.sqrt(3.0) / 2.0
+    edge_length = min(
+        (bounds[0, 1] - bounds[0, 0]) / (n + 0.5),
+        (bounds[1, 1] - bounds[1, 0]) / (m * row_height),
+    )
+    x = bounds[0, 0] + np.arange(n + 1) * edge_length
+    y = bounds[1, 0] + np.arange(m + 1) * edge_length * row_height
     xv, yv = np.meshgrid(x, y)
+    xv[1::2, :] += edge_length / 2.0
     coords = np.column_stack([xv.ravel(), yv.ravel()])
 
     elems = np.empty((m * n * 2, 3), dtype=np.int64)
@@ -37,9 +56,12 @@ def build_triangulated_plane(n, m, x_range, y_range):
             n1 = n0 + 1
             n2 = n0 + (n + 1)
             n3 = n2 + 1
-            elems[2 * (i * n + j)] = [n0, n1, n3]
-            elems[2 * (i * n + j) + 1] = [n0, n3, n2]
-    elems = np.array(elems)
+            if i % 2 == 0:
+                elems[2 * (i * n + j)] = [n0, n1, n2]
+                elems[2 * (i * n + j) + 1] = [n1, n3, n2]
+            else:
+                elems[2 * (i * n + j)] = [n0, n1, n3]
+                elems[2 * (i * n + j) + 1] = [n0, n3, n2]
 
     return coords, elems
 

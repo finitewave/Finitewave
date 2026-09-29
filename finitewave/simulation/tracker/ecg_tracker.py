@@ -1,221 +1,210 @@
 from pathlib import Path
-import numpy as np
 import math
+
+import numpy as np
+from scipy.spatial import KDTree
 
 from finitewave.core.tracker.tracker import Tracker
 
 
 class ECGTracker(Tracker):
-    """
-    A class to compute and track electrocardiogram (ECG) signals from a 3D
-    cardiac tissue model simulation.
+    """Track the ECG signal at specified electrode positions.
 
-    This tracker calculates ECG signals at specified measurement points by
-    computing the potential differences across the cardiac tissue mesh and
-    considering the inverse of the distance from each measurement point.
+    The ECG is computed as the approximate potential at the electrode positions
+    due to the current sources in the tissue, using the formula:
+    
+        phi_e = 1 / (4 * pi * sigma) * sum(q_i / r_i)
+
+    where
+    ``phi_e`` is the potential at the electrode,
+    ``sigma`` is the volume conductivity,
+    ``q_i`` is the current source at tissue node ``i``, and
+    ``r_i`` is the distance from tissue node ``i`` to the electrode.
+
+    Parameters
+    ----------
+    lead_coords : array_like, shape (N, 2) or (N, 3)
+        Electrode coordinates in grid units (for grid tissue) or physical
+        coordinates (for element-mesh tissue).
+    volume_conductivity : float
+        The conductivity of the volume conductor surrounding the tissue.
+    min_distance : float, optional
+        Minimum distance for inverse-distance weighting. If None,
+        defaults to 0.5 * dr for grid tissue or 0.1 mm for element-mesh tissue.
+    **kwargs
+        Additional keyword arguments passed to the tracker class.
 
     Attributes
     ----------
-    measure_coords : np.ndarray
-        An array of points (x, y, z) where ECG signals are measured.
-    ecg : list
-        The computed ECG signals.
-    file_name : str
-        The name of the file to save the computed ECG signals.
+    diffusion_operator : backend-specific sparse matrix
+        The diffusion operator K used to compute the current sources ``q = K @ u``.
+        If None, the diffusion operator is computed from the simulation's spatial discretization.
+
+    Notes
+    -----
+    By default, the ECG calculation uses the spatial discretization operator K,
+    which is based on monodomain diffusion coefficients. ECG source currents,
+    however, depend on intracellular conductivity.
+
+    If the intracellular and monodomain operators differ by a scalar factor
+    ``alpha = D_intracellular / D_monodomain``, this factor can be accounted for
+    by dividing ``volume_conductivity`` by ``alpha``. A scalar correction is only
+    valid when the two operators are proportional.
     """
 
-    def __init__(self, measure_coords=None, distance_power=1,
-                 extracellular_conductivity=1.0, **kwargs):
-        """Initialize the ECGTracker.
-        
-        Parameters
-        ----------
-        measure_coords : np.ndarray, optional
-            An array of points (x, y, z) where ECG signals are measured.
-        distance_power : float, optional
-            The power to which the distance is raised in the inverse distance weighting. Default is 1.
-        extracellular_conductivity : float, optional
-            The extracellular conductivity. Default is 1.0.
-        **kwargs
-            Additional keyword arguments to pass to the base Tracker class.
-        """
+    def __init__(self, lead_coords=None, volume_conductivity=1.0, min_distance=None, **kwargs):
         super().__init__(**kwargs)
-        self.measure_coords = measure_coords
+        self.lead_coords = lead_coords
+        self.volume_conductivity = volume_conductivity
+        self.min_distance = min_distance
+        self.diffusion_operator = None
         self.ecg = []
         self.file_name = "ecg.npy"
-        self.distance_power = distance_power
-        self.extracellular_conductivity = extracellular_conductivity
 
     def initialize(self, simulation):
-        """
-        Initialize the ECG tracker with the simulation object.
-
-        Parameters
-        ----------
-        simulation : Simulation
-            The simulation object.
-        """
         super().initialize(simulation)
-        self.simulation = simulation
-        self.ecg_func = ecg_func(self.simulation.backend)
-        self._measure_coords = self.build_measure_coords(self.measure_coords)
+        backend = simulation.backend
+        tissue = simulation.cardiac_tissue
+
+        if (not np.isfinite(self.volume_conductivity)
+                or self.volume_conductivity <= 0):
+            raise ValueError("volume_conductivity must be finite and positive.")
+
+        is_grid = tissue.meta["type"] == "Grid"
+        scale = tissue.dr if is_grid else 1.0
+
+        self._min_distance = self.min_distance
+        if self._min_distance is None:
+            self._min_distance = 0.5 * scale if is_grid else 0.1
+
+        if not np.isfinite(self._min_distance) or self._min_distance <= 0:
+            raise ValueError("min_distance must be finite and positive.")
+
+        source_coords = tissue.tissue_coords * scale
+        source_coords = np.pad(source_coords, ((0, 0), (0, 3 - source_coords.shape[1])))
+        lead_coords = self.build_lead_coords(self.lead_coords, source_coords, scale)
+
+        self._lead_coords = backend.wrap_array(lead_coords)
+        self._source_coords = backend.wrap_array(source_coords)
+        source_mask = np.zeros(source_coords.shape[0], dtype=bool)
+        source_mask[tissue.myo_indexes] = True
+        self._source_mask = backend.wrap_mask(source_mask)
+        self._ecg_scale = (scale ** 3 / (4 * math.pi * self.volume_conductivity))
+
+        if self.diffusion_operator is None:
+            K, _ = simulation.spatial_discretization.weights
+            self._diffusion_operator = backend.wrap_sparse(K)
+        else:
+            self._diffusion_operator = self.diffusion_operator
+        self.ecg_func = ecg_func(backend)
         self.ecg = []
+        self._tracking_times = []
+        self.tracking_counter = 0
 
-        mesh_shape = self.simulation.cardiac_tissue.mesh.shape
-        myo_indexes = self.simulation.cardiac_model.myo_indexes
-        tissue_indexes = self.simulation.cardiac_model.tissue_indexes
-        self.myo_indexes = tissue_indexes[myo_indexes]
-        self.myo_coords = self.build_myo_coords(self.myo_indexes, mesh_shape)
+    def build_lead_coords(self, coords, nodes, scale):
+        """Validate and pad electrode coordinates to three dimensions."""
 
-    def build_myo_coords(self, myo_indexes, mesh_shape):
-        myo_coords = np.unravel_index(myo_indexes, mesh_shape)
+        if coords is None:
+            raise ValueError("lead_coords must contain at least one electrode.")
 
-        if len(myo_coords) == 2:
-            myo_coords = (myo_coords[0], myo_coords[1], np.zeros_like(myo_coords[0]))
-        return self.simulation.backend.wrap_array(np.array(myo_coords))
+        coords = np.atleast_2d(np.asarray(coords, dtype=float)) * scale
+        if (coords.ndim != 2 or coords.shape[0] == 0
+                or not 2 <= coords.shape[1] <= 3 or not np.all(np.isfinite(coords))):
+            raise ValueError("lead_coords must be a finite (N, 2), or (N, 3) array.")
 
-    def build_measure_coords(self, coords):
-        coords = np.atleast_2d(coords)
-        coords = np.hstack((coords, np.zeros((coords.shape[0], 3 - coords.shape[1]))))
-        coords = self.simulation.backend.wrap_array(coords)
+        coords = np.pad(coords, ((0, 0), (0, 3 - coords.shape[1])))
+        tree = KDTree(nodes)
+        distances, _ = tree.query(coords, k=1, workers=-1)
+
+        if np.any(distances < self._min_distance):
+            msg = (f"Some electrodes are closer than min_distance = {self._min_distance} "
+                   "to the tissue nodes.")
+            raise ValueError(msg)
+
         return coords
 
-    def build_myo_mask(self, myo_indexes, tissue_indexes):
-        myo_mask = np.zeros_like(tissue_indexes, dtype=bool)
-        myo_mask[myo_indexes] = True
-        return myo_mask
-
     def calc_ecg(self):
-        """
-        Calculate the ECG signal at the measurement points.
-
-        Returns
-        -------
-        np.ndarray
-            The computed ECG signal.
-        """
-        u_old = self.simulation.solver.u_old
+        """Compute the electrode potentials from the current voltage state."""
         u = self.simulation.cardiac_model._u
-        rhs = self.simulation.solver.rhs
-        dt = self.simulation.dt
-        dr = self.simulation.cardiac_tissue.dr
-        
-        tr_current = (u - u_old - dt * rhs)
-        tr_current = self.simulation.backend.select_values(tr_current, self.myo_indexes)
-        ecg = self.ecg_func(self._measure_coords, tr_current, *self.myo_coords, dr, dt,
-                            self.distance_power, self.extracellular_conductivity)
-        return ecg
+        return self.ecg_func(
+            self._diffusion_operator, u, self._source_mask, self._lead_coords,
+            self._source_coords, self._ecg_scale)
 
     def _track(self):
-        ecg = self.calc_ecg()
-        self.ecg.append(ecg)
+        # Keep only small host-side electrode outputs in the recording history.
+        self.ecg.append(np.asarray(self.calc_ecg()).copy())
 
     @property
     def output(self):
-        """
-        Get the computed ECG signals as a numpy array.
+        return np.squeeze(np.asarray(self.ecg))
 
-        Returns
-        -------
-        np.ndarray
-            The computed ECG signals.
-        """
-        return np.squeeze(self.ecg)
-
-    def write(self):
-        """
-        Save the computed ECG signals to a file.
-
-        The ECG signals are saved as a numpy array in the specified path.
-        """
-        if not Path(self.path).exists():
-            Path(self.path).mkdir(parents=True)
-
-        np.save(Path(self.path, self.file_name), self.output)
+    def write(self, path=None):
+        """Save the ECG history, defaulting to ``self.path`` or the current directory."""
+        path = Path(path if path is not None else getattr(self, "path", "."))
+        path.mkdir(parents=True, exist_ok=True)
+        np.save(path / self.file_name, self.output)
 
 
-def ecg_func(backend, coords, i, j, k, dr, distance_power=1.0):
+def ecg_func(backend):
+    """Build a backend evaluator, sharing one K @ u across all electrodes."""
+    matvec = backend.linalg.matvec
     if backend.name == "numba":
         from numba import njit, prange
 
-        @njit(parallel=True, fastmath=True)
-        def calc_ecg_numba(tr_current, coords, i, j, k, weight, distance_power=1):
-
-            n = coords.shape[0]
-            out = np.empty(n, dtype=tr_current.dtype)
-            # out.fill(0.0)
-
-            for c in prange(n):
-                x, y, z = coords[c]
-
-                res = 0.0
-                for idx in prange(len(i)):
-                    ds = (i[idx] - x) ** 2 + (j[idx] - y) ** 2 + (k[idx] - z) ** 2
-                    ds = np.sqrt(ds)
-                    if ds < 0.5:
-                        d = 1.0
-                    else:
-                        d = ds ** distance_power
-        
-                    res += tr_current[idx] / (d * weight)
-                out[c] = res
+        @njit(parallel=True)
+        def reduce_ecg(q, mask, electrodes, nodes, scale_coef):
+            out = np.empty(electrodes.shape[0], dtype=q.dtype)
+            for e in prange(electrodes.shape[0]):
+                result = 0.0
+                for i in range(mask.size):
+                    if mask[i]:
+                        dx = nodes[i] - electrodes[e]
+                        r = math.sqrt(np.sum(dx**2))
+                        result += q[i] / r
+                out[e] = result * scale_coef
             return out
 
-        return lambda x: calc_ecg_numba(x, coords, i, j, k, dr, distance_power)
-
+        def calculate(K, u, mask, electrodes, nodes, scale_coef):
+            q = matvec(K, u)
+            # The CSR matvec leaves empty rows unwritten. Their product is zero.
+            q[np.diff(K[0]) == 0] = 0.0
+            return reduce_ecg(q, mask, electrodes, nodes, scale_coef)
+        return calculate
 
     if backend.name == "jax":
         import jax
         import jax.numpy as jnp
 
         @jax.jit
-        def calc_ecg_jax(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
-            def single_ecg(_, coord):
-                x, y, z = coord
-                ds = jnp.maximum((i - x)**2 + (j - y)**2 + (k - z)**2, dr)
-                d = jnp.sqrt(ds) ** distance_power
-                result = jnp.sum(tr_current / (d * dt)) / (4 * jnp.pi * cond)
-                return None, result
+        def calculate(K, u, mask, electrodes, nodes, scale_coef):
+            q = matvec(K, u)
 
-            # Scan loops on-device, keeping memory usage low
-            _, ecg = jax.lax.scan(single_ecg, None, coords)
-            return ecg
-        
-        return lambda x: calc_ecg_jax(x, coords, i, j, k, dr, distance_power, cond=1.0)
-    
+            def single_ecg(carry, electrode):
+                r = jnp.sqrt(jnp.sum((nodes - electrode)**2, axis=1))
+
+                return carry, jnp.sum(jnp.where(mask, q / r, 0.0)) * scale_coef
+
+            return jax.lax.scan(single_ecg, None, electrodes)[1]
+
+        return calculate
+
     if backend.name == "mlx":
         import mlx.core as mx
-        import math
 
         @mx.compile
-        def single_ecg(coord, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
-            x, y, z = coord
-            ds = mx.maximum((i - x)**2 + (j - y)**2 + (k - z)**2, dr)
-            d = mx.sqrt(ds) ** distance_power
-            result = mx.sum(tr_current / (d * dt)) / (4 * math.pi * cond)
-            return result
-        
-        vmap_ecg = mx.vmap(single_ecg, in_axes=(0, None, None, None, None, None, None, None))
-        compiled_ecg = mx.compile(vmap_ecg)
+        def single_ecg(q, electrode, nodes, mask, scale_coef):
+            r = mx.sqrt(mx.sum((nodes - electrode)**2, axis=1))
+            return mx.sum(mx.where(mask, q / r, 0.0)) * scale_coef
 
+        def calculate(K, u, mask, electrodes, nodes, scale_coef):
+            q = matvec(K, u)
+            mx.eval(q)
+            results = []
+            for e in range(electrodes.shape[0]):
+                result = single_ecg(q, electrodes[e], nodes, mask, scale_coef)
+                mx.eval(result)
+                results.append(result)
+            return mx.stack(results)
+        return calculate
 
-        def calc_ecg_mlx(coords, tr_current, i, j, k, dr, dt, distance_power=1.0, cond=1.0):
-            dr = mx.array(dr)
-            dt = mx.array(dt)
-            distance_power = mx.array(distance_power)
-            cond = mx.array(cond)
-
-            num_coords = coords.shape[0]
-            batch_size = 32
-            ecg = mx.zeros(num_coords, dtype=tr_current.dtype)
-
-            for start in range(0, num_coords, batch_size):
-                end = min(start + batch_size, num_coords)
-                batch_coords = coords[start:end]
-                batch_results = compiled_ecg(batch_coords, tr_current, i, j, k, dr, distance_power, cond)
-                ecg[start:end] = batch_results
-                mx.eval(ecg)
-
-            return ecg
-        
-        return calc_ecg_mlx
+    raise ValueError(f"Unsupported ECG backend: {backend.name}")

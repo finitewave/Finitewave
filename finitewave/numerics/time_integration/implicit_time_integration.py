@@ -1,4 +1,5 @@
 import warnings
+import numpy as np
 from scipy import sparse as sp
 from finitewave.core.numerics.time_integration import TimeIntegration
 
@@ -131,6 +132,7 @@ class ImplicitTimeIntegration(TimeIntegration):
             a_reaction_matrix, indexes=myo_indexes, row_reduced=True)
 
         self.myo_indexes = self.simulation.backend.wrap_indexes(myo_indexes)
+        
 
     def assemble_lumped_mass_matrix(self, mass):
         """Assembles the lumped mass matrix for the Implicit method.
@@ -147,7 +149,7 @@ class ImplicitTimeIntegration(TimeIntegration):
         """
         mass_lumped = ((1 - self.lumping_factor) * mass +
                        self.lumping_factor * sp.diags(mass.sum(axis=1).A1))
-        return mass_lumped
+        return mass_lumped.tocsr()
 
     def assemble_rhs_matrix(self, stiff, mass, dt, theta):
         """Assembles the right-hand side matrix for the Implicit method.
@@ -209,7 +211,7 @@ class ImplicitTimeIntegration(TimeIntegration):
             consistent mass matrix.
         """
         if self.reaction_lumping:
-            return dt * sp.diags(mass.sum(axis=1).A1)
+            return dt * sp.diags(mass.sum(axis=1).A1).tocsr()
 
         return dt * mass
 

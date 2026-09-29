@@ -1,6 +1,6 @@
 from numbers import Real
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import numpy as np
 
 from finitewave.core.simulation.simulation import Simulation

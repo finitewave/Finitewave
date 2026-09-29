@@ -4,6 +4,26 @@ import numpy as np
 from numba import njit, prange
 
 
+def matvec(A, x):
+    """Compute ``A @ x`` for a CSR matrix.
+
+    Parameters
+    ----------
+    A : tuple
+        CSR arrays ``(indptr, indices, data)`` for the matrix.
+    x : np.ndarray
+        Input array.
+
+    Returns
+    -------
+    np.ndarray
+        The output array.
+    """
+    indptr, indices, data = A
+    out = np.empty(x.shape, dtype=x.dtype)
+    return matvec_numba(indptr, indices, data, x, out)
+
+
 def select_explicit_solver(x, active_indexes):
     """Select the Numba explicit-step function for a solution layout.
 

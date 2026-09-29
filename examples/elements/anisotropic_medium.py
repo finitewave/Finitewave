@@ -29,13 +29,15 @@ stim_sequence.add_stim(fw.StimVoltageCoord(50, 1,
                                            size//2 - 1, size//2 + 1))
 
 # create model object and set up parameters:
-simulation = fw.CardiacSimulation(backend="jax")
-simulation.dt = 0.01
-simulation.t_max = 33
+simulation = fw.CardiacSimulation(dt=0.01, t_max=33, backend="jax")
 # add the tissue and the stim parameters to the model object:
 simulation.cardiac_tissue = tissue
-simulation.cardiac_model = fw.BuenoOrovio()
+simulation.cardiac_model = fw.FentonKarma()
 simulation.stim_sequence = stim_sequence
+# simulation.time_integration = fw.BackwardEulerTimeIntegration(
+#     atol=1e-8, maxiter=100, lumping_factor=1.0, reaction_lumping=True
+#     )
+simulation.time_integration = fw.ForwardEulerTimeIntegration()
 # run the model:
 simulation.run()
 

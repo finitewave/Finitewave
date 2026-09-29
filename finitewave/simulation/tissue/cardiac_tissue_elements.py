@@ -129,6 +129,26 @@ class CardiacTissueElements(CardiacTissueBase):
         return np.arange(self.mesh.size)
 
     @property
+    def myo_coords(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates of the myocytes in the tissue.
+        """
+        return self.coords[self.myo_indexes]
+
+    @property
+    def tissue_coords(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates of the tissue in the mesh.
+        """
+        return self.coords
+
+    @property
     def diffusion_tensor(self):
         if self.fibers is None:
             diffusion_tensor = np.zeros((self.elems.shape[0], self.meta["dim"], self.meta["dim"]))
