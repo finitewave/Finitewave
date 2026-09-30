@@ -1,11 +1,12 @@
 import numpy as np
 
+from .element_type import ElementType
+
 
 class LinearHexahedralElement:
-    """Trilinear hexahedral element with eight nodes in 3D space.
+    """Trilinear hexahedron on ``[-1, 1]^3``.
 
-    The nodes are ordered around the bottom face first, followed by the
-    corresponding nodes on the top face::
+    Nodes run around the bottom face, then the corresponding top face::
 
         7-------6
        /|      /|
@@ -14,73 +15,111 @@ class LinearHexahedralElement:
       |/      |/
       0-------1
 
-    The reference element occupies ``[-1, 1]^3``.  ``dN`` contains the
-    derivatives of the shape functions at its centre for gradient output.
-    Matrix assembly uses the eight-point tensor Gauss rule.
-
     Attributes
     ----------
     name : str
-        Name of the element type.
+        Element type identifier.
     order : int
-        Polynomial order of the element.
-    mass_coef : float
-        Coefficient for the consistent mass matrix.
-    elem_mass : (8, 8) ndarray
-        Reference consistent mass matrix normalized by reference volume.
-        Retained for reference; assembly uses ``integration_N``.
-    dN : (3, 8) ndarray
-        Shape-function derivatives with respect to xi, eta, and zeta at the
-        centre of the reference element.
-    quad_weights : (1,) ndarray
-        Legacy center-rule weight; assembly uses ``integration_weights``.
+        Polynomial order (1).
     n_points : int
-        Number of nodes in the element.
-    integration_points : numpy.ndarray, shape (N_quad, dim_ref)
-        Eight-point tensor Gauss rule on [-1, 1]^3.
-    integration_weights : numpy.ndarray, shape (N_quad,)
-        Integration weights, summing to the reference area or volume.
-    integration_N : numpy.ndarray, shape (N_quad, N_points)
-        Shape-function values at the integration points.
-    integration_dN : numpy.ndarray, shape (N_quad, dim_ref, N_points)
-        Reference shape-function derivatives at the integration points.
+        Number of element nodes (8), not evaluation points.
+    center : ndarray, shape (1, 3)
+        Reference centroid.
+    gauss_points : ndarray, shape (8, 3)
+        Tensor Gauss integration points; each has reference weight 1.
+    gauss_weights : ndarray, shape (8,)
+        Weights corresponding to ``gauss_points``, summing to the reference
+        volume (8).
+
+    Notes
+    -----
+    Evaluate shape functions and reference derivatives at arbitrary points
+    using ``shape_function`` and ``shape_function_derivative``. The leading
+    evaluation-point axis is retained even for a single point. Use
+    ``gauss_points`` with ``gauss_weights`` for integration. Physical
+    derivatives and integration measures require a geometry-dependent Jacobian.
     """
 
-    def __init__(self):
-        self.name = "Hexahedron"
-        self.order = 1
-        self.mass_coef = 216.0
+    name = ElementType.HEXAHEDRON
+    order = 1
+    center = np.array([[0.0, 0.0, 0.0]])
+    gauss_points = 1 / np.sqrt(3) * np.array([
+        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],
+    ])
+    gauss_weights = np.full(8, 1.0)
+    n_points = 8
 
-        self.elem_mass = 1 / self.mass_coef * np.array([
-            [8, 4, 2, 4, 4, 2, 1, 2],
-            [4, 8, 4, 2, 2, 4, 2, 1],
-            [2, 4, 8, 4, 1, 2, 4, 2],
-            [4, 2, 4, 8, 2, 1, 2, 4],
-            [4, 2, 1, 2, 8, 4, 2, 4],
-            [2, 4, 2, 1, 4, 8, 4, 2],
-            [1, 2, 4, 2, 2, 4, 8, 4],
-            [2, 1, 2, 4, 4, 2, 4, 8],
-        ])
+    def shape_function(self, points):
+        """Evaluate shape functions at supplied reference points.
 
-        self.dN = 1 / 8 * np.array([
-            [-1, 1, 1, -1, -1, 1, 1, -1],
-            [-1, -1, 1, 1, -1, -1, 1, 1],
-            [-1, -1, -1, -1, 1, 1, 1, 1],
-        ])
+        Parameters
+        ----------
+        points : array_like, shape (N_eval, 3) or (3,)
+            Reference coordinates of evaluation points.
 
-        self.quad_weights = np.array([8.0])
-        self.n_points = 8
+        Returns
+        -------
+        N : ndarray, shape (N_eval, 8)
+            Shape-function values with axes (evaluation point, node).
+        """
+        points = np.atleast_2d(points)
+        xi = points[:, 0]
+        eta = points[:, 1]
+        zeta = points[:, 2]
+        N = np.column_stack(((1 - xi) * (1 - eta) * (1 - zeta),
+                             (1 + xi) * (1 - eta) * (1 - zeta),
+                             (1 + xi) * (1 + eta) * (1 - zeta),
+                             (1 - xi) * (1 + eta) * (1 - zeta),
+                             (1 - xi) * (1 - eta) * (1 + zeta),
+                             (1 + xi) * (1 - eta) * (1 + zeta),
+                             (1 + xi) * (1 + eta) * (1 + zeta),
+                             (1 - xi) * (1 + eta) * (1 + zeta))) / 8
+        return N
 
-        a = 1 / np.sqrt(3)
-        signs = np.array([
-            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
-            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],
-        ])
-        self.integration_points = a * signs
-        self.integration_weights = np.ones(8)
-        factors = 1 + self.integration_points[:, None, :] * signs[None, :, :]
-        self.integration_N = np.prod(factors, axis=2) / 8
-        self.integration_dN = np.stack([
-            signs[:, axis] * np.prod(np.delete(factors, axis, axis=2), axis=2) / 8
-            for axis in range(3)
-        ], axis=1)
+    def shape_function_derivative(self, points):
+        """Evaluate reference shape-function derivatives at supplied reference points.
+
+        Parameters
+        ----------
+        points : array_like, shape (N_eval, 3) or (3,)
+            Reference coordinates of evaluation points.
+
+        Returns
+        -------
+        dN : ndarray, shape (N_eval, 3, 8)
+            Derivatives with axes (evaluation point, reference direction, node).
+        """
+        points = np.atleast_2d(points)
+        xi = points[:, 0]
+        eta = points[:, 1]
+        zeta = points[:, 2]
+        dN_dxi = np.column_stack((-(1 - eta) * (1 - zeta),
+                                   (1 - eta) * (1 - zeta),
+                                   (1 + eta) * (1 - zeta),
+                                  -(1 + eta) * (1 - zeta),
+                                  -(1 - eta) * (1 + zeta),
+                                   (1 - eta) * (1 + zeta),
+                                   (1 + eta) * (1 + zeta),
+                                  -(1 + eta) * (1 + zeta))) / 8
+
+        dN_deta = np.column_stack((-(1 - xi) * (1 - zeta),
+                                   -(1 + xi) * (1 - zeta),
+                                    (1 + xi) * (1 - zeta),
+                                    (1 - xi) * (1 - zeta),
+                                   -(1 - xi) * (1 + zeta),
+                                   -(1 + xi) * (1 + zeta),
+                                    (1 + xi) * (1 + zeta),
+                                    (1 - xi) * (1 + zeta))) / 8
+        
+        dN_dzeta = np.column_stack((-(1 - xi) * (1 - eta),
+                                    -(1 + xi) * (1 - eta),
+                                    -(1 + xi) * (1 + eta),
+                                    -(1 - xi) * (1 + eta),
+                                     (1 - xi) * (1 - eta),
+                                     (1 + xi) * (1 - eta),
+                                     (1 + xi) * (1 + eta),
+                                     (1 - xi) * (1 + eta))) / 8
+        
+        dN = np.stack((dN_dxi, dN_deta, dN_dzeta), axis=1)
+        return dN

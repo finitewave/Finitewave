@@ -71,9 +71,17 @@ def test_quadrature_on_affine_elements(element_class, nodes, volume):
         coords, elems, diffusion[None, :, :])
     K, M = stiffness.toarray(), mass.toarray()
 
-    np.testing.assert_allclose(reference.integration_N.sum(axis=1), 1)
-    np.testing.assert_allclose(reference.integration_dN.sum(axis=2), 0, atol=1e-15)
-    np.testing.assert_allclose(M, volume * reference.elem_mass, atol=1e-14)
+    np.testing.assert_allclose(reference.shape_function(reference.gauss_points).sum(axis=1), 1)
+    np.testing.assert_allclose(reference.shape_function_derivative(reference.gauss_points).sum(axis=2), 0, atol=1e-15)
+    # Analytic normalized consistent mass for simplex or tensor elements.
+    if len(nodes) == dim + 1:
+        expected_mass = (np.ones((len(nodes), len(nodes))) + np.eye(len(nodes)))
+        expected_mass /= (dim + 1) * (dim + 2)
+    else:
+        reference_nodes = np.asarray(nodes)
+        equal_coordinates = reference_nodes[:, None, :] == reference_nodes[None, :, :]
+        expected_mass = np.prod(np.where(equal_coordinates, 2., 1.), axis=2) / 6**dim
+    np.testing.assert_allclose(M, volume * expected_mass, atol=1e-14)
     np.testing.assert_allclose(_element_sizes(discretization.diffusion, coords, elems), [volume])
     np.testing.assert_allclose(K, K.T, atol=1e-14)
     np.testing.assert_allclose(K.sum(axis=1), 0, atol=1e-14)

@@ -86,9 +86,6 @@ class ECGTracker(Tracker):
 
         self._lead_coords = backend.wrap_array(lead_coords)
         self._source_coords = backend.wrap_array(source_coords)
-        source_mask = np.zeros(source_coords.shape[0], dtype=bool)
-        source_mask[tissue.myo_indexes] = True
-        self._source_mask = backend.wrap_mask(source_mask)
         self._ecg_scale = (scale ** 3 / (4 * math.pi * self.volume_conductivity))
 
         if self.diffusion_operator is None:
@@ -127,7 +124,7 @@ class ECGTracker(Tracker):
         """Compute the electrode potentials from the current voltage state."""
         u = self.simulation.cardiac_model._u
         return self.ecg_func(
-            self._diffusion_operator, u, self._source_mask, self._lead_coords,
+            self._diffusion_operator, u, self._lead_coords,
             self._source_coords, self._ecg_scale)
 
     def _track(self):
@@ -152,23 +149,20 @@ def ecg_func(backend):
         from numba import njit, prange
 
         @njit(parallel=True)
-        def reduce_ecg(q, mask, electrodes, nodes, scale_coef):
+        def reduce_ecg(q, electrodes, nodes, scale_coef):
             out = np.empty(electrodes.shape[0], dtype=q.dtype)
             for e in prange(electrodes.shape[0]):
                 result = 0.0
-                for i in range(mask.size):
-                    if mask[i]:
-                        dx = nodes[i] - electrodes[e]
-                        r = math.sqrt(np.sum(dx**2))
-                        result += q[i] / r
+                for i in range(q.size):
+                    dx = nodes[i] - electrodes[e]
+                    r = math.sqrt(np.sum(dx**2))
+                    result += q[i] / r
                 out[e] = result * scale_coef
             return out
 
-        def calculate(K, u, mask, electrodes, nodes, scale_coef):
+        def calculate(K, u, electrodes, nodes, scale_coef):
             q = matvec(K, u)
-            # The CSR matvec leaves empty rows unwritten. Their product is zero.
-            q[np.diff(K[0]) == 0] = 0.0
-            return reduce_ecg(q, mask, electrodes, nodes, scale_coef)
+            return reduce_ecg(q, electrodes, nodes, scale_coef)
         return calculate
 
     if backend.name == "jax":
@@ -176,13 +170,13 @@ def ecg_func(backend):
         import jax.numpy as jnp
 
         @jax.jit
-        def calculate(K, u, mask, electrodes, nodes, scale_coef):
+        def calculate(K, u, electrodes, nodes, scale_coef):
             q = matvec(K, u)
 
             def single_ecg(carry, electrode):
                 r = jnp.sqrt(jnp.sum((nodes - electrode)**2, axis=1))
 
-                return carry, jnp.sum(jnp.where(mask, q / r, 0.0)) * scale_coef
+                return carry, jnp.sum(q / r) * scale_coef
 
             return jax.lax.scan(single_ecg, None, electrodes)[1]
 
@@ -192,19 +186,35 @@ def ecg_func(backend):
         import mlx.core as mx
 
         @mx.compile
-        def single_ecg(q, electrode, nodes, mask, scale_coef):
+        def single_ecg(q, electrode, nodes, scale_coef):
             r = mx.sqrt(mx.sum((nodes - electrode)**2, axis=1))
-            return mx.sum(mx.where(mask, q / r, 0.0)) * scale_coef
+            return mx.sum(q / r) * scale_coef
 
-        def calculate(K, u, mask, electrodes, nodes, scale_coef):
+        batch_ecg = mx.compile(
+            mx.vmap(single_ecg, in_axes=(None, 0, None, None))
+        )
+
+        def calculate(K, u, electrodes, nodes, scale_coef):
             q = matvec(K, u)
             mx.eval(q)
-            results = []
-            for e in range(electrodes.shape[0]):
-                result = single_ecg(q, electrodes[e], nodes, mask, scale_coef)
-                mx.eval(result)
-                results.append(result)
-            return mx.stack(results)
+            # vmap requires array inputs, including unmapped scalar arguments.
+            scale_coef = mx.array(scale_coef, dtype=q.dtype)
+
+            batches = []
+            batch_size = 10
+
+            for start in range(0, electrodes.shape[0], batch_size):
+                values = batch_ecg(
+                    q,
+                    electrodes[start:start + batch_size],
+                    nodes,
+                    scale_coef,
+                )
+                mx.eval(values)
+                batches.append(values)
+
+            return mx.concatenate(batches)
+
         return calculate
 
     raise ValueError(f"Unsupported ECG backend: {backend.name}")

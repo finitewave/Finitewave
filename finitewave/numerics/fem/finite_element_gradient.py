@@ -8,8 +8,8 @@ class FiniteElementGradient:
     Parameters
     ----------
     reference_element : object, optional
-        Reference derivatives ``dN`` of shape (dim_ref, N_points) and node
-        count ``n_points``. Set before calling ``build_gradient_operator``.
+        Reference element providing ``shape_function_derivative(points)`` and
+        ``center``. Set before calling ``build_gradient_operator``.
 
     Notes
     -----
@@ -81,17 +81,9 @@ class FiniteElementGradient:
         jacobian : numpy.ndarray, shape (N_elems, dim_ref, dim_phys)
             Jacobian matrices for each element.
         """
-        n_elems = elems.shape[0]
-        dim_ref = len(self.reference_element.dN)
-        dim_phys = coords.shape[1]
-        jacobian = np.zeros((n_elems, dim_ref, dim_phys))
-
-        for i in range(self.reference_element.n_points):
-            for j in range(len(self.reference_element.dN)):
-                jacobian[:, j, :] += (self.reference_element.dN[j, i] *
-                                      coords[elems[:, i]])
-
-        return jacobian
+        element = self.reference_element
+        dN = element.shape_function_derivative(element.center)[0]
+        return np.einsum('ri,eip->erp', dN, coords[elems], optimize=True)
 
     def _compute_gradient_operator(self, jacobian):
         """Compute global shape-function gradients for elements.
@@ -107,19 +99,9 @@ class FiniteElementGradient:
             Gradient of shape functions in global coordinates for each element.
 
         """
-        n_elems, dim_ref, dim_phys = jacobian.shape
-        jacobian_inv = invert_jacobian(jacobian)
-        n_points = self.reference_element.n_points
-        grads = np.zeros((n_elems, dim_phys, n_points))
-
-        for i in range(n_points):
-            dN_ref = np.stack(
-                [np.full(n_elems, self.reference_element.dN[j, i]) for j in range(dim_ref)],
-                axis=1
-            )
-            grads[:, :, i] = (jacobian_inv @ dN_ref[..., None])[..., 0]
-
-        return grads
+        element = self.reference_element
+        dN = element.shape_function_derivative(element.center)[0]
+        return invert_jacobian(jacobian) @ dN
 
 
 def invert_jacobian(jacobian):

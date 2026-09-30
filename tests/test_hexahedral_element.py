@@ -28,11 +28,13 @@ def test_linear_hexahedral_element_properties():
     assert element.name == fw.ElementType.HEXAHEDRON
     assert element.order == 1
     assert element.n_points == 8
-    assert element.dN.shape == (3, 8)
-    assert element.elem_mass.shape == (8, 8)
-    np.testing.assert_allclose(element.dN.sum(axis=1), 0.0)
-    np.testing.assert_allclose(element.elem_mass.sum(), 1.0)
-    np.testing.assert_allclose(element.elem_mass, element.elem_mass.T)
+    dN = element.shape_function_derivative(element.center)
+    N = element.shape_function(element.gauss_points)
+    assert dN.shape == (1, 3, 8)
+    assert N.shape == (8, 8)
+    np.testing.assert_allclose(dN.sum(axis=2), 0.0)
+    np.testing.assert_allclose(N.sum(axis=1), 1.0)
+    np.testing.assert_allclose(element.gauss_weights.sum(), 8.0)
 
 
 def test_hexahedral_element_is_registered():

@@ -24,8 +24,8 @@ def backend(request):
 @pytest.mark.parametrize("tracker_class", [ECGTracker, LeadFieldECGTracker])
 @pytest.mark.parametrize("geometry", ["grid2d", "grid3d", "elements"])
 def test_ecg_matches_dense_bilinear_form(backend, geometry, tracker_class, tmp_path):
-    # Row 1 is inactive but nonzero; grid indexing is not contiguous.
-    K = sp.csr_matrix([[2., 0., -2.], [0., 7., 0.], [-2., 0., 2.]])
+    # Row 1 is empty; grid indexing is not contiguous.
+    K = sp.csr_matrix([[2., 0., -2.], [0., 0., 0.], [-2., 0., 2.]])
     u = np.array([1., 50., 4.])
     if geometry.startswith("grid"):
         shape = (3, 4) if geometry == "grid2d" else (2, 3, 4)
@@ -54,8 +54,8 @@ def test_ecg_matches_dense_bilinear_form(backend, geometry, tracker_class, tmp_p
     distances = np.linalg.norm(
         physical_positions[None, :, :] - physical_electrodes[:, None, :], axis=-1)
     lead = 1. / distances
-    lead[:, 1] = 0.
-    expected = lead @ K.toarray() @ u / (8 * np.pi)
+    volume = tissue.dr**3 if geometry.startswith("grid") else 1.0
+    expected = volume * (lead @ K.toarray() @ u) / (8 * np.pi)
     np.testing.assert_allclose(tracker.calc_ecg(), expected, rtol=3e-6, atol=1e-6)
 
     # The direct stiffness expression is independent of the time step.
@@ -97,7 +97,7 @@ def test_ecg_reinitialize_rebuilds_default_operator(backend):
     simulation.spatial_discretization.weights = (3 * K, K)
     tissue.dr = 0.4
     tracker.initialize(simulation)
-    np.testing.assert_allclose(tracker.calc_ecg(), 1.5 * first, rtol=3e-6)
+    np.testing.assert_allclose(tracker.calc_ecg(), 12 * first, rtol=3e-6)
     assert tracker._min_distance == 0.2
     assert tracker.min_distance is None
 
@@ -117,7 +117,6 @@ def test_supplied_lead_fields_use_matvec_and_preserve_input(backend):
     tracker = LeadFieldECGTracker(lead_fields=fields, volume_conductivity=7.)
     tracker.initialize(simulation)
     q = K @ u
-    q[1] = 0.
     np.testing.assert_allclose(tracker.calc_ecg(), fields @ q, rtol=3e-6)
     np.testing.assert_array_equal(fields, original)
     tracker._track()

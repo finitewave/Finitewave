@@ -12,26 +12,26 @@ class FiniteElementDiscretization(SpatialDiscretization):
     Parameters
     ----------
     reference_element : object, optional
-        Reference shape functions and quadrature data. Supply this before
-        building mesh operators, or call ``compute_weights`` to use the
-        tissue's reference element.
+        Reference element providing ``shape_function(points)``,
+        ``shape_function_derivative(points)``, ``center``, ``gauss_points``,
+        and ``gauss_weights``. Supply this before building mesh operators,
+        or call ``compute_weights`` to use the tissue's reference element.
 
     Attributes
     ----------
     diffusion : FiniteElementDiffusion
         Assembles stiffness and provides quadrature geometry helpers.
     gradient : FiniteElementGradient
-        Builds center-gradient operators.
+        Builds element-center gradient operators.
     reference_element : object
         Assign through this property to update both operators together.
 
     Notes
     -----
-    Mass assembly belongs to this class. ``build_system_matrices`` reuses
-    one set of quadrature Jacobians for stiffness and mass. Triangle,
-    tetrahedron, quadrilateral, and hexahedron integration uses 3, 4, 4,
-    and 8 points respectively. Distorted tensor-product elements are
-    integrated numerically; stiffness need not be integrated exactly.
+    The diffusion operator uses Gauss quadrature on the reference element,
+    while the gradient operator evaluates gradients at element centers.
+    For numerical integration, evaluate gradients at the quadrature points
+    to account for their variation within the element.
     """
     def __init__(self, reference_element=None):
         self._reference_element = reference_element
@@ -147,10 +147,7 @@ class FiniteElementDiscretization(SpatialDiscretization):
         grads : tuple of scipy.sparse.csr_matrix or numpy.ndarray
             Sparse matrices have shape (N_elems, N_nodes) and map nodal values
             to element gradients. With ``as_sparse=False``, returns shape-function
-            gradients of shape (N_elems, dim_phys, N_points). Gradients are
-            constant within linear triangles/tetrahedra and evaluated at the
-            reference center for quadrilaterals/hexahedra. Embedded surfaces
-            return tangential gradients in physical coordinates.
+            gradients of shape (N_elems, dim_phys, N_points).
         """
         return self.gradient.build_gradient_operator(
             coords, elems, as_sparse=as_sparse, **kwargs)
@@ -214,7 +211,8 @@ class FiniteElementDiscretization(SpatialDiscretization):
         """
         rows, cols = self.diffusion._build_matrix_rows_cols(elems)
         weights = self.diffusion._compute_integration_weights(jacobian)
-        shape_values = self.reference_element.integration_N
+        element = self.reference_element
+        shape_values = element.shape_function(element.gauss_points)
         shape = (coords.shape[0], coords.shape[0])
 
         mass_data = np.einsum('eq,qi,qj->eij', weights,

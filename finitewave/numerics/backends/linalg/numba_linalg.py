@@ -274,6 +274,7 @@ def matvec_numba(indptr, indices, data, x, out):
     for i in prange(n):
         start, end = indptr[i], indptr[i+1]
         if start == end:
+            out.flat[i] = 0.0
             continue
         out_i = 0.
         for j in range(start, end):

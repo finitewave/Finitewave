@@ -1,60 +1,83 @@
-
 import numpy as np
+
+from .element_type import ElementType
 
 
 class LinearTetrahedralElement:
-    """Class representing a linear tetrahedral finite element.
+    """Linear tetrahedron with nodes (0, 0, 0), (1, 0, 0),
+    (0, 1, 0), and (0, 0, 1).
 
-    ``N1 = 1 - xi - eta - zeta``
-    ``N2 = xi``
-    ``N3 = eta``
-    ``N4 = zeta``
+    Shape functions are ``1 - xi - eta - zeta``, ``xi``, ``eta``, ``zeta``.
 
     Attributes
     ----------
-    name: str
-        Name of the element type.
-    mass_coef: float
-        Normalization coefficient for the reference ``elem_mass`` matrix.
-    elem_mass: (4, 4) ndarray
-        Reference consistent mass matrix normalized by reference area or
-        volume. Retained for reference; assembly uses ``integration_N``.
-    dN: (3, 4) ndarray
-        Reference shape-function derivatives at the element center.
-    quad_weights: (1,) ndarray
-        Legacy center-rule weight; assembly uses ``integration_weights``.
-    n_points: int
-        Number of points (nodes) in the element.
-    integration_points : numpy.ndarray, shape (N_quad, dim_ref)
-        Four-point degree-two tetrahedron rule.
-    integration_weights : numpy.ndarray, shape (N_quad,)
-        Integration weights, summing to the reference area or volume.
-    integration_N : numpy.ndarray, shape (N_quad, N_points)
-        Shape-function values at the integration points.
-    integration_dN : numpy.ndarray, shape (N_quad, dim_ref, N_points)
-        Reference shape-function derivatives at the integration points.
+    name : str
+        Element type identifier.
+    order : int
+        Polynomial order (1).
+    n_points : int
+        Number of element nodes (4), not evaluation points.
+    center : ndarray, shape (1, 3)
+        Reference centroid.
+    gauss_points : ndarray, shape (4, 3)
+        Degree-two simplex integration points; each has reference weight 1/24.
+    gauss_weights : ndarray, shape (4,)
+        Weights corresponding to ``gauss_points``, summing to the reference
+        volume (1/6).
+
+    Notes
+    -----
+    Evaluate shape functions and reference derivatives at arbitrary points
+    using ``shape_function`` and ``shape_function_derivative``. The leading
+    evaluation-point axis is retained even for a single point. Use
+    ``gauss_points`` with ``gauss_weights`` for integration. Physical
+    derivatives and integration measures require a geometry-dependent Jacobian.
     """
 
-    def __init__(self):
-        self.name = "Tetrahedral"
-        self.order = 1
-        self.mass_coef = 20.0
+    name = ElementType.TETRA
+    order = 1
+    center = np.array([[1/4, 1/4, 1/4]])
+    _a = (5 + 3 * np.sqrt(5)) / 20
+    _b = (5 - np.sqrt(5)) / 20
+    gauss_points = np.array([[_b, _b, _b],
+                             [_a, _b, _b],
+                             [_b, _a, _b],
+                             [_b, _b, _a]])
+    gauss_weights = np.full(4, 1/24)
+    n_points = 4
 
-        self.elem_mass = 1 / self.mass_coef * np.array([[2, 1, 1, 1],
-                                                        [1, 2, 1, 1],
-                                                        [1, 1, 2, 1],
-                                                        [1, 1, 1, 2]])
-        self.dN = np.array([[-1.0, 1.0, 0.0, 0.0],
-                            [-1.0, 0.0, 1.0, 0.0],
-                            [-1.0, 0.0, 0.0, 1.0]])
+    def shape_function(self, points):
+        """Evaluate shape functions at supplied reference points.
 
-        self.quad_weights = np.array([1.0/6.0])
-        self.n_points = 4
+        Parameters
+        ----------
+        points : array_like, shape (N_eval, 3) or (3,)
+            Reference coordinates of evaluation points.
 
-        a = (5 + 3 * np.sqrt(5)) / 20
-        b = (5 - np.sqrt(5)) / 20
-        self.integration_N = np.full((4, 4), b)
-        np.fill_diagonal(self.integration_N, a)
-        self.integration_points = self.integration_N[:, 1:].copy()
-        self.integration_weights = np.full(4, 1/24)
-        self.integration_dN = np.repeat(self.dN[None, :, :], 4, axis=0)
+        Returns
+        -------
+        N : ndarray, shape (N_eval, 4)
+            Shape-function values with axes (evaluation point, node).
+        """
+        points = np.atleast_2d(points)
+        xi, eta, zeta = points.T
+        return np.column_stack((1 - xi - eta - zeta, xi, eta, zeta))
+
+    def shape_function_derivative(self, points):
+        """Evaluate reference shape-function derivatives at supplied reference points.
+
+        Parameters
+        ----------
+        points : array_like, shape (N_eval, 3) or (3,)
+            Reference coordinates of evaluation points.
+
+        Returns
+        -------
+        dN : ndarray, shape (N_eval, 3, 4)
+            Derivatives with axes (evaluation point, reference direction, node).
+        """
+        points = np.atleast_2d(points)
+        dN = np.array([[-1.0, 1.0, 0.0, 0.0],
+                       [-1.0, 0.0, 1.0, 0.0],
+                       [-1.0, 0.0, 0.0, 1.0]])
+        return np.repeat(dN[None, :, :], points.shape[0], axis=0)

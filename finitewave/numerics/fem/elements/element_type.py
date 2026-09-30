@@ -1,16 +1,10 @@
-from .hexahedral_element import LinearHexahedralElement
-from .quadrilateral_element import LinearQuadrilateralElement
-from .triangle_element import LinearTriangleElement
-from .tetrahedral_element import LinearTetrahedralElement
-
-
 class ElementType:
     """
     Enumeration of element types for finite element meshes.
     """
     TRIANGLE = "Triangle"
     QUAD = "Quadrilateral"
-    TETRA = "Tetrahedra"
+    TETRA = "Tetrahedral"
     HEXAHEDRON = "Hexahedron"
 
     values = [TRIANGLE, QUAD, TETRA, HEXAHEDRON]
@@ -43,13 +37,19 @@ class ElementType:
         ValueError
             If the provided name is not a valid element type.
         """
-        if name == ElementType.TRIANGLE and order == 1:
-            return LinearTriangleElement()
-        elif name == ElementType.QUAD and order == 1:
-            return LinearQuadrilateralElement()
-        elif name == ElementType.TETRA and order == 1:
-            return LinearTetrahedralElement()
-        elif name == ElementType.HEXAHEDRON and order == 1:
-            return LinearHexahedralElement()
-        else:
+        from .hexahedral_element import LinearHexahedralElement
+        from .quadrilateral_element import LinearQuadrilateralElement
+        from .tetrahedral_element import LinearTetrahedralElement
+        from .triangle_element import LinearTriangleElement
+
+        element_classes = {
+            ElementType.TRIANGLE: LinearTriangleElement,
+            ElementType.QUAD: LinearQuadrilateralElement,
+            ElementType.TETRA: LinearTetrahedralElement,
+            ElementType.HEXAHEDRON: LinearHexahedralElement,
+        }
+
+        if name not in element_classes or order != 1:
             raise ValueError(f"Invalid element type: {name}, or order: {order}.")
+
+        return element_classes[name]()

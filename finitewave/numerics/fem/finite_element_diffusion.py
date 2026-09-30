@@ -14,7 +14,8 @@ class FiniteElementDiffusion:
     Parameters
     ----------
     reference_element : object, optional
-        Shape values, derivatives, and weights at the integration points.
+        Reference element providing ``shape_function_derivative(points)``,
+        ``gauss_points``, and ``gauss_weights``.
     """
 
     def __init__(self, reference_element=None):
@@ -116,8 +117,10 @@ class FiniteElementDiffusion:
         grads : numpy.ndarray, shape (N_elems, N_quad, dim_phys, N_points)
             Physical shape-function gradients; tangential for embedded surfaces.
         """
+        element = self.reference_element
+        dN = element.shape_function_derivative(element.gauss_points)
         return np.einsum('eqpr,qri->eqpi', invert_jacobian(jacobian),
-                         self.reference_element.integration_dN, optimize=True)
+                         dN, optimize=True)
 
     def _compute_integration_weights(self, jacobian):
         """Scale reference quadrature weights by physical area or volume.
@@ -140,7 +143,7 @@ class FiniteElementDiffusion:
                 np.cross(jacobian[..., 0, :], jacobian[..., 1, :]), axis=-1)
         else:
             measure = np.abs(np.linalg.det(jacobian))
-        return measure * self.reference_element.integration_weights
+        return measure * self.reference_element.gauss_weights
 
     def _build_integration_jacobian(self, coords, elems):
         """Build Jacobians at the reference integration points.
@@ -158,6 +161,6 @@ class FiniteElementDiffusion:
             One Jacobian per element and quadrature point. Center Jacobians
             for gradient output are built by ``FiniteElementGradient``.
         """
-        return np.einsum('qri,eip->eqrp',
-                         self.reference_element.integration_dN, coords[elems],
-                         optimize=True)
+        element = self.reference_element
+        dN = element.shape_function_derivative(element.gauss_points)
+        return np.einsum('qri,eip->eqrp', dN, coords[elems], optimize=True)

@@ -1,61 +1,95 @@
 import numpy as np
 
+from .element_type import ElementType
+
 
 class LinearQuadrilateralElement:
-    """Bilinear quadrilateral element with four nodes in 2D or 3D space.
+    """Bilinear quadrilateral on ``[-1, 1]^2``.
 
-    ``N1 = 0.25 * (1 - xi) * (1 - eta)``
-    ``N2 = 0.25 * (1 + xi) * (1 - eta)``
-    ``N3 = 0.25 * (1 + xi) * (1 + eta)``
-    ``N4 = 0.25 * (1 - xi) * (1 + eta)``
+    Nodes are ordered (-1, -1), (1, -1), (1, 1), (-1, 1).
 
     Attributes
     ----------
-    name: str
-        Name of the element type.
-    mass_coef: float
-        Normalization coefficient for the reference ``elem_mass`` matrix.
-    elem_mass: (4, 4) ndarray
-        Reference consistent mass matrix normalized by reference area or
-        volume. Retained for reference; assembly uses ``integration_N``.
-    dN: (2, 4) ndarray
-        Reference shape-function derivatives at the element center.
-    quad_weights: (1,) ndarray
-        Legacy center-rule weight; assembly uses ``integration_weights``.
-    n_points: int
-        Number of points (nodes) in the element.
-    integration_points : numpy.ndarray, shape (N_quad, dim_ref)
-        Four-point tensor Gauss rule on [-1, 1]^2.
-    integration_weights : numpy.ndarray, shape (N_quad,)
-        Integration weights, summing to the reference area or volume.
-    integration_N : numpy.ndarray, shape (N_quad, N_points)
-        Shape-function values at the integration points.
-    integration_dN : numpy.ndarray, shape (N_quad, dim_ref, N_points)
-        Reference shape-function derivatives at the integration points.
+    name : str
+        Element type identifier.
+    order : int
+        Polynomial order (1).
+    n_points : int
+        Number of element nodes (4), not evaluation points.
+    center : ndarray, shape (1, 2)
+        Reference centroid.
+    gauss_points : ndarray, shape (4, 2)
+        Tensor Gauss integration points; each has reference weight 1.
+    gauss_weights : ndarray, shape (4,)
+        Weights corresponding to ``gauss_points``, summing to the reference
+        area (4).
+
+    Notes
+    -----
+    Evaluate shape functions and reference derivatives at arbitrary points
+    using ``shape_function`` and ``shape_function_derivative``. The leading
+    evaluation-point axis is retained even for a single point. Use
+    ``gauss_points`` with ``gauss_weights`` for integration. Physical
+    derivatives and integration measures require a geometry-dependent Jacobian.
     """
-    def __init__(self):
-        super().__init__()
-        self.name = "Quadrilateral"
-        self.order = 1
-        self.mass_coef = 36.  # consistent with 4-node quads
 
-        self.elem_mass = 1 / self.mass_coef * np.array([[4, 2, 1, 2],
-                                                        [2, 4, 2, 1],
-                                                        [1, 2, 4, 2],
-                                                        [2, 1, 2, 4]])
+    name = ElementType.QUAD
+    order = 1
+    center = np.array([[0.0, 0.0]])
+    gauss_points = 1 / np.sqrt(3) * np.array([[-1, -1],
+                                              [1, -1],
+                                              [1, 1],
+                                              [-1, 1]])
+    gauss_weights = np.full(4, 1.0)
+    n_points = 4
 
-        self.dN = np.array([[-0.25,  0.25,  0.25, -0.25],
-                            [-0.25, -0.25,  0.25,  0.25]])
-        self.quad_weights = np.array([4.0])
-        self.n_points = 4
+    def shape_function(self, points):
+        """Evaluate shape functions at supplied reference points.
 
-        signs = np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]])
-        self.integration_points = (1 / np.sqrt(3)) * signs
-        self.integration_weights = np.ones(4)
+        Parameters
+        ----------
+        points : array_like, shape (N_eval, 2) or (2,)
+            Reference coordinates of evaluation points.
 
-        factors = 1 + self.integration_points[:, None, :] * signs[None, :, :]
-        self.integration_N = np.prod(factors, axis=2) / 4
-        self.integration_dN = np.stack([
-            signs[:, 0] * factors[:, :, 1] / 4,
-            signs[:, 1] * factors[:, :, 0] / 4,
-        ], axis=1)
+        Returns
+        -------
+        N : ndarray, shape (N_eval, 4)
+            Shape-function values with axes (evaluation point, node).
+        """
+        points = np.atleast_2d(points)
+        xi = points[:, 0]
+        eta = points[:, 1]
+        N = np.column_stack(((1 - xi) * (1 - eta) / 4,
+                             (1 + xi) * (1 - eta) / 4,
+                             (1 + xi) * (1 + eta) / 4,
+                             (1 - xi) * (1 + eta) / 4))
+        return N
+
+    def shape_function_derivative(self, points):
+        """Evaluate reference shape-function derivatives at supplied reference points.
+
+        Parameters
+        ----------
+        points : array_like, shape (N_eval, 2) or (2,)
+            Reference coordinates of evaluation points.
+
+        Returns
+        -------
+        dN : ndarray, shape (N_eval, 2, 4)
+            Derivatives with axes (evaluation point, reference direction, node).
+        """
+        points = np.atleast_2d(points)
+
+        xi = points[:, 0]
+        eta = points[:, 1]
+        dN_dxi = np.column_stack((-(1 - eta),
+                                   (1 - eta),
+                                   (1 + eta),
+                                  -(1 + eta))) / 4
+    
+        dN_deta = np.column_stack((-(1 - xi),
+                                   -(1 + xi),
+                                    (1 + xi),
+                                    (1 - xi))) / 4
+        dN = np.stack((dN_dxi, dN_deta), axis=1)
+        return dN

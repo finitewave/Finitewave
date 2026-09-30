@@ -65,9 +65,6 @@ class LeadFieldECGTracker(ECGTracker):
         Tracker.initialize(self, simulation)
         fields = np.atleast_2d(np.asarray(self.lead_fields))
         tissue = simulation.cardiac_tissue
-        source_mask = np.zeros(len(tissue.tissue_indexes), dtype=bool)
-        source_mask[tissue.myo_indexes] = True
-        self._source_mask = backend.wrap_mask(source_mask)
 
         if self.diffusion_operator is None:
             K, _ = simulation.spatial_discretization.weights
@@ -81,34 +78,32 @@ class LeadFieldECGTracker(ECGTracker):
         return fields
 
     def calc_ecg(self):
-        return self.ecg_func(
-            self._diffusion_operator, self.simulation.cardiac_model._u,
-            self._source_mask, self._lead_fields)
+        return self.ecg_func(self._diffusion_operator,
+                             self.simulation.cardiac_model._u,
+                             self._lead_fields)
 
 
 def lead_field_ecg_func(backend):
     """Compute the sparse source product once, then a dense lead-field product."""
     matvec = backend.linalg.matvec
     if backend.name == "numba":
-        def calculate(K, u, mask, fields):
+        def calculate(K, u, fields):
             q = matvec(K, u)
-            q[np.diff(K[0]) == 0] = 0.0
-            return fields @ np.where(mask, q, 0.0)
+            return fields @ q
         return calculate
 
     if backend.name == "jax":
         import jax
-        import jax.numpy as jnp
 
         @jax.jit
-        def calculate(K, u, mask, fields):
-            return fields @ jnp.where(mask, matvec(K, u), 0.0)
+        def calculate(K, u, fields):
+            return fields @ matvec(K, u)
         return calculate
 
     if backend.name == "mlx":
         import mlx.core as mx
 
         @mx.compile
-        def calculate(K, u, mask, fields):
-            return fields @ mx.where(mask, matvec(K, u), 0.0)
+        def calculate(K, u, fields):
+            return fields @ matvec(K, u)
         return calculate

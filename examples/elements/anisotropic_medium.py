@@ -34,10 +34,10 @@ simulation = fw.CardiacSimulation(dt=0.01, t_max=33, backend="jax")
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.FentonKarma()
 simulation.stim_sequence = stim_sequence
-# simulation.time_integration = fw.BackwardEulerTimeIntegration(
-#     atol=1e-8, maxiter=100, lumping_factor=1.0, reaction_lumping=True
-#     )
-simulation.time_integration = fw.ForwardEulerTimeIntegration()
+simulation.time_integration = fw.BackwardEulerTimeIntegration(
+    atol=1e-8, maxiter=100, lumping_factor=1.0, reaction_lumping=True
+    )
+# simulation.time_integration = fw.ForwardEulerTimeIntegration()
 # run the model:
 simulation.run()
 
