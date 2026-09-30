@@ -30,7 +30,7 @@ stim_sequence.add_stim(
     )
 )
 
-simulation = fw.CardiacSimulation(dt=0.01, t_max=10, backend="mlx")
+simulation = fw.CardiacSimulation(dt=0.01, t_max=30, backend="mlx")
 simulation.cardiac_tissue = tissue
 simulation.cardiac_model = fw.FentonKarma()
 simulation.stim_sequence = stim_sequence
@@ -51,11 +51,11 @@ cell_types = np.full(
     dtype=np.uint8,
 )
 grid = pv.UnstructuredGrid(cells, cell_types, coords)
-grid["u"] = simulation.cardiac_model.output("u")
+grid["u"] = simulation.cardiac_model.u
 
 plotter = pv.Plotter()
 plotter.add_mesh(
-    grid.extract_surface(),
+    grid.extract_surface(algorithm="geometry"),
     scalars="u",
     cmap="RdBu_r",
     show_edges=False,

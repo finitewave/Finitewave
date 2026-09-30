@@ -57,8 +57,8 @@ class ImplicitTimeIntegration(TimeIntegration):
            engineering 28.8 (2012): 890-903.
 
     """
-    def __init__(self, atol=1e-8, maxiter=100, lumping_factor=.0, order=1,
-                 reaction_lumping=False):
+    def __init__(self, atol=1e-8, maxiter=100, lumping_factor=1., order=1,
+                 reaction_lumping=True):
         self.atol = atol
         self.maxiter = maxiter
         self.lumping_factor = lumping_factor
