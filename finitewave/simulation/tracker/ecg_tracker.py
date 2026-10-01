@@ -31,14 +31,18 @@ class ECGTracker(Tracker):
     min_distance : float, optional
         Minimum distance for inverse-distance weighting. If None,
         defaults to 0.5 * dr for grid tissue or 0.1 mm for element-mesh tissue.
+    mono_to_intra_ratio : float, optional
+        Ratio ``D_intracellular / D_monodomain`` (default 2.0). This is used
+        to scale the diffusion operator K to approximate intracellular currents.
     **kwargs
         Additional keyword arguments passed to the tracker class.
 
     Attributes
     ----------
     diffusion_operator : backend-specific sparse matrix
-        The diffusion operator K used to compute the current sources ``q = K @ u``.
-        If None, the diffusion operator is computed from the simulation's spatial discretization.
+        Source operator used to compute ``q = diffusion_operator @ u``.
+        If None, uses ``-K * mono_to_intra_ratio`` from the simulation's
+        monodomain stiffness matrix. A supplied operator is used without scaling.
 
     Notes
     -----
@@ -47,16 +51,16 @@ class ECGTracker(Tracker):
     however, depend on intracellular conductivity.
 
     If the intracellular and monodomain operators differ by a scalar factor
-    ``alpha = D_intracellular / D_monodomain``, this factor can be accounted for
-    by dividing ``volume_conductivity`` by ``alpha``. A scalar correction is only
-    valid when the two operators are proportional.
+    ``mono_to_intra_ratio = D_intracellular / D_monodomain``.
     """
 
-    def __init__(self, lead_coords=None, volume_conductivity=1.0, min_distance=None, **kwargs):
+    def __init__(self, lead_coords=None, volume_conductivity=1.0,
+                 min_distance=None, mono_to_intra_ratio=2.0, **kwargs):
         super().__init__(**kwargs)
         self.lead_coords = lead_coords
         self.volume_conductivity = volume_conductivity
         self.min_distance = min_distance
+        self.mono_to_intra_ratio = mono_to_intra_ratio
         self.diffusion_operator = None
         self.ecg = []
         self.file_name = "ecg.npy"
@@ -66,43 +70,62 @@ class ECGTracker(Tracker):
         backend = simulation.backend
         tissue = simulation.cardiac_tissue
 
-        if (not np.isfinite(self.volume_conductivity)
-                or self.volume_conductivity <= 0):
+        if (not np.isfinite(self.volume_conductivity) or self.volume_conductivity <= 0):
             raise ValueError("volume_conductivity must be finite and positive.")
 
-        is_grid = tissue.meta["type"] == "Grid"
-        scale = tissue.dr if is_grid else 1.0
+        scale = self.compute_scaling_factor(simulation)
+        source_coords = self.build_source_coords(tissue.tissue_coords, scale)
+        self.build_lead_coords(self.lead_coords, source_coords, scale)
+        self.build_diffusion_operator(simulation)
 
-        self._min_distance = self.min_distance
-        if self._min_distance is None:
-            self._min_distance = 0.5 * scale if is_grid else 0.1
-
-        if not np.isfinite(self._min_distance) or self._min_distance <= 0:
-            raise ValueError("min_distance must be finite and positive.")
-
-        source_coords = tissue.tissue_coords * scale
-        source_coords = np.pad(source_coords, ((0, 0), (0, 3 - source_coords.shape[1])))
-        lead_coords = self.build_lead_coords(self.lead_coords, source_coords, scale)
-
-        self._lead_coords = backend.wrap_array(lead_coords)
-        self._source_coords = backend.wrap_array(source_coords)
         self._ecg_scale = (scale ** 3 / (4 * math.pi * self.volume_conductivity))
-
-        if self.diffusion_operator is None:
-            K, _ = simulation.spatial_discretization.weights
-            self._diffusion_operator = backend.wrap_sparse(K)
-        else:
-            self._diffusion_operator = self.diffusion_operator
-        self.ecg_func = ecg_func(backend)
+        self.ecg_func = build_ecg_func(backend)
         self.ecg = []
         self._tracking_times = []
         self.tracking_counter = 0
+
+    def compute_scaling_factor(self, simulation):
+        """Compute the scaling factor for the ECG calculation."""
+        tissue = simulation.cardiac_tissue
+        is_grid = tissue.meta["type"] == "Grid"
+        scale = tissue.dr if is_grid else 1.0
+        return scale
+
+    def build_diffusion_operator(self, simulation):
+        """Build the diffusion operator K for computing source currents."""
+        backend = simulation.backend
+        diffusion_operator = self.diffusion_operator
+
+        if diffusion_operator is None:
+            K, _ = simulation.spatial_discretization.weights
+            diffusion_operator = -K * self.mono_to_intra_ratio
+
+        self._diffusion_operator = backend.wrap_sparse(diffusion_operator)
+        return diffusion_operator
+
+    def build_source_coords(self, coords, scale):
+        """Build the source coordinates from the tissue object."""
+        source_coords = coords * scale
+        source_coords = np.pad(source_coords, ((0, 0), (0, 3 - source_coords.shape[1])))
+        self._source_coords = self.simulation.backend.wrap_array(source_coords)
+        return source_coords
 
     def build_lead_coords(self, coords, nodes, scale):
         """Validate and pad electrode coordinates to three dimensions."""
 
         if coords is None:
             raise ValueError("lead_coords must contain at least one electrode.")
+
+        is_grid = self.simulation.cardiac_tissue.meta["type"] == "Grid"
+        scale = self.simulation.cardiac_tissue.dr if is_grid else 1.0
+
+        if self.min_distance is None:
+            self._min_distance = 0.5 * scale if is_grid else 0.1
+        else:
+            self._min_distance = self.min_distance
+
+        if not np.isfinite(self._min_distance) or self._min_distance <= 0:
+            raise ValueError("min_distance must be finite and positive.")
 
         coords = np.atleast_2d(np.asarray(coords, dtype=float)) * scale
         if (coords.ndim != 2 or coords.shape[0] == 0
@@ -118,6 +141,7 @@ class ECGTracker(Tracker):
                    "to the tissue nodes.")
             raise ValueError(msg)
 
+        self._lead_coords = self.simulation.backend.wrap_array(coords)
         return coords
 
     def calc_ecg(self):
@@ -142,7 +166,7 @@ class ECGTracker(Tracker):
         np.save(path / self.file_name, self.output)
 
 
-def ecg_func(backend):
+def build_ecg_func(backend):
     """Build a backend evaluator, sharing one K @ u across all electrodes."""
     matvec = backend.linalg.matvec
     if backend.name == "numba":

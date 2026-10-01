@@ -23,7 +23,8 @@ def backend(request):
 
 @pytest.mark.parametrize("tracker_class", [ECGTracker, LeadFieldECGTracker])
 @pytest.mark.parametrize("geometry", ["grid2d", "grid3d", "elements"])
-def test_ecg_matches_dense_bilinear_form(backend, geometry, tracker_class, tmp_path):
+@pytest.mark.parametrize("ratio", [2.0, 3.5])
+def test_ecg_matches_dense_bilinear_form(backend, geometry, tracker_class, ratio, tmp_path):
     # Row 1 is empty; grid indexing is not contiguous.
     K = sp.csr_matrix([[2., 0., -2.], [0., 0., 0.], [-2., 0., 2.]])
     u = np.array([1., 50., 4.])
@@ -49,13 +50,14 @@ def test_ecg_matches_dense_bilinear_form(backend, geometry, tracker_class, tmp_p
         cardiac_model=SimpleNamespace(_u=backend.wrap_array(u)),
         spatial_discretization=SimpleNamespace(weights=(K, sp.eye(3))),
         dt=0.01, t_max=1.)
-    tracker = tracker_class(electrodes, volume_conductivity=2., min_distance=0.1)
+    tracker = tracker_class(electrodes, volume_conductivity=2., min_distance=0.1,
+                            mono_to_intra_ratio=ratio)
     tracker.initialize(simulation)
     distances = np.linalg.norm(
         physical_positions[None, :, :] - physical_electrodes[:, None, :], axis=-1)
     lead = 1. / distances
     volume = tissue.dr**3 if geometry.startswith("grid") else 1.0
-    expected = volume * (lead @ K.toarray() @ u) / (8 * np.pi)
+    expected = -ratio * volume * (lead @ K.toarray() @ u) / (8 * np.pi)
     np.testing.assert_allclose(tracker.calc_ecg(), expected, rtol=3e-6, atol=1e-6)
 
     # The direct stiffness expression is independent of the time step.
@@ -82,7 +84,8 @@ def test_ecg_zero_operator_and_coordinate_padding(backend):
     assert tracker._min_distance == 0.1
 
 
-def test_ecg_reinitialize_rebuilds_default_operator(backend):
+@pytest.mark.parametrize("tracker_class", [ECGTracker, LeadFieldECGTracker])
+def test_ecg_reinitialize_rebuilds_default_operator(backend, tracker_class):
     tissue = CardiacTissueGrid(shape=(2, 2), dr=0.2)
     K = sp.eye(4, format="csr")
     simulation = SimpleNamespace(
@@ -90,7 +93,7 @@ def test_ecg_reinitialize_rebuilds_default_operator(backend):
         cardiac_model=SimpleNamespace(_u=backend.wrap_array(np.ones(4))),
         spatial_discretization=SimpleNamespace(weights=(K, K.copy())),
         dt=0.01, t_max=1.)
-    tracker = ECGTracker([5., 5.])
+    tracker = tracker_class([5., 5.])
     tracker.initialize(simulation)
     first = np.asarray(tracker.calc_ecg()).copy()
     np.testing.assert_array_equal(K.toarray(), np.eye(4))
@@ -100,6 +103,10 @@ def test_ecg_reinitialize_rebuilds_default_operator(backend):
     np.testing.assert_allclose(tracker.calc_ecg(), 12 * first, rtol=3e-6)
     assert tracker._min_distance == 0.2
     assert tracker.min_distance is None
+    assert tracker.diffusion_operator is None
+    tracker.mono_to_intra_ratio = 3.0
+    tracker.initialize(simulation)
+    np.testing.assert_allclose(tracker.calc_ecg(), 18 * first, rtol=3e-6)
 
 
 def test_supplied_lead_fields_use_matvec_and_preserve_input(backend):
@@ -116,7 +123,7 @@ def test_supplied_lead_fields_use_matvec_and_preserve_input(backend):
         dt=0.01, t_max=1.)
     tracker = LeadFieldECGTracker(lead_fields=fields, volume_conductivity=7.)
     tracker.initialize(simulation)
-    q = K @ u
+    q = -2.0 * (K @ u)
     np.testing.assert_allclose(tracker.calc_ecg(), fields @ q, rtol=3e-6)
     np.testing.assert_array_equal(fields, original)
     tracker._track()
@@ -131,7 +138,7 @@ def test_supplied_lead_fields_use_matvec_and_preserve_input(backend):
 def test_element_ecg_matches_integrated_linear_lead_field(backend, dimension, mode):
     """FEM stiffness already includes element measure; do not multiply it twice.
 
-    Independently integrate grad(l_h).D.grad(u_h) on each linear simplex.
+    Independently integrate -grad(l_h).D_intra.grad(u_h) on each linear simplex.
     This references the nodal interpolant l_h of 1/r, as used by the tracker,
     rather than claiming exact integration of the continuous 1/r kernel.
     """
@@ -173,7 +180,7 @@ def test_element_ecg_matches_integrated_linear_lead_field(backend, dimension, mo
         measure = abs(np.linalg.det(vertices[1:] - vertices[0])) / factorial(dimension)
         grad_u = basis_gradients @ u[elem]
         grad_leads = fields[:, elem] @ basis_gradients.T
-        expected += measure * model_scale * diffusion * (grad_leads @ grad_u)
+        expected -= 2.0 * measure * model_scale * diffusion * (grad_leads @ grad_u)
 
     simulation = SimpleNamespace(
         backend=backend, cardiac_tissue=tissue,
