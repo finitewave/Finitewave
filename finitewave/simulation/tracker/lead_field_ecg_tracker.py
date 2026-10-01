@@ -69,8 +69,9 @@ class LeadFieldECGTracker(ECGTracker):
     def initialize_from_fields(self, simulation):
         """Initialize the tracker using precomputed lead fields."""
         Tracker.initialize(self, simulation)
+        scale = self.compute_scaling_factor(simulation)
         fields = np.atleast_2d(np.asarray(self.lead_fields))
-        self.build_diffusion_operator(simulation)
+        self.build_diffusion_operator(simulation, scale)
 
         self.ecg = []
         self._tracking_times = []

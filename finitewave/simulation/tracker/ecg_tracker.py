@@ -76,9 +76,9 @@ class ECGTracker(Tracker):
         scale = self.compute_scaling_factor(simulation)
         source_coords = self.build_source_coords(tissue.tissue_coords, scale)
         self.build_lead_coords(self.lead_coords, source_coords, scale)
-        self.build_diffusion_operator(simulation)
+        self.build_diffusion_operator(simulation, scale)
 
-        self._ecg_scale = (scale ** 3 / (4 * math.pi * self.volume_conductivity))
+        self._ecg_scale = 1 / (4 * math.pi * self.volume_conductivity)
         self.ecg_func = build_ecg_func(backend)
         self.ecg = []
         self._tracking_times = []
@@ -91,14 +91,14 @@ class ECGTracker(Tracker):
         scale = tissue.dr if is_grid else 1.0
         return scale
 
-    def build_diffusion_operator(self, simulation):
+    def build_diffusion_operator(self, simulation, scale):
         """Build the diffusion operator K for computing source currents."""
         backend = simulation.backend
         diffusion_operator = self.diffusion_operator
 
         if diffusion_operator is None:
             K, _ = simulation.spatial_discretization.weights
-            diffusion_operator = -K * self.mono_to_intra_ratio
+            diffusion_operator = -K * self.mono_to_intra_ratio * scale ** 3
 
         self._diffusion_operator = backend.wrap_sparse(diffusion_operator)
         return diffusion_operator

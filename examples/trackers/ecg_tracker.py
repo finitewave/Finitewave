@@ -19,7 +19,7 @@ def compute_lead_fields(tissue, lead_coords, volume_conductivity, dr):
     lead_fields = np.empty((len(electrodes), len(nodes)))
     for i, electrode in enumerate(electrodes):
         distances = np.linalg.norm(nodes - electrode, axis=1)
-        lead_fields[i] = (dr ** 3) / (4 * np.pi * volume_conductivity * distances)
+        lead_fields[i] = 1 / (4 * np.pi * volume_conductivity * distances)
     return lead_fields
 
 
