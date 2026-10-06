@@ -58,4 +58,4 @@ class VariableTracker(MultiVariableTracker):
         np.ndarray
             The values of the tracked variable at the specified grid point.
         """
-        return np.squeeze(self.vars_data[self.var_name])
+        return self._recorded_values(self.var_name)

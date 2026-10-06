@@ -172,9 +172,31 @@ class CardiacTissueGrid(CardiacTissueBase):
                 diffusion_tensor[..., i, i] = conductivity
             return diffusion_tensor
 
+        d_ac, d_al = self._prepare_diffusion_coefficients()
+
         outer_product = np.einsum('ij,ik->ijk', fibers, fibers, optimize='optimal')
-        diffusion_tensor = self.D_ac * np.eye(ndim) + (self.D_al - self.D_ac) * outer_product
+        diffusion_tensor = (d_ac[..., None, None] * np.eye(ndim) + 
+                            (d_al - d_ac)[..., None, None] * outer_product)
         return diffusion_tensor * np.atleast_1d(conductivity)[:, None, None]
+
+    def _prepare_diffusion_coefficients(self):
+        """
+        Prepares the diffusion coefficients for the tissue.
+
+        Returns
+        -------
+            A tuple containing the diffusion coefficients for the tissue.
+        """
+        D_ac = self.D_ac
+        D_al = self.D_al
+
+        if np.asarray(D_ac).shape == self.mesh.shape:
+            D_ac = D_ac[self.mesh > 0]
+
+        if np.asarray(D_al).shape == self.mesh.shape:
+            D_al = D_al[self.mesh > 0]
+
+        return np.atleast_1d(D_ac), np.atleast_1d(D_al)
 
     def _extract_tissue_fibers(self):
         if self.fibers is None:

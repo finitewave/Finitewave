@@ -51,6 +51,8 @@ class Tracker(ABC):
         end_time = min(self.end_time, simulation.t_max)
         
         self.simulation = simulation
+        self.tracking_counter = 0
+        self._tracking_times = []
         self.iter_counter = 0
         self.n_iterations = int(np.ceil((end_time - start_time) / dt))
 
@@ -87,8 +89,8 @@ class Tracker(ABC):
         if self.simulation.iteration % self.step != 0:
             return
         
-        self._tracking_times.append(self.simulation.t)
         self._track()
+        self._tracking_times.append(self.simulation.t)
         self.tracking_counter += 1
 
     def _flatten_inds(self, mesh, tissue_indexes, node_inds):

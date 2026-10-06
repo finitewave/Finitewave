@@ -1,6 +1,20 @@
 import numpy as np
+from numba import float32, float64, vectorize
 from scipy import sparse
 from ._grid_utils import nonzero_weights, build_neighbor, is_valid_index
+
+
+@vectorize([float32(float32, float32), float64(float64, float64)],
+           nopython=True, cache=True)
+def _harmonic_mean(d1, d2):
+    """Compute the harmonic mean of two numbers."""
+    if d1 == 0 or d2 == 0:
+        return 0.0
+    denominator = d1 + d2
+    if denominator == 0:
+        raise ValueError("Harmonic averaging is undefined for cancelling "
+                         "nonzero tensor components. Use arithmetic averaging.")
+    return 2 * (d1 * d2) / denominator
 
 
 class AsymmetricDiffusion:
@@ -10,7 +24,8 @@ class AsymmetricDiffusion:
     ----------
     averaging_method : {"arithmetic", "harmonic"}, optional
         Componentwise face averaging, default "arithmetic". Harmonic
-        averaging requires nonzero sums of paired tensor components.
+        averaging returns zero when either component is zero and rejects
+        cancelling nonzero components.
 
     Notes
     -----
@@ -35,12 +50,13 @@ class AsymmetricDiffusion:
         ----------
         averaging_method : {"arithmetic", "harmonic"}, optional
             Componentwise averaging rule for diffusion at cell faces.
-            Harmonic averaging requires nonzero sums of paired components. Default is 'arithmetic'.
+            Harmonic averaging returns zero for zero components and raises
+            ValueError for cancelling nonzero components. Default is 'arithmetic'.
         """
         if averaging_method == "arithmetic":
             self.diffusion_averaging_method = lambda d1, d2: 0.5 * (d1 + d2)
         elif averaging_method == "harmonic":
-            self.diffusion_averaging_method = lambda d1, d2: 2 * (d1 * d2) / (d1 + d2)
+            self.diffusion_averaging_method = _harmonic_mean
         else:
             raise ValueError(f"Invalid averaging method: {averaging_method}. "
                              "Choose 'arithmetic' or 'harmonic'.")

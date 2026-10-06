@@ -12,7 +12,7 @@ import numpy as np
 import finitewave as fw
 
 
-def compute_lead_fields(tissue, lead_coords, volume_conductivity, dr):
+def compute_lead_fields(tissue, lead_coords, volume_conductivity):
     """Compute lead fields from electrode coordinates."""
     nodes = np.pad(tissue.tissue_coords, ((0, 0), (0, 1))) * tissue.dr
     electrodes = lead_coords * tissue.dr
@@ -27,21 +27,28 @@ def main(t_max=50, show=True):
     n, m = 300, 50
     dr = 0.1
     tissue = fw.CardiacTissue(shape=(n, m), dr=dr)
-    lead_coords = np.array([[5, m//2, 5],
-                            [n//2, m//2, 5],
-                            [n//2, 5, 5]])
-    volume_conductivity = 1.0
+    lead_coords = np.array([[5, m//2, 10],
+                            [n//2, m//2, 10],
+                            [n//2, 5, 10]])
+    D_model = 0.1
+    D_intra = 0.2
+    volume_conductivity = 0.4
 
     # Grid electrode coordinates are in grid units. Supplied fields must use
     # physical distances and include the desired conductivity normalization.
     # Columns follow tissue.tissue_coords, matching the compact voltage vector.
-    lead_fields = compute_lead_fields(tissue, lead_coords, volume_conductivity, dr)
+    lead_fields = compute_lead_fields(tissue, lead_coords, volume_conductivity)
 
-    onfly = fw.ECGTracker(lead_coords, volume_conductivity, step=10)
+    onfly = fw.ECGTracker(lead_coords, volume_conductivity, 
+                          mono_to_intra_ratio=D_intra/D_model,
+                          step=10)
     precomputed = fw.LeadFieldECGTracker(lead_coords,
                                          volume_conductivity=volume_conductivity,
+                                         mono_to_intra_ratio=D_intra/D_model,
                                          step=10)
-    supplied = fw.LeadFieldECGTracker(lead_fields=lead_fields, step=10)
+    supplied = fw.LeadFieldECGTracker(lead_fields=lead_fields,
+                                      mono_to_intra_ratio=D_intra/D_model,
+                                      step=10)
 
     tracker_sequence = fw.TrackerSequence()
     tracker_sequence.add_tracker(onfly)
@@ -75,7 +82,7 @@ def main(t_max=50, show=True):
                             label=label)
         axs[i + 1].set_title(f"Electrode {i}")
         axs[i + 1].set_xlabel("Time (ms)")
-        axs[i + 1].set_ylabel("ECG potential (model units)")
+        axs[i + 1].set_ylabel("ECG potential (mV)")
         axs[i + 1].sharex(axs[2])
         axs[i + 1].sharey(axs[2])
 

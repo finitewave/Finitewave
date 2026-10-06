@@ -74,7 +74,8 @@ class MultiVariableTracker(Tracker):
         t_max = min(self.simulation.t_max, self.end_time)
         t_min = self.start_time
         dt = self.simulation.dt
-        n_frames = int(np.round((t_max - t_min) / (self.step * dt)))
+        # Include the final sample; output exposes only rows actually recorded.
+        n_frames = max(0, int(np.ceil((t_max - t_min) / (self.step * dt))) + 1)
 
         # Initialize storage for each variable to be tracked
         for var_name in self.var_list:
@@ -99,6 +100,15 @@ class MultiVariableTracker(Tracker):
         This method should be called at each time step of the simulation.
         """
         for var_name in self.var_list:
+            storage = self.vars_data[var_name]
+            if self.tracking_counter >= storage.shape[0]:
+                # A continued run or a command can extend the simulation.
+                capacity = max(1, 2 * storage.shape[0], self.tracking_counter + 1)
+                recorded = np.asarray(storage)
+                expanded = np.zeros((capacity, len(self._node_inds)),
+                                    dtype=recorded.dtype)
+                expanded[:storage.shape[0]] = recorded
+                self.vars_data[var_name] = self.simulation.backend.wrap_array(expanded)
             var_data = getattr(self.model, f"_{var_name}")
             var_vals = self.simulation.backend.select_values(var_data, self._node_inds)
             self.vars_data[var_name] = self.simulation.backend.set_values(
@@ -118,8 +128,13 @@ class MultiVariableTracker(Tracker):
         """
         vars_data = {}
         for var_name in self.var_list:
-            vars_data[var_name] = np.squeeze(self.vars_data[var_name])
+            vars_data[var_name] = self._recorded_values(var_name)
         return vars_data
+
+    def _recorded_values(self, var_name):
+        """Return recorded rows, preserving the time axis even for one sample."""
+        data = self.vars_data[var_name][:self.tracking_counter]
+        return data[:, 0] if data.shape[1] == 1 else data
 
     def write(self, path=".", dir_name="tracked_data"):
         """

@@ -52,6 +52,9 @@ class ECGTracker(Tracker):
 
     If the intracellular and monodomain operators differ by a scalar factor
     ``mono_to_intra_ratio = D_intracellular / D_monodomain``.
+
+    For 2D tissue, the ECG is computed for layer of tissue with thickness of 
+    1 model unit.
     """
 
     def __init__(self, lead_coords=None, volume_conductivity=1.0,
@@ -95,10 +98,11 @@ class ECGTracker(Tracker):
         """Build the diffusion operator K for computing source currents."""
         backend = simulation.backend
         diffusion_operator = self.diffusion_operator
+        ndim = simulation.cardiac_tissue.mesh.ndim
 
         if diffusion_operator is None:
             K, _ = simulation.spatial_discretization.weights
-            diffusion_operator = -K * self.mono_to_intra_ratio * scale ** 3
+            diffusion_operator = -K * self.mono_to_intra_ratio * scale ** ndim
 
         self._diffusion_operator = backend.wrap_sparse(diffusion_operator)
         return diffusion_operator
