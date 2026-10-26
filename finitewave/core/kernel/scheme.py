@@ -9,7 +9,7 @@ class KernelScheme(ABC):
         raise NotImplementedError
 
 
-    # Common methods for kernel generation that can be used by subclasses
+    # Common methods for kernel generation that can be used by subclasses:
     
     def _collect_kernel_arguments(self, spec):
         result = []
@@ -29,33 +29,19 @@ class KernelScheme(ABC):
 
         return result
 
-    def _generate_input_setup(self, spec):
-        # This method generates the code that sets up the input arrays and scalars for the kernel function.
-        return ""
+    def _generate_step_arguments(self, spec):
+        args = []
 
-    def _generate_local_variables(self, spec):
-        lines = []
+        array_names = set(spec.arrays)
+        array_names.add("u")
 
-        for name in spec.arrays:
-            if name == "rhs":
-                continue
+        for name in spec.step_args:
+            if name in array_names:
+                args.append(f"{name}.flat[index]")
+            else:
+                args.append(name)
 
-            lines.append(f"{name} = {name}_[index]")
-
-        return self._indent(lines)
-
-    def _generate_state_updates(self, spec):
-        lines = []
-
-        for name in spec.state_vars:
-            if name == "u":
-                continue
-
-            lines.append(f"{name}_[index] = {name}_new")
-
-        lines.append("rhs_[index] = rhs")
-
-        return self._indent(lines)
+        return args
 
     def _generate_observers(self, spec):
         lines = [

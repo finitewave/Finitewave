@@ -8,13 +8,18 @@ from .spec import KernelSpec
 class KernelArtifact:
     """Generated forms of a kernel from source through backend compilation."""
 
-    spec: KernelSpec
-    source: str
-    argument_names: tuple[str, ...]
-    step_name: str
-    step_source: str
-    python_function: Callable | None = None
-    compiled_function: Callable | None = None
+    def __init__(self, spec, source, argument_names, step_name, step_source):
+        self.spec = spec
+        self.source = source
+        self.argument_names = argument_names
+
+        self.step_name = step_name
+        self.step_source = step_source
+
+        self.python_step = None
+        self.python_function = None
+        self.compiled_step = None
+        self.compiled_function = None
 
     @property
     def function(self):
