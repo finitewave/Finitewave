@@ -17,14 +17,12 @@ class LoopKernelScheme(KernelScheme):
         step_args = self._generate_step_arguments(spec)
         step_signature = ", ".join(step_args)
 
-        result_names = ["rhs_new"]
+        result_names = ["rhs_value"]
         for name in spec.state_vars:
             if name == "u":
                 continue
-        result_names.append(f"{name}_new")
+            result_names.append(f"{name}_new")
         result_signature = ", ".join(result_names)
-
-        updates = ["rhs.flat[index] = rhs_new"]
 
         updates = self._generate_state_updates(spec)
         observers = self._generate_observers(spec)
@@ -37,9 +35,9 @@ class LoopKernelScheme(KernelScheme):
                     {step_signature}
                 )
 
-        {updates}
+                {updates}
 
-            return {output}
+            {output}
         """
 
         source = textwrap.dedent(source).strip()
@@ -59,14 +57,12 @@ class LoopKernelScheme(KernelScheme):
         )
 
     def _generate_state_updates(self, spec):
-        lines = []
+        lines = ["rhs[index] = rhs_value"]
 
         for name in spec.state_vars:
             if name == "u":
                 continue
 
-            lines.append(f"{name}_[index] = {name}_new")
+            lines.append(f"{name}[index] = {name}_new")
 
-        lines.append("rhs_[index] = rhs")
-
-        return self._indent(lines)
+        return self._indent(lines) + "\n"

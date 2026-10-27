@@ -1,5 +1,4 @@
 from os import name
-from typing import Any, Callable
 
 
 class KernelSpec:
@@ -14,13 +13,6 @@ class KernelSpec:
         self.step_name = step_name
         self.step_source = step_source
         self.step_args = step_args
-        self.common_args = common_args
-        self.arrays = arrays
-        self.scalars = scalars
-        self.state_vars = state_vars
-        self.observers = observers
-        self.output_args = output_args
-
         self.common_args = common_args
         self.arrays = arrays
         self.scalars = scalars

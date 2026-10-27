@@ -49,10 +49,10 @@ class KernelScheme(ABC):
             for observer in spec.observers
         ]
 
-        return self._indent(lines)
+        return self._indent(lines) + "\n"
 
     def _generate_output(self, spec):
-        values = ", ".join(f"{name}_" for name in spec.output_args)
+        values = ", ".join(f"{name}" for name in spec.output_args)
         return f"return {values}"
 
     @staticmethod

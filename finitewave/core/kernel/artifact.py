@@ -1,10 +1,6 @@
-from dataclasses import dataclass
-from typing import Callable
-
 from .spec import KernelSpec
 
 
-@dataclass
 class KernelArtifact:
     """Generated forms of a kernel from source through backend compilation."""
 
