@@ -9,9 +9,6 @@ from .observer import ObserverSpec
 class ModelAnalyzer:
     """Collect model metadata without selecting an execution backend."""
 
-    def __init__(self):
-        pass
-
     def analyze(self, model):
         step_function = model.ops.ionic_step
 
@@ -46,7 +43,7 @@ class ModelAnalyzer:
             arrays=tuple(arrays),
             scalars=tuple(scalars),
             state_vars=tuple(model.state_vars),
-            observers = self._analyze_observers(model),
+            observers=self._analyze_observers(model),
             output_args=(
                 "rhs",
                 *(name for name in model.state_vars if name != "u"),
@@ -55,7 +52,7 @@ class ModelAnalyzer:
 
     def _analyze_observers(self, model):
         result = []
-        names = []
+        names = set()
 
         for observer in model.observers:
             name, expression, step_outputs, kernel_args = (
@@ -67,14 +64,14 @@ class ModelAnalyzer:
                     f"Duplicate observer name '{name}'."
                 )
 
-            names.append(name)
+            names.add(name)
 
             result.append(
                 ObserverSpec(
                     name=name,
                     expression=expression,
-                    step_outputs=step_outputs,
-                    kernel_args=kernel_args,
+                    step_outputs=sorted(step_outputs),
+                    kernel_args=sorted(kernel_args),
                 )
             )
 
